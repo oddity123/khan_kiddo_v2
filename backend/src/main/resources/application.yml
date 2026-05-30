@@ -16,3 +16,28 @@ mybatis-plus:
   type-aliases-package: com.khankiddo.learning.model
   configuration:
     map-underscore-to-camel-case: true
+
+# LangChain4j — 火山方舟豆包（OpenAI Chat Completions 兼容）
+# 环境变量与 v1 保持一致：AI_API_KEY、AI_BASE_URL、AI_MODEL
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${AI_API_KEY:}
+      base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+      model-name: ${AI_MODEL:doubao-seed-1-8-251228}
+      temperature: ${AI_TEMPERATURE:0.7}
+      max-tokens: ${AI_MAX_TOKENS:2048}
+      timeout: ${AI_TIMEOUT_MS:120s}
+      max-retries: ${AI_MAX_RETRIES:3}
+      log-requests: true
+      log-responses: true
+    streaming-chat-model:
+      api-key: ${AI_API_KEY:}
+      base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+      model-name: ${AI_MODEL:doubao-seed-1-8-251228}
+      temperature: ${AI_TEMPERATURE:0.7}
+      max-tokens: ${AI_MAX_TOKENS:2048}
+      timeout: ${AI_TIMEOUT_MS:120s}
+      max-retries: ${AI_MAX_RETRIES:3}
+      log-requests: true
+      log-responses: true

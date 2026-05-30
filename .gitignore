@@ -26,6 +26,10 @@ logs/
 
 # Environment
 .env
+.env.local
+.env.*.local
+!.env.example
+!frontend/.env.example
 
 # Package / archives
 *.jar
