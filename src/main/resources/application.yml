@@ -1,0 +1,24 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  application:
+    name: khanKiddo-v2
+
+  thymeleaf:
+    cache: false
+    encoding: UTF-8
+    prefix: classpath:/templates/
+    suffix: .html
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/khan_kiddo_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.khankiddo.learning.model
+  configuration:
+    map-underscore-to-camel-case: true

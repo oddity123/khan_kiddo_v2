@@ -1,0 +1,37 @@
+# Maven
+target/
+
+# IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+
+# Package / archives
+*.jar
+*.war
+*.zip
+
+# JVM crash logs
+hs_err_pid*
+
+# Spring Boot
+spring.log
+
+# Node (if added later)
+node_modules/

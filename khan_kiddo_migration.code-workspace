@@ -1,0 +1,38 @@
+{
+  "folders": [
+    {
+      "name": "khan_kiddo_v2（新）",
+      "path": "/Users/oddity/workspace/khan_kiddo_v2"
+    },
+    {
+      "name": "khan_kiddo（老）",
+      "path": "/Users/oddity/workspace/khan_kiddo"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/target": true,
+      "**/node_modules": true,
+      "**/.DS_Store": true
+    },
+    "search.exclude": {
+      "**/target": true,
+      "**/node_modules": true,
+      "**/.git": true
+    },
+    "files.watcherExclude": {
+      "**/target/**": true,
+      "**/node_modules/**": true
+    },
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.import.maven.enabled": true,
+    "java.compile.nullAnalysis.mode": "disabled"
+  },
+  "extensions": {
+    "recommendations": [
+      "vscjava.vscode-java-pack",
+      "vmware.vscode-boot-dev-pack",
+      "vscjava.vscode-maven"
+    ]
+  }
+}
