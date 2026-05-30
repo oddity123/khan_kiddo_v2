@@ -1,0 +1,120 @@
+/**
+ * Khan Kiddo Design Tokens — Editorial Calm
+ * 全站颜色、字体、圆角、阴影、布局变量
+ */
+:root {
+  /* Brand */
+  --kk-color-primary: #0b1a7d;
+  --kk-color-primary-soft: #223194;
+  --kk-color-accent: #b8941f;
+  --kk-color-accent-soft: #d4bc6a;
+  --kk-color-accent-bg: #f3ecd4;
+  --kk-color-accent-text: #5c4a00;
+
+  /* Semantic */
+  --kk-color-success: #2d6a4f;
+  --kk-color-success-bg: #edf7f0;
+  --kk-color-link: #1f4da9;
+  --kk-color-danger: #a01818;
+  --kk-color-danger-bg: #ffecec;
+  --kk-color-warn: #7a6200;
+  --kk-color-warn-bg: #fff8e0;
+
+  /* Text */
+  --kk-color-text: #141824;
+  --kk-color-text-secondary: #3d4460;
+  --kk-color-text-muted: #5a6175;
+  --kk-color-text-subtle: #7a8094;
+
+  /* Surfaces */
+  --kk-color-bg-base: #eef1f6;
+  --kk-color-bg-mid: #e8ebf2;
+  --kk-color-bg-deep: #e3e7ef;
+  --kk-color-surface: rgba(255, 255, 255, 0.88);
+  --kk-color-surface-solid: #ffffff;
+  --kk-color-surface-muted: #f7f8fc;
+  --kk-color-surface-elevated: rgba(255, 255, 255, 0.72);
+  --kk-color-border: rgba(11, 26, 125, 0.08);
+  --kk-color-border-subtle: rgba(11, 26, 125, 0.05);
+
+  /* Typography */
+  --kk-font-display: 'Fraunces', Georgia, 'Songti SC', serif;
+  --kk-font-body: 'DM Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --kk-font-mono: 'IBM Plex Mono', 'Menlo', monospace;
+
+  /* Radius */
+  --kk-radius-sm: 6px;
+  --kk-radius-md: 14px;
+  --kk-radius-lg: 20px;
+  --kk-radius-xl: 28px;
+  --kk-radius-pill: 999px;
+
+  /* Shadow */
+  --kk-shadow-soft: 0 24px 48px rgba(11, 26, 125, 0.1);
+  --kk-shadow-card: 0 16px 32px rgba(11, 26, 125, 0.08);
+  --kk-shadow-card-hover: 0 22px 40px rgba(11, 26, 125, 0.12);
+  --kk-shadow-btn: 0 12px 28px rgba(11, 26, 125, 0.28);
+  --kk-shadow-btn-hover: 0 16px 32px rgba(11, 26, 125, 0.32);
+
+  /* Glass (Liquid Glass) — 全站毛玻璃 token，组件只引用变量与 .kk-glass* 类 */
+  --kk-glass-bg: rgba(255, 255, 255, 0.52);
+  --kk-glass-border: rgba(255, 255, 255, 0.82);
+  --kk-glass-highlight: rgba(255, 255, 255, 0.95);
+  --kk-glass-blur: 28px;
+  --kk-glass-saturate: 1.75;
+  --kk-glass-shadow: 0 8px 32px rgba(11, 26, 125, 0.12);
+
+  /* 页面主面板（landing 等大块内容区） */
+  --kk-glass-panel-bg: rgba(255, 255, 255, 0.72);
+  --kk-glass-panel-border: rgba(255, 255, 255, 0.65);
+  --kk-glass-panel-shadow: var(--kk-shadow-soft);
+  --kk-glass-panel-radius: var(--kk-radius-xl);
+
+  /* 导航栏 — 加强版 Liquid Glass */
+  --kk-glass-nav-bg: rgba(255, 255, 255, 0.38);
+  --kk-glass-nav-border: rgba(255, 255, 255, 0.88);
+  --kk-glass-nav-blur: 40px;
+  --kk-glass-nav-saturate: 2;
+  --kk-glass-nav-shadow: 0 12px 40px rgba(11, 26, 125, 0.14);
+  --kk-glass-nav-highlight-top: rgba(255, 255, 255, 0.95);
+  --kk-glass-nav-highlight-bottom: rgba(255, 255, 255, 0.35);
+  --kk-glass-nav-shine-start: rgba(255, 255, 255, 0.55);
+  --kk-glass-nav-shine-mid: rgba(255, 255, 255, 0.08);
+  --kk-glass-nav-shine-end: rgba(255, 255, 255, 0.2);
+  --kk-glass-nav-radius: 14px;
+
+  /* 玻璃上的交互态 / 嵌套内层 */
+  --kk-glass-hover-bg: rgba(255, 255, 255, 0.55);
+  --kk-glass-hover-border: rgba(255, 255, 255, 0.7);
+  --kk-glass-subtle-bg: rgba(255, 255, 255, 0.35);
+  --kk-glass-subtle-bg-strong: rgba(255, 255, 255, 0.4);
+  --kk-glass-divider: rgba(255, 255, 255, 0.55);
+  --kk-glass-inner-bg: rgba(255, 255, 255, 0.45);
+  --kk-glass-inner-bg-muted: rgba(255, 255, 255, 0.35);
+  --kk-glass-inner-border: rgba(255, 255, 255, 0.55);
+
+  /* 导航下拉菜单 */
+  --kk-glass-dropdown-radius: 12px;
+  --kk-glass-dropdown-padding: 0.35rem;
+  --kk-glass-dropdown-item-radius: 8px;
+  --kk-glass-dropdown-bg: rgba(255, 255, 255, 0.68);
+
+  /* Layout */
+  --kk-page-width: 80%;
+  --kk-page-width-mobile: 94%;
+  --kk-navbar-offset: 76px;
+
+  /* Motion */
+  --kk-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --kk-duration-normal: 0.25s;
+  --kk-duration-slow: 0.65s;
+
+  /* Element Plus bridge */
+  --el-color-primary: var(--kk-color-primary);
+  --el-color-primary-light-3: #3d4f9e;
+  --el-color-primary-light-5: #6e7cb5;
+  --el-color-primary-light-7: #9ea8cb;
+  --el-color-primary-light-8: #b7bfd9;
+  --el-color-primary-light-9: #d0d5e8;
+  --el-color-primary-dark-2: #091566;
+}

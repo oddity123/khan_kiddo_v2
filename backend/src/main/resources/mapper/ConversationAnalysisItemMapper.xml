@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.mapper.ConversationAnalysisItemMapper">
+
+    <resultMap id="ConversationAnalysisItemResultMap" type="com.khankiddo.learning.model.ConversationAnalysisItem">
+        <id column="id" property="id"/>
+        <result column="analysis_id" property="analysisId"/>
+        <result column="sentence_id" property="sentenceId"/>
+        <result column="original_sentence" property="originalSentence"/>
+        <result column="problem_types" property="problemTypes"/>
+        <result column="error_point" property="errorPoint"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="countDistinctSentencesByUserId" resultType="long">
+        SELECT COUNT(DISTINCT cai.analysis_id, cai.sentence_id)
+        FROM conversation_analysis_item cai
+                 INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+    </select>
+
+    <select id="countByUserIdAndProblemTypes" resultType="long">
+        SELECT COUNT(*)
+        FROM conversation_analysis_item cai
+        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+        <if test="problemTypes != null and problemTypes.size() > 0">
+            AND cai.problem_types IN
+            <foreach collection="problemTypes" item="pt" open="(" separator="," close=")">
+                #{pt}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="getMostCommonProblemTypeByUserId" resultType="map">
+        SELECT cai.problem_types AS problemType, COUNT(*) AS count
+        FROM conversation_analysis_item cai
+            INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+        GROUP BY cai.problem_types
+        ORDER BY count DESC
+        LIMIT 1
+    </select>
+
+    <select id="countDistinctSentencesInLast7DaysByUserId" resultType="long">
+        SELECT COUNT(DISTINCT cai.analysis_id, cai.sentence_id)
+        FROM conversation_analysis_item cai
+                 INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+          AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    </select>
+
+    <select id="findRecentSentencesByUserId" resultMap="ConversationAnalysisItemResultMap">
+        SELECT cai.id,
+               cai.analysis_id,
+               cai.sentence_id,
+               cai.original_sentence,
+               cai.problem_types,
+               cai.error_point,
+               cai.suggestion,
+               cai.created_at
+        FROM conversation_analysis_item cai
+                 INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+                 INNER JOIN (SELECT analysis_id, sentence_id, MAX(created_at) AS max_created
+                             FROM conversation_analysis_item
+                             GROUP BY analysis_id, sentence_id) t
+                            ON cai.analysis_id = t.analysis_id
+                                AND cai.sentence_id = t.sentence_id
+                                AND cai.created_at = t.max_created
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+        ORDER BY t.max_created DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findByAnalysisIdAndSentenceId" resultMap="ConversationAnalysisItemResultMap">
+        SELECT id,
+               analysis_id,
+               sentence_id,
+               original_sentence,
+               problem_types,
+               error_point,
+               suggestion,
+               created_at
+        FROM conversation_analysis_item
+        WHERE analysis_id = #{analysisId}
+          AND sentence_id = #{sentenceId}
+        ORDER BY id ASC
+    </select>
+
+</mapper>

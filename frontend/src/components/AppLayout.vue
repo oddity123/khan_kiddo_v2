@@ -1,78 +1,33 @@
 <script setup lang="ts">
-import { House } from '@element-plus/icons-vue'
-import { RouterView, useRoute } from 'vue-router'
-
-const route = useRoute()
-
-const menuItems = [{ path: '/', label: '首页', icon: House }]
+import AppNavbar from '@/components/AppNavbar.vue'
+import {RouterView} from 'vue-router'
 </script>
 
 <template>
-  <el-container class="layout">
-    <el-aside width="220px" class="layout-aside">
-      <div class="brand">Khan Kiddo v2</div>
-      <el-menu
-        :default-active="route.path"
-        router
-        class="layout-menu"
-      >
-        <el-menu-item
-          v-for="item in menuItems"
-          :key="item.path"
-          :index="item.path"
-        >
-          <el-icon><component :is="item.icon" /></el-icon>
-          <span>{{ item.label }}</span>
-        </el-menu-item>
-      </el-menu>
-    </el-aside>
-
-    <el-container>
-      <el-header class="layout-header">
-        <span class="layout-header-title">{{ route.meta.title }}</span>
-      </el-header>
-      <el-main class="layout-main">
+  <div class="layout">
+    <div class="kk-page-bg" aria-hidden="true"/>
+    <AppNavbar/>
+    <main class="page-main">
+      <div class="kk-page-shell">
         <RouterView />
-      </el-main>
-    </el-container>
-  </el-container>
+      </div>
+    </main>
+  </div>
 </template>
 
 <style scoped>
 .layout {
   min-height: 100vh;
-}
-
-.layout-aside {
-  background: #304156;
-  color: #fff;
-}
-
-.brand {
-  padding: 20px 16px;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.layout-menu {
-  border-right: none;
-  background: transparent;
-}
-
-.layout-header {
   display: flex;
-  align-items: center;
-  background: #fff;
-  border-bottom: 1px solid #ebeef5;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
 }
 
-.layout-header-title {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.layout-main {
-  padding: 24px;
+.page-main {
+  flex: 1;
+  padding: var(--kk-navbar-offset) 0 2.5rem;
+  position: relative;
+  z-index: 1;
 }
 </style>

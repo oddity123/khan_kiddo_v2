@@ -1,0 +1,180 @@
+/**
+ * 全局主题：页面背景、布局工具类
+ */
+
+.kk-page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 85% 0%, rgba(184, 148, 31, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 50% at 5% 100%, rgba(11, 26, 125, 0.07) 0%, transparent 45%),
+    linear-gradient(168deg, var(--kk-color-bg-base) 0%, var(--kk-color-bg-mid) 45%, var(--kk-color-bg-deep) 100%);
+}
+
+.kk-page-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.28;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.kk-page-shell {
+  width: var(--kk-page-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .kk-page-shell {
+    width: var(--kk-page-width-mobile);
+  }
+}
+
+/**
+ * Liquid Glass 工具类 — 全站毛玻璃统一入口
+ * 用法：kk-glass（默认）| kk-glass--panel（页面主块）| kk-glass--nav（导航栏）
+ * 禁止在组件 scoped 中重复 backdrop-filter / 半透明背景
+ */
+.kk-glass {
+  background: var(--kk-glass-bg);
+  backdrop-filter: blur(var(--kk-glass-blur)) saturate(var(--kk-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--kk-glass-blur)) saturate(var(--kk-glass-saturate));
+  border: 1px solid var(--kk-glass-border);
+  box-shadow:
+    var(--kk-glass-shadow),
+    inset 0 1px 0 var(--kk-glass-highlight);
+}
+
+/** 页面主内容面板（landing 外壳等） */
+.kk-glass--panel {
+  background: var(--kk-glass-panel-bg);
+  border-color: var(--kk-glass-panel-border);
+  border-radius: var(--kk-glass-panel-radius);
+  box-shadow:
+    var(--kk-glass-panel-shadow),
+    inset 0 1px 0 var(--kk-glass-highlight);
+}
+
+/** 导航栏 — 加强版 Liquid Glass */
+.kk-glass--nav {
+  background: var(--kk-glass-nav-bg);
+  backdrop-filter: blur(var(--kk-glass-nav-blur)) saturate(var(--kk-glass-nav-saturate));
+  -webkit-backdrop-filter: blur(var(--kk-glass-nav-blur)) saturate(var(--kk-glass-nav-saturate));
+  border: 1px solid var(--kk-glass-nav-border);
+  border-radius: var(--kk-glass-nav-radius);
+  box-shadow:
+    var(--kk-glass-nav-shadow),
+    inset 0 1px 1px var(--kk-glass-nav-highlight-top),
+    inset 0 -1px 0 var(--kk-glass-nav-highlight-bottom);
+  position: relative;
+  isolation: isolate;
+}
+
+.kk-glass--nav::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    var(--kk-glass-nav-shine-start) 0%,
+    var(--kk-glass-nav-shine-mid) 45%,
+    var(--kk-glass-nav-shine-end) 100%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/** 导航下拉 — 与 .kk-glass--nav 同系（popper 挂到 body，须全局样式） */
+.el-dropdown__popper.kk-nav-dropdown.el-popper,
+.kk-nav-dropdown.el-popper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0;
+}
+
+/*
+ * EP 默认 el-zoom-in-top 在 popper 上做 opacity + scaleY 动画。
+ * 祖先 transform 会导致子元素 backdrop-filter 在动画期间失效（先透明、后模糊）。
+ * 对导航下拉禁用该过渡，保证打开瞬间即有毛玻璃。
+ */
+.kk-nav-dropdown.el-zoom-in-top-enter-active,
+.kk-nav-dropdown.el-zoom-in-top-leave-active,
+.kk-nav-dropdown.el-zoom-in-top-enter-from,
+.kk-nav-dropdown.el-zoom-in-top-leave-to {
+  transition: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.kk-nav-dropdown .el-dropdown-menu {
+  margin: 0;
+  padding: var(--kk-glass-dropdown-padding);
+  background: var(--kk-glass-dropdown-bg);
+  backdrop-filter: blur(var(--kk-glass-nav-blur)) saturate(var(--kk-glass-nav-saturate));
+  -webkit-backdrop-filter: blur(var(--kk-glass-nav-blur)) saturate(var(--kk-glass-nav-saturate));
+  border: 1px solid var(--kk-glass-nav-border);
+  border-radius: var(--kk-glass-dropdown-radius);
+  box-shadow:
+    var(--kk-glass-nav-shadow),
+    inset 0 1px 1px var(--kk-glass-nav-highlight-top),
+    inset 0 -1px 0 var(--kk-glass-nav-highlight-bottom);
+  transform: translateZ(0);
+  isolation: isolate;
+}
+
+.kk-nav-dropdown .el-dropdown-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.48rem 0.72rem;
+  margin: 0;
+  border-radius: var(--kk-glass-dropdown-item-radius);
+  font-family: var(--kk-font-body);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--kk-color-text-secondary);
+  transition:
+    color var(--kk-duration-normal) ease,
+    background var(--kk-duration-normal) ease,
+    box-shadow var(--kk-duration-normal) ease;
+}
+
+.kk-nav-dropdown .el-dropdown-menu__item .el-icon {
+  font-size: 1rem;
+  color: var(--kk-color-text-muted);
+  transition: color var(--kk-duration-normal) ease;
+}
+
+.kk-nav-dropdown .el-dropdown-menu__item:not(.is-disabled):hover,
+.kk-nav-dropdown .el-dropdown-menu__item:not(.is-disabled):focus {
+  background: var(--kk-glass-hover-bg);
+  color: var(--kk-color-primary);
+  box-shadow: inset 0 0 0 1px var(--kk-glass-hover-border);
+}
+
+.kk-nav-dropdown .el-dropdown-menu__item:not(.is-disabled):hover .el-icon,
+.kk-nav-dropdown .el-dropdown-menu__item:not(.is-disabled):focus .el-icon {
+  color: var(--kk-color-primary);
+}
+
+.kk-nav-dropdown .el-dropdown-menu__item--divided {
+  position: relative;
+  margin-top: 0.35rem;
+  border-top: none;
+}
+
+.kk-nav-dropdown .el-dropdown-menu__item--divided::before {
+  content: '';
+  position: absolute;
+  top: -0.2rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: 1px;
+  background: var(--kk-glass-divider);
+}

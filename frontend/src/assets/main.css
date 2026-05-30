@@ -1,23 +1,2 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#app {
-  margin: 0;
-  min-height: 100%;
-}
-
-body {
-  font-family:
-    'Helvetica Neue',
-    Helvetica,
-    'PingFang SC',
-    'Hiragino Sans GB',
-    'Microsoft YaHei',
-    sans-serif;
-  background: #f5f7fa;
-}
+/* 已迁移至 src/styles/index.css，保留此文件避免旧引用报错 */
+@import '../styles/index.css';
