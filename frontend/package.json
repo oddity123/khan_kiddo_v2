@@ -1,0 +1,6 @@
+{
+  "name": "khankiddo-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Khan Kiddo v2 前端（待选型：Vue 3 / React + Vite）"
+}

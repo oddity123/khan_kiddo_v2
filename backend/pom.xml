@@ -17,7 +17,7 @@
     <packaging>jar</packaging>
 
     <name>Khan Kiddo v2</name>
-    <description>AI 英语学习助手 — Spring Boot 3 + Java 21 重构版</description>
+    <description>Khan Kiddo v2 后端 API — Spring Boot 3 + Java 21</description>
 
     <properties>
         <java.version>21</java.version>
@@ -29,11 +29,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
 
         <dependency>

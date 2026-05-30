@@ -1,16 +1,15 @@
 ---
-description: 终端 / Agent 执行 Maven 时必须使用本项目 JDK（Temurin 21），禁止直接调用裸 mvn。
+description: 终端 / Agent 执行 Maven 时必须使用 backend 模块与 Temurin 21，禁止在仓库根直接裸 mvn。
 alwaysApply: true
 ---
 
-# Maven 构建（khan_kiddo_v2）
+# Maven 构建（khan_kiddo_v2 / backend）
 
-本项目使用 **Java 21**（Temurin）。系统默认可能是 JDK 8，直接运行 `mvn` 会失败或编译错误。
+前后端分离：Java 代码与 `pom.xml` 在 **`backend/`**。使用 **Java 21**（Temurin）。
 
 ## 必须遵守
 
-1. 在 **`/Users/oddity/workspace/khan_kiddo_v2`** 目录下执行构建（先 `cd` 到该目录）。
-2. 使用项目根目录包装脚本，**不要**直接运行 `mvn`：
+1. 在仓库根目录使用根级包装脚本（推荐）：
 
 ```bash
 cd /Users/oddity/workspace/khan_kiddo_v2
@@ -19,13 +18,15 @@ cd /Users/oddity/workspace/khan_kiddo_v2
 ./mvn.sh -q package -DskipTests
 ```
 
-3. 若无法使用脚本，必须显式设置 `JAVA_HOME` 再调用 Maven：
+2. 或在 `backend/` 下：
 
 ```bash
-export JAVA_HOME="/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home"
-mvn -q compile
+cd /Users/oddity/workspace/khan_kiddo_v2/backend
+./mvn.sh -q compile
 ```
+
+3. **不要**在仓库根对不存在的根 `pom.xml` 执行 `mvn`，也不要不设置 `JAVA_HOME` 直接调用系统 `mvn`。
 
 ## 验证
 
-`./mvn.sh -version` 输出中 `Java version` 应为 **21.x**（Eclipse Adoptium / Temurin）。
+`./mvn.sh -version` 中 `Java version` 应为 **21.x**。

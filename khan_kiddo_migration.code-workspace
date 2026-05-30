@@ -11,28 +11,33 @@
   ],
   "settings": {
     "files.exclude": {
-      "**/target": true,
-      "**/node_modules": true,
+      "**/backend/target": true,
+      "**/frontend/dist": true,
+      "**/frontend/node_modules": true,
       "**/.DS_Store": true
     },
     "search.exclude": {
-      "**/target": true,
-      "**/node_modules": true,
+      "**/backend/target": true,
+      "**/frontend/dist": true,
+      "**/frontend/node_modules": true,
       "**/.git": true
     },
     "files.watcherExclude": {
-      "**/target/**": true,
-      "**/node_modules/**": true
+      "**/backend/target/**": true,
+      "**/frontend/dist/**": true,
+      "**/frontend/node_modules/**": true
     },
     "java.configuration.updateBuildConfiguration": "automatic",
     "java.import.maven.enabled": true,
+    "java.import.maven.offline.enabled": false,
     "java.compile.nullAnalysis.mode": "disabled"
   },
   "extensions": {
     "recommendations": [
       "vscjava.vscode-java-pack",
       "vmware.vscode-boot-dev-pack",
-      "vscjava.vscode-maven"
+      "vscjava.vscode-maven",
+      "vue.volar"
     ]
   }
 }

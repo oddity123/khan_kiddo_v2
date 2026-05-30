@@ -1,5 +1,10 @@
-# Maven
-target/
+# Maven（后端）
+backend/target/
+
+# 前端
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
 
 # IDE
 .idea/
@@ -32,6 +37,3 @@ hs_err_pid*
 
 # Spring Boot
 spring.log
-
-# Node (if added later)
-node_modules/
