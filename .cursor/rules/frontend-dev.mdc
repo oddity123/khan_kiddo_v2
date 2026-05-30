@@ -1,0 +1,24 @@
+---
+description: 前端开发在 frontend/ 目录执行 npm，API 开发代理到 backend:8081。
+globs:
+  - frontend/**
+alwaysApply: false
+---
+
+# 前端（frontend/）
+
+技术栈：Vue 3、Vite、TypeScript、Pinia、Vue Router、Element Plus。
+
+## 命令
+
+```bash
+cd /Users/oddity/workspace/khan_kiddo_v2/frontend
+npm install
+npm run dev      # http://localhost:5173
+npm run build
+```
+
+## API
+
+- 开发环境 `VITE_API_BASE_URL` 为空，请求 `/api/*` 由 Vite 代理到 `http://localhost:8081`
+- 先启动 backend：`cd .. && ./mvn.sh spring-boot:run` 或在 IDEA 运行 `KhanKiddoLearningApplication`
