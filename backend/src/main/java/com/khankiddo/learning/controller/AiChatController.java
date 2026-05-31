@@ -2,7 +2,7 @@ package com.khankiddo.learning.controller;
 
 import com.khankiddo.learning.ai.Assistant;
 import dev.langchain4j.model.chat.ChatModel;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -19,7 +19,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/ai")
-@RequiredArgsConstructor
 public class AiChatController {
 
     private final Assistant assistant;
@@ -28,9 +27,13 @@ public class AiChatController {
     @Value("${langchain4j.open-ai.chat-model.api-key:}")
     private String apiKey;
 
-    /**
-     * 通过 AiService 调用（推荐业务层使用此方式）。
-     */
+    public AiChatController(
+            Assistant assistant,
+            @Qualifier("openAiChatModel") ChatModel chatModel) {
+        this.assistant = assistant;
+        this.chatModel = chatModel;
+    }
+
     @GetMapping("/chat")
     public Map<String, String> chat(@RequestParam(defaultValue = "用一句话介绍你自己") String message) {
         assertApiKeyConfigured();
@@ -40,14 +43,11 @@ public class AiChatController {
         );
     }
 
-    /**
-     * 直接使用 ChatModel 调用（用于验证 LangChain4j + 豆包连通性）。
-     */
     @GetMapping("/ping")
     public Map<String, String> ping() {
         assertApiKeyConfigured();
         String reply = chatModel.chat("Reply with exactly: pong");
-        return Map.of("status", "ok", "reply", reply);
+        return Map.of("status", "ok", "api", "chat/completions", "reply", reply);
     }
 
     private void assertApiKeyConfigured() {

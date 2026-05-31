@@ -23,6 +23,24 @@ const router = createRouter({
           component: () => import('@/views/RegisterView.vue'),
           meta: {title: '注册', guestOnly: true},
       },
+      {
+          path: '/conversation/analyze',
+          name: 'conversation-analyze',
+          component: () => import('@/views/conversation/AnalyzeView.vue'),
+          meta: {title: '对话分析', requiresAuth: true},
+      },
+      {
+          path: '/conversation/analyses',
+          name: 'conversation-analyses',
+          component: () => import('@/views/conversation/AnalysisListView.vue'),
+          meta: {title: '分析历史', requiresAuth: true},
+      },
+      {
+          path: '/conversation/analyses/:id',
+          name: 'conversation-analysis-detail',
+          component: () => import('@/views/conversation/AnalysisDetailView.vue'),
+          meta: {title: '分析详情', requiresAuth: true},
+      },
   ],
 })
 
@@ -33,6 +51,9 @@ router.beforeEach(async (to) => {
     }
     if (to.meta.guestOnly && auth.isAuthenticated) {
         return {path: '/'}
+    }
+    if (to.meta.requiresAuth && !auth.isAuthenticated) {
+        return {path: '/login', query: {redirect: to.fullPath}}
     }
     return true
 })

@@ -16,6 +16,13 @@ app:
     # 生产环境务必通过环境变量 JWT_SECRET 覆盖（至少 32 字符）
     jwt-secret: ${JWT_SECRET:khankiddo-v2-dev-jwt-secret-change-me-in-production}
     jwt-expiration-hours: ${JWT_EXPIRATION_HOURS:168}
+  conversation-analysis:
+    min-content-length: 10
+    max-content-length: 10000
+    batch-threshold: 15
+    # Stage 1 对话分离：Flash 模型 + 低 temperature（对齐 v1）
+    separation-model-name: ${AI_SEPARATION_MODEL:doubao-seed-1-6-flash-250828}
+    separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
@@ -31,8 +38,8 @@ langchain4j:
       api-key: ${AI_API_KEY:}
       base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
       model-name: ${AI_MODEL:doubao-seed-1-8-251228}
-      temperature: ${AI_TEMPERATURE:0.7}
-      max-tokens: ${AI_MAX_TOKENS:2048}
+      temperature: ${AI_TEMPERATURE:0.4}
+      max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_TIMEOUT_MS:120s}
       max-retries: ${AI_MAX_RETRIES:3}
       log-requests: true
@@ -41,8 +48,8 @@ langchain4j:
       api-key: ${AI_API_KEY:}
       base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
       model-name: ${AI_MODEL:doubao-seed-1-8-251228}
-      temperature: ${AI_TEMPERATURE:0.7}
-      max-tokens: ${AI_MAX_TOKENS:2048}
+      temperature: ${AI_TEMPERATURE:0.4}
+      max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_TIMEOUT_MS:120s}
       max-retries: ${AI_MAX_RETRIES:3}
       log-requests: true

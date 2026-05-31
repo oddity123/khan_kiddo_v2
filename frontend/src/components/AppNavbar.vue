@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   ChatDotRound,
+  Clock,
   Collection,
   Cpu,
   House,
@@ -8,14 +9,13 @@ import {
   SwitchButton,
   User,
   VideoPlay,
-  Clock,
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { storeToRefs } from 'pinia'
-import { ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {storeToRefs} from 'pinia'
+import {ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 
-import { useAuthStore } from '@/stores/auth'
+import {useAuthStore} from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +32,15 @@ function isActive(path: string) {
 function onPending(feature: string) {
   ElMessage.info(`${feature}功能迁移中，敬请期待`)
   mobileOpen.value = false
+}
+
+function onAnalysisCommand(command: string) {
+  mobileOpen.value = false
+  if (command === 'analyze') {
+    router.push('/conversation/analyze')
+  } else if (command === 'history') {
+    router.push('/conversation/analyses')
+  }
 }
 
 function onAnalysisDropdownVisible(visible: boolean) {
@@ -78,7 +87,7 @@ async function onLogout() {
             popper-class="kk-nav-dropdown"
             :show-arrow="false"
             :offset="8"
-            @command="onPending"
+            @command="onAnalysisCommand"
             @visible-change="onAnalysisDropdownVisible"
           >
             <span
@@ -91,11 +100,11 @@ async function onLogout() {
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item :command="'对话分析'">
+                <el-dropdown-item command="analyze">
                   <el-icon><VideoPlay /></el-icon>
                   开始分析
                 </el-dropdown-item>
-                <el-dropdown-item divided :command="'分析历史'">
+                <el-dropdown-item divided command="history">
                   <el-icon><Clock /></el-icon>
                   查看历史记录
                 </el-dropdown-item>

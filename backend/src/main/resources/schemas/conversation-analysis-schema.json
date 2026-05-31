@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "originalSentence": {
+            "type": "string",
+            "description": "用户原句"
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "针对整句的完整修改建议或地道表达"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "Tense",
+                    "Agreement",
+                    "Plural",
+                    "Article",
+                    "Preposition",
+                    "Pronoun",
+                    "Structure",
+                    "Clause",
+                    "Word Form",
+                    "Comparison",
+                    "Word Choice",
+                    "Collocation",
+                    "Chinglish",
+                    "Redundancy",
+                    "Tone",
+                    "Unnatural",
+                    "Vocabulary",
+                    "Formal",
+                    "Incomplete",
+                    "Chinese"
+                  ],
+                  "description": "问题类型"
+                },
+                "point": {
+                  "type": "string",
+                  "description": "具体的错误点描述，简洁明了"
+                }
+              },
+              "required": [
+                "type",
+                "point"
+              ],
+              "additionalProperties": false
+            },
+            "description": "该句子中的具体错误点列表"
+          }
+        },
+        "required": [
+          "originalSentence",
+          "suggestion",
+          "errors"
+        ],
+        "additionalProperties": false
+      },
+      "description": "按句子组织的分析结果列表"
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+}

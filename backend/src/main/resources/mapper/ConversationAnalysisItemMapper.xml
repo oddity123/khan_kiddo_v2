@@ -93,4 +93,34 @@
         ORDER BY id ASC
     </select>
 
+    <select id="findByAnalysisId" resultMap="ConversationAnalysisItemResultMap">
+        SELECT id,
+               analysis_id,
+               sentence_id,
+               original_sentence,
+               problem_types,
+               error_point,
+               suggestion,
+               created_at
+        FROM conversation_analysis_item
+        WHERE analysis_id = #{analysisId}
+        ORDER BY sentence_id ASC, id ASC
+    </select>
+
+    <insert id="batchInsert">
+        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, error_point,
+        suggestion, created_at)
+        VALUES
+        <foreach collection="items" item="item" separator=",">
+            (#{item.analysisId}, #{item.sentenceId}, #{item.originalSentence}, #{item.problemTypes}, #{item.errorPoint},
+            #{item.suggestion}, NOW())
+        </foreach>
+    </insert>
+
+    <delete id="deleteByAnalysisId">
+        DELETE
+        FROM conversation_analysis_item
+        WHERE analysis_id = #{analysisId}
+    </delete>
+
 </mapper>

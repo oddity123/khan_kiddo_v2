@@ -24,4 +24,10 @@ public interface ConversationAnalysisItemMapper {
 
     List<ConversationAnalysisItem> findByAnalysisIdAndSentenceId(@Param("analysisId") String analysisId,
                                                                  @Param("sentenceId") Long sentenceId);
+
+    List<ConversationAnalysisItem> findByAnalysisId(@Param("analysisId") String analysisId);
+
+    int batchInsert(@Param("items") List<ConversationAnalysisItem> items);
+
+    int deleteByAnalysisId(@Param("analysisId") String analysisId);
 }

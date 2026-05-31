@@ -3,11 +3,12 @@ package com.khankiddo.learning.ai;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.spring.AiService;
+import dev.langchain4j.service.spring.AiServiceWiringMode;
 
 /**
  * 声明式 AI 服务示例：通过 LangChain4j AiServices 调用豆包大模型。
  */
-@AiService
+@AiService(wiringMode = AiServiceWiringMode.EXPLICIT, chatModel = "openAiChatModel")
 public interface Assistant {
 
     @SystemMessage("""

@@ -2,11 +2,13 @@
 import {DataAnalysis, MagicStick, Promotion, RefreshRight, TrendCharts,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {computed, onMounted, ref} from 'vue'
+import {useRouter} from 'vue-router'
 
 import {fetchHomePage} from '@/api/home'
 import type {HomePageResponse} from '@/types/home'
 import {getErrorMessage} from '@/utils/error'
 
+const router = useRouter()
 const loading = ref(true)
 const home = ref<HomePageResponse | null>(null)
 const revealed = ref(false)
@@ -56,7 +58,7 @@ onMounted(loadHome)
             {{ home?.description ?? '粘贴你与 AI 的英文对话，系统会标出可优化表达并给出更地道的改写建议。' }}
           </p>
           <div class="hero-actions">
-            <button type="button" class="btn-primary" @click="onFeaturePending('对话分析')">
+            <button type="button" class="btn-primary" @click="router.push('/conversation/analyze')">
               <el-icon>
                 <Promotion/>
               </el-icon>
@@ -195,7 +197,7 @@ onMounted(loadHome)
       </template>
       <p v-else class="dashboard-empty">
         暂无最近 7 天分析句子，
-        <button type="button" class="link-btn" @click="onFeaturePending('对话分析')">开始分析</button>
+        <button type="button" class="link-btn" @click="router.push('/conversation/analyze')">开始分析</button>
       </p>
     </section>
   </div>

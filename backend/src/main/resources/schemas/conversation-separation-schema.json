@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "properties": {
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"],
+            "description": "消息发送者角色，user表示用户，assistant表示AI助手"
+          },
+          "content": {
+            "type": "string",
+            "description": "消息内容"
+          }
+        },
+        "required": ["role", "content"],
+        "additionalProperties": false
+      },
+      "description": "分离后的消息列表，按对话顺序排列"
+    }
+  },
+  "required": ["messages"],
+  "additionalProperties": false
+}
