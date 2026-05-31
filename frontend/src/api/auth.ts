@@ -1,5 +1,5 @@
 import http from './http'
-import type { LoginResponse, UserProfile } from '@/types/auth'
+import type {LoginResponse, RegisterPayload, RegisterResponse, UserProfile} from '@/types/auth'
 
 export interface LoginPayload {
   username: string
@@ -8,6 +8,10 @@ export interface LoginPayload {
 
 export function login(payload: LoginPayload) {
   return http.post<LoginResponse>('/api/auth/login', payload)
+}
+
+export function register(payload: RegisterPayload) {
+  return http.post<RegisterResponse>('/api/auth/register', payload)
 }
 
 export function fetchCurrentUser() {

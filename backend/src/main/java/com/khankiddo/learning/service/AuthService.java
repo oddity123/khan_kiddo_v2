@@ -1,12 +1,12 @@
 package com.khankiddo.learning.service;
 
-import com.khankiddo.learning.dto.LoginRequest;
-import com.khankiddo.learning.dto.LoginResponse;
-import com.khankiddo.learning.dto.UserProfileDto;
+import com.khankiddo.learning.dto.*;
 
 public interface AuthService {
 
     LoginResponse login(LoginRequest request);
+
+    RegisterResponse register(RegisterRequest request);
 
     UserProfileDto getCurrentUserProfile();
 }

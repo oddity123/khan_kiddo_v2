@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { Lock, User } from '@element-plus/icons-vue'
-import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
-import { reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import {Lock, User} from '@element-plus/icons-vue'
+import type {FormInstance, FormRules} from 'element-plus'
+import {ElMessage} from 'element-plus'
+import {onMounted, reactive, ref} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
 
-import { useAuthStore } from '@/stores/auth'
-import { getErrorMessage } from '@/utils/error'
+import {useAuthStore} from '@/stores/auth'
+import {getErrorMessage} from '@/utils/error'
 
 const router = useRouter()
 const route = useRoute()
@@ -22,6 +22,12 @@ const rules: FormRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 }
+
+onMounted(() => {
+  if (route.query.registered === '1') {
+    ElMessage.success('注册成功，请登录')
+  }
+})
 
 async function onSubmit() {
   if (!formRef.value) {
@@ -94,8 +100,9 @@ async function onSubmit() {
         </el-button>
       </el-form>
 
-      <p class="login-hint">
-        开发环境默认账号：<code>admin</code> / <code>admin123</code>（首次启动且库中无 admin 时自动创建）
+      <p class="login-footer">
+        还没有账号？
+        <router-link to="/register" class="login-link">立即注册</router-link>
       </p>
     </section>
   </div>
@@ -170,21 +177,21 @@ async function onSubmit() {
   border-radius: var(--kk-radius-md);
 }
 
-.login-hint {
+.login-footer {
   margin: 1.25rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.5;
   text-align: center;
-  color: var(--kk-color-text-subtle);
   font-family: var(--kk-font-body);
+  font-size: 0.9rem;
+  color: var(--kk-color-text-muted);
 }
 
-.login-hint code {
-  font-family: var(--kk-font-mono);
-  font-size: 0.78rem;
-  padding: 0.1rem 0.35rem;
-  border-radius: var(--kk-radius-sm);
-  background: var(--kk-glass-subtle-bg);
-  color: var(--kk-color-text-secondary);
+.login-link {
+  color: var(--kk-color-link);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-link:hover {
+  color: var(--kk-color-primary);
 }
 </style>

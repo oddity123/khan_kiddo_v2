@@ -1,8 +1,7 @@
 package com.khankiddo.learning.service.impl;
 
-import com.khankiddo.learning.dto.LoginRequest;
-import com.khankiddo.learning.dto.LoginResponse;
-import com.khankiddo.learning.dto.UserProfileDto;
+import com.khankiddo.learning.dto.*;
+import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.exception.UnauthorizedException;
 import com.khankiddo.learning.mapper.UserMapper;
 import com.khankiddo.learning.model.User;
@@ -11,11 +10,13 @@ import com.khankiddo.learning.security.JwtService;
 import com.khankiddo.learning.security.SecurityUtils;
 import com.khankiddo.learning.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -43,6 +44,34 @@ public class AuthServiceImpl implements AuthService {
                 .token(token)
                 .tokenType("Bearer")
                 .user(UserProfileDto.from(user))
+                .build();
+    }
+
+    @Override
+    public RegisterResponse register(RegisterRequest request) {
+        String username = request.getUsername().trim();
+        String email = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
+
+        if (StringUtils.hasText(email) && !email.matches("^[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}$")) {
+            throw new BadRequestException("邮箱格式不正确");
+        }
+
+        if (userMapper.existsByUsername(username) > 0) {
+            throw new BadRequestException("用户名已存在");
+        }
+
+        User newUser = User.builder()
+                .username(username)
+                .password(passwordEncoder.encode(request.getPassword()))
+                .email(email)
+                .enabled(true)
+                .build();
+        userMapper.insert(newUser);
+
+        log.info("成功注册新用户: {}", username);
+        return RegisterResponse.builder()
+                .message("注册成功，请登录")
+                .user(UserProfileDto.from(newUser))
                 .build();
     }
 

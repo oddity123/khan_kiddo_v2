@@ -9,3 +9,14 @@ export interface LoginResponse {
   tokenType: string
   user: UserProfile
 }
+
+export interface RegisterPayload {
+    username: string
+    password: string
+    email?: string
+}
+
+export interface RegisterResponse {
+    message: string
+    user: UserProfile
+}
