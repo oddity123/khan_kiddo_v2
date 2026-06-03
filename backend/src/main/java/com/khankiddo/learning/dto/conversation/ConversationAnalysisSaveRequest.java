@@ -2,7 +2,6 @@ package com.khankiddo.learning.dto.conversation;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +19,6 @@ public class ConversationAnalysisSaveRequest {
     @NotBlank(message = "对话内容不能为空")
     private String conversationContent;
 
-    @NotEmpty(message = "分析项列表不能为空")
     @Valid
     private List<SaveAnalysisItem> items;
 

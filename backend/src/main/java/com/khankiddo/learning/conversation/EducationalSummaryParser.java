@@ -66,7 +66,34 @@ public class EducationalSummaryParser {
     }
 
     /**
-     * 为历史记录补全 performanceScore（DB 中无分时按 items 重算）。
+     * 从 {@code educational_summary} JSON 读取已持久化的分项得分（列表/概览用）。
+     */
+    public EducationalSummaryStatsDto readPersistedStats(String educationalSummaryJson) {
+        EducationalSummaryDto root = fromJson(educationalSummaryJson);
+        return hasPersistedScores(root) ? root.getReport().getOverallStats() : null;
+    }
+
+    public boolean hasPersistedScores(EducationalSummaryDto summaryRoot) {
+        if (ObjectUtils.isEmpty(summaryRoot) || ObjectUtils.isEmpty(summaryRoot.getReport())) {
+            return false;
+        }
+        return hasPersistedScores(summaryRoot.getReport().getOverallStats());
+    }
+
+    private static boolean hasPersistedScores(EducationalSummaryStatsDto stats) {
+        if (ObjectUtils.isEmpty(stats) || stats.getPerformanceScore() == null) {
+            return false;
+        }
+        PerformanceDimensionScoresDto dimensions = stats.getDimensionScores();
+        return ObjectUtils.isNotEmpty(dimensions)
+                && dimensions.getNaturalness() != null
+                && dimensions.getAccuracy() != null
+                && dimensions.getFluency() != null
+                && dimensions.getLexical() != null;
+    }
+
+    /**
+     * 为无持久化分数的旧记录按 items 补全（新记录在分析完成时已写入 JSON，不再重算）。
      */
     public EducationalSummaryDto enrichReportWithScores(
             EducationalSummaryDto summaryRoot,
@@ -77,7 +104,7 @@ public class EducationalSummaryParser {
         }
         EducationalSummaryReportDto report = summaryRoot.getReport();
         EducationalSummaryStatsDto stats = report.getOverallStats();
-        if (ObjectUtils.isNotEmpty(stats) && stats.getPerformanceScore() != null) {
+        if (hasPersistedScores(stats)) {
             return summaryRoot;
         }
         PerformanceScoreResult scores = performanceScorer.score(

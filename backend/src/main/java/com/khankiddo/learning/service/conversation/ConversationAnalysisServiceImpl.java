@@ -40,55 +40,79 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
                                                    Consumer<ConversationAnalysisProgress> onProgress) {
-        return pipeline.run(request, onProgress);
+        return pipeline.run(request, UUID.randomUUID().toString(), onProgress);
+    }
+
+    @Override
+    @Transactional
+    public ConversationAnalysisResultDto analyzeAndPersist(ConversationAnalysisRequest request,
+                                                           String analysisId,
+                                                           Consumer<ConversationAnalysisProgress> onProgress) {
+        ConversationAnalysisResultDto result = pipeline.run(request, analysisId, onProgress);
+        return persistAnalysis(request.getConversationContent().trim(), result);
+    }
+
+    @Override
+    @Transactional
+    public void saveFailed(String analysisId, String conversationContent, String errorMessage, long processingTimeMs) {
+        Long userId = requireUserId();
+        String trimmedContent = StringUtils.hasText(conversationContent) ? conversationContent.trim() : "";
+        String trimmedError = StringUtils.hasText(errorMessage) ? errorMessage.trim() : "分析失败";
+        if (trimmedError.length() > 2000) {
+            trimmedError = trimmedError.substring(0, 2000);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        ConversationAnalysis analysis = ConversationAnalysis.builder()
+                .userId(userId)
+                .analysisId(analysisId)
+                .conversationContent(trimmedContent)
+                .status("failed")
+                .errorMessage(trimmedError)
+                .processingTimeMs(processingTimeMs)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        analysisMapper.insert(analysis);
     }
 
     @Override
     @Transactional
     public ConversationAnalysisResultDto save(ConversationAnalysisSaveRequest request) {
+        return persistAnalysis(request.getConversationContent().trim(),
+                ConversationAnalysisResultDto.builder()
+                        .analysisId(StringUtils.hasText(request.getAnalysisId())
+                                ? request.getAnalysisId().trim()
+                                : UUID.randomUUID().toString())
+                        .analyzedAt(ObjectUtils.defaultIfNull(request.getAnalyzedAt(), LocalDateTime.now()))
+                        .processingTimeMs(ObjectUtils.defaultIfNull(request.getProcessingTimeMs(), 0L))
+                        .status("success")
+                        .educationalSummaryJson(request.getEducationalSummary())
+                        .analysisResults(buildAnalysisResultsFromSaveRequest(request))
+                        .build());
+    }
+
+    private ConversationAnalysisResultDto persistAnalysis(String conversationContent,
+                                                          ConversationAnalysisResultDto result) {
         Long userId = requireUserId();
-        String analysisId = StringUtils.hasText(request.getAnalysisId())
-                ? request.getAnalysisId().trim()
+        String analysisId = StringUtils.hasText(result.getAnalysisId())
+                ? result.getAnalysisId().trim()
                 : UUID.randomUUID().toString();
-        LocalDateTime analyzedAt = ObjectUtils.defaultIfNull(request.getAnalyzedAt(), LocalDateTime.now());
-        long processingTimeMs = ObjectUtils.defaultIfNull(request.getProcessingTimeMs(), 0L);
+        LocalDateTime analyzedAt = ObjectUtils.defaultIfNull(result.getAnalyzedAt(), LocalDateTime.now());
+        long processingTimeMs = ObjectUtils.defaultIfNull(result.getProcessingTimeMs(), 0L);
 
         ConversationAnalysis analysis = ConversationAnalysis.builder()
                 .userId(userId)
                 .analysisId(analysisId)
-                .conversationContent(request.getConversationContent().trim())
+                .conversationContent(conversationContent)
                 .status("success")
                 .processingTimeMs(processingTimeMs)
-                .educationalSummary(request.getEducationalSummary())
+                .educationalSummary(result.getEducationalSummaryJson())
                 .createdAt(analyzedAt)
                 .updatedAt(LocalDateTime.now())
                 .build();
         analysisMapper.insert(analysis);
 
-        List<ConversationAnalysisItem> dbItems = new ArrayList<>();
-        Map<String, Long> sentenceIdMap = new HashMap<>();
-        AtomicLong sentenceCounter = new AtomicLong(1L);
-        if (!CollectionUtils.isEmpty(request.getItems())) {
-            for (ConversationAnalysisSaveRequest.SaveAnalysisItem item : request.getItems()) {
-                Long sentenceId = sentenceIdMap.computeIfAbsent(
-                        item.getOriginalSentence(), key -> sentenceCounter.getAndIncrement());
-                if (CollectionUtils.isEmpty(item.getErrors())) {
-                    continue;
-                }
-                for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
-                    String englishType = toEnglishProblemType(error.getType());
-                    String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
-                    dbItems.add(ConversationAnalysisItem.builder()
-                            .analysisId(analysisId)
-                            .sentenceId(sentenceId)
-                            .originalSentence(item.getOriginalSentence())
-                            .problemTypes(englishType)
-                            .errorPoint(point)
-                            .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
-                            .build());
-                }
-            }
-        }
+        List<ConversationAnalysisItem> dbItems = buildDbItems(analysisId, result);
         if (!CollectionUtils.isEmpty(dbItems)) {
             itemMapper.batchInsert(dbItems);
         }
@@ -98,7 +122,95 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .analyzedAt(analyzedAt)
                 .processingTimeMs(processingTimeMs)
                 .status("success")
+                .analysisResults(result.getAnalysisResults())
+                .educationalSummaryJson(result.getEducationalSummaryJson())
                 .build();
+    }
+
+    private List<ConversationAnalysisItem> buildDbItems(String analysisId, ConversationAnalysisResultDto result) {
+        List<ConversationAnalysisSaveRequest.SaveAnalysisItem> items = extractSaveItems(result);
+        List<ConversationAnalysisItem> dbItems = new ArrayList<>();
+        Map<String, Long> sentenceIdMap = new HashMap<>();
+        AtomicLong sentenceCounter = new AtomicLong(1L);
+        if (CollectionUtils.isEmpty(items)) {
+            return dbItems;
+        }
+        for (ConversationAnalysisSaveRequest.SaveAnalysisItem item : items) {
+            Long sentenceId = sentenceIdMap.computeIfAbsent(
+                    item.getOriginalSentence(), key -> sentenceCounter.getAndIncrement());
+            if (CollectionUtils.isEmpty(item.getErrors())) {
+                continue;
+            }
+            for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
+                String englishType = toEnglishProblemType(error.getType());
+                String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
+                dbItems.add(ConversationAnalysisItem.builder()
+                        .analysisId(analysisId)
+                        .sentenceId(sentenceId)
+                        .originalSentence(item.getOriginalSentence())
+                        .problemTypes(englishType)
+                        .errorPoint(point)
+                        .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
+                        .build());
+            }
+        }
+        return dbItems;
+    }
+
+    private List<ConversationAnalysisSaveRequest.SaveAnalysisItem> extractSaveItems(
+            ConversationAnalysisResultDto result) {
+        if (ObjectUtils.isEmpty(result) || CollectionUtils.isEmpty(result.getAnalysisResults())) {
+            return List.of();
+        }
+        Object rawItems = result.getAnalysisResults().get("items");
+        if (ObjectUtils.isEmpty(rawItems)) {
+            return List.of();
+        }
+        List<AnalysisItemDto> items = objectMapper.convertValue(
+                rawItems,
+                objectMapper.getTypeFactory().constructCollectionType(List.class, AnalysisItemDto.class));
+        if (CollectionUtils.isEmpty(items)) {
+            return List.of();
+        }
+        List<ConversationAnalysisSaveRequest.SaveAnalysisItem> saveItems = new ArrayList<>();
+        for (AnalysisItemDto item : items) {
+            if (CollectionUtils.isEmpty(item.getErrors())) {
+                continue;
+            }
+            saveItems.add(ConversationAnalysisSaveRequest.SaveAnalysisItem.builder()
+                    .originalSentence(item.getOriginalSentence())
+                    .suggestion(item.getSuggestion())
+                    .errors(item.getErrors().stream()
+                            .map(err -> ConversationAnalysisSaveRequest.SaveError.builder()
+                                    .type(err.getType())
+                                    .point(err.getPoint())
+                                    .build())
+                            .toList())
+                    .build());
+        }
+        return saveItems;
+    }
+
+    private Map<String, Object> buildAnalysisResultsFromSaveRequest(ConversationAnalysisSaveRequest request) {
+        Map<String, Object> analysisResults = new LinkedHashMap<>();
+        if (!CollectionUtils.isEmpty(request.getItems())) {
+            List<AnalysisItemDto> items = request.getItems().stream()
+                    .map(item -> AnalysisItemDto.builder()
+                            .originalSentence(item.getOriginalSentence())
+                            .suggestion(item.getSuggestion())
+                            .errors(CollectionUtils.isEmpty(item.getErrors())
+                                    ? List.of()
+                                    : item.getErrors().stream()
+                                    .map(err -> AnalysisErrorDto.builder()
+                                            .type(err.getType())
+                                            .point(err.getPoint())
+                                            .build())
+                                    .toList())
+                            .build())
+                    .toList();
+            analysisResults.put("items", items);
+        }
+        return analysisResults;
     }
 
     @Override
@@ -139,14 +251,16 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
         List<AnalysisItemDto> items = new ArrayList<>(grouped.values());
         EducationalSummaryDto summaryRoot = summaryParser.fromJson(analysis.getEducationalSummary());
-        int totalSentences = resolveTotalSentences(summaryRoot, items.size());
-        EducationalSummaryDto enrichedSummary = summaryParser.enrichReportWithScores(
-                summaryRoot, items, totalSentences);
+        EducationalSummaryDto enrichedSummary = summaryParser.hasPersistedScores(summaryRoot)
+                ? summaryRoot
+                : summaryParser.enrichReportWithScores(
+                        summaryRoot, items, resolveTotalSentences(summaryRoot, items.size()));
 
         return ConversationAnalysisDetailDto.builder()
                 .analysisId(analysis.getAnalysisId())
                 .conversationContent(analysis.getConversationContent())
                 .status(analysis.getStatus())
+                .errorMessage(analysis.getErrorMessage())
                 .processingTimeMs(analysis.getProcessingTimeMs())
                 .createdAt(analysis.getCreatedAt())
                 .educationalSummary(enrichedSummary)
@@ -183,13 +297,21 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 : analysisMapper.countByUserId(userId);
 
         List<ConversationAnalysisListResponse.SummaryRow> rows = records.stream()
-                .map(record -> ConversationAnalysisListResponse.SummaryRow.builder()
-                        .analysisId(record.getAnalysisId())
-                        .status(record.getStatus())
-                        .processingTimeMs(record.getProcessingTimeMs())
-                        .createdAt(record.getCreatedAt())
-                        .preview(buildPreview(record.getConversationContent()))
-                        .build())
+                .map(record -> {
+                    EducationalSummaryStatsDto stats = summaryParser.readPersistedStats(record.getEducationalSummary());
+                    ConversationAnalysisListResponse.SummaryRow.SummaryRowBuilder rowBuilder =
+                            ConversationAnalysisListResponse.SummaryRow.builder()
+                                    .analysisId(record.getAnalysisId())
+                                    .status(record.getStatus())
+                                    .processingTimeMs(record.getProcessingTimeMs())
+                                    .createdAt(record.getCreatedAt())
+                                    .preview(buildPreview(record.getConversationContent()));
+                    if (ObjectUtils.isNotEmpty(stats)) {
+                        rowBuilder.performanceScore(stats.getPerformanceScore())
+                                .dimensionScores(stats.getDimensionScores());
+                    }
+                    return rowBuilder.build();
+                })
                 .collect(Collectors.toList());
 
         return ConversationAnalysisListResponse.builder().total(total).records(rows).build();

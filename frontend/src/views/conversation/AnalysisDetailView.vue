@@ -126,6 +126,15 @@ watch(analysisId, loadDetail)
     </header>
 
     <template v-if="detail">
+      <el-alert
+          v-if="detail.status === 'failed' && detail.errorMessage"
+          class="detail-error-alert"
+          type="error"
+          :title="'分析未完成'"
+          :description="detail.errorMessage"
+          show-icon
+          :closable="false"
+      />
       <div class="detail-grid">
         <main class="detail-main">
           <section class="sentences-panel">
@@ -140,7 +149,9 @@ watch(analysisId, loadDetail)
 
             <el-empty
                 v-if="!sortedItems.length"
-                description="恭喜！暂未发现需要优化的表达"
+                :description="detail.status === 'failed'
+                  ? '分析过程中出错，可查看下方原始对话'
+                  : '恭喜！暂未发现需要优化的表达'"
             />
             <SentenceAnalysisCard
                 v-for="(item, idx) in sortedItems"
@@ -273,6 +284,10 @@ watch(analysisId, loadDetail)
 </template>
 
 <style scoped>
+.detail-error-alert {
+  margin-bottom: 1rem;
+}
+
 .detail-page {
   font-family: var(--kk-font-body);
   color: var(--kk-color-text);

@@ -37,9 +37,9 @@ public class ConversationAnalysisPipeline {
     private final EducationalSummaryParser summaryParser;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
+                                               String analysisId,
                                                Consumer<ConversationAnalysisProgress> onProgress) {
         long start = System.currentTimeMillis();
-        String analysisId = UUID.randomUUID().toString();
 
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_START, "开始对话分析..."));
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_VALIDATING, "正在验证请求内容..."));

@@ -8,6 +8,7 @@ import {
   deleteConversationAnalysis,
   listConversationAnalyses,
 } from '@/api/conversationAnalysis'
+import AnalysisHistoryScoreStrip from '@/components/conversation/AnalysisHistoryScoreStrip.vue'
 import type {AnalysisSummaryRow} from '@/types/conversation'
 import {getErrorMessage} from '@/utils/error'
 
@@ -25,6 +26,23 @@ function formatTime(value?: string) {
     return '—'
   }
   return value.replace('T', ' ').slice(0, 19)
+}
+
+function statusLabel(status: string) {
+  if (status === 'success') {
+    return '已完成'
+  }
+  if (status === 'failed') {
+    return '失败'
+  }
+  return status
+}
+
+function statusClass(status: string) {
+  if (status === 'failed') {
+    return 'status-tag--failed'
+  }
+  return 'status-tag--success'
 }
 
 function formatDuration(ms?: number) {
@@ -103,7 +121,7 @@ onMounted(loadList)
         <p class="page-desc">查看已保存的对话分析记录，点击可进入详情。</p>
       </div>
       <router-link to="/conversation/analyze">
-        <el-button type="primary">新建分析</el-button>
+        <el-button type="primary">开始分析</el-button>
       </router-link>
     </header>
 
@@ -141,8 +159,13 @@ onMounted(loadList)
               <div class="record-meta">
                 <span><el-icon><Clock/></el-icon>{{ formatTime(row.createdAt) }}</span>
                 <span>耗时 {{ formatDuration(row.processingTimeMs) }}</span>
-                <span class="status-tag">{{ row.status }}</span>
+                <span class="status-tag" :class="statusClass(row.status)">{{ statusLabel(row.status) }}</span>
               </div>
+              <AnalysisHistoryScoreStrip
+                  v-if="row.status === 'success'"
+                  :performance-score="row.performanceScore"
+                  :dimension-scores="row.dimensionScores"
+              />
             </div>
             <div class="record-actions">
               <el-button text type="primary" :icon="View" @click="goDetail(row.analysisId)">
@@ -269,9 +292,17 @@ onMounted(loadList)
 .status-tag {
   padding: 0.1rem 0.45rem;
   border-radius: 999px;
+  font-weight: 600;
+}
+
+.status-tag--success {
   background: #edf7f0;
   color: #2d6a4f;
-  font-weight: 600;
+}
+
+.status-tag--failed {
+  background: #ffecec;
+  color: #a01818;
 }
 
 .record-actions {

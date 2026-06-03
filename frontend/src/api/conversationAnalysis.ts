@@ -100,7 +100,13 @@ export async function analyzeConversationStream(
             lastResult = event.result
           }
           if (event.status === PROGRESS_STATUS.ERROR) {
-            throw new Error(event.errorMessage || event.message || '分析失败')
+            const err = new Error(event.errorMessage || event.message || '分析失败') as Error & {
+              analysisId?: string
+            }
+            if (event.analysisId) {
+              err.analysisId = event.analysisId
+            }
+            throw err
           }
         }
       }
@@ -119,7 +125,13 @@ export async function analyzeConversationStream(
         lastResult = event.result
       }
       if (event.status === PROGRESS_STATUS.ERROR) {
-        throw new Error(event.errorMessage || event.message || '分析失败')
+        const err = new Error(event.errorMessage || event.message || '分析失败') as Error & {
+          analysisId?: string
+        }
+        if (event.analysisId) {
+          err.analysisId = event.analysisId
+        }
+        throw err
       }
     }
     return consume()

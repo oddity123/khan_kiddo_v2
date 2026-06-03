@@ -25,8 +25,11 @@ public class ConversationAnalysisDetailDto {
     /** 原始对话字幕/文本 */
     private String conversationContent;
 
-    /** 分析状态，如 {@code success} */
+    /** 分析状态，如 {@code success}、{@code failed} */
     private String status;
+
+    /** 失败时的错误说明 */
+    private String errorMessage;
 
     /** 分析耗时（毫秒） */
     private Long processingTimeMs;

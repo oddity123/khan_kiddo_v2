@@ -26,6 +26,8 @@ public class ConversationAnalysisProgress {
     private String message;
     private ConversationAnalysisResultDto result;
     private String errorMessage;
+    /** 失败时仍可跳转详情页查看原文与错误信息 */
+    private String analysisId;
     private MessageStats messageStats;
 
     /** Stage 2 流式预览：原句（可不完整，以 "..." 结尾） */
@@ -62,10 +64,15 @@ public class ConversationAnalysisProgress {
     }
 
     public static ConversationAnalysisProgress error(String errorMessage) {
+        return error(errorMessage, null);
+    }
+
+    public static ConversationAnalysisProgress error(String errorMessage, String analysisId) {
         return ConversationAnalysisProgress.builder()
                 .status(STATUS_ERROR)
                 .message("分析失败")
                 .errorMessage(errorMessage)
+                .analysisId(analysisId)
                 .build();
     }
 }

@@ -7,18 +7,8 @@ export interface ConversationAnalysisProgress {
   message?: string
   result?: ConversationAnalysisResult
   errorMessage?: string
+  analysisId?: string
   messageStats?: MessageStats
-  streamingOriginal?: string | null
-  streamingSuggestion?: string | null
-  streamingErrorsHint?: string | null
-  streamingCommitOriginal?: string | null
-  streamingCommitSuggestion?: string | null
-  streamingCommitErrorsHint?: string | null
-}
-
-export interface StreamingPreviewCard {
-  original: string
-  suggestion?: string
 }
 
 export interface MessageStats {
@@ -123,15 +113,18 @@ export interface AnalysisSummaryRow {
   processingTimeMs?: number
   createdAt?: string
   preview?: string
+  performanceScore?: number
+  dimensionScores?: PerformanceDimensionScores
 }
 
 export interface ConversationAnalysisDetail {
   analysisId: string
   conversationContent?: string
   status: string
+  errorMessage?: string
   processingTimeMs?: number
   createdAt?: string
-    educationalSummary?: EducationalSummaryRoot
+  educationalSummary?: EducationalSummaryRoot
   items?: AnalysisItem[]
   errorTypeDistribution?: ErrorTypeDistribution[]
 }

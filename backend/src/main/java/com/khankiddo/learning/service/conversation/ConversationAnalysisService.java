@@ -14,6 +14,12 @@ public interface ConversationAnalysisService {
     ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
                                           Consumer<ConversationAnalysisProgress> onProgress);
 
+    ConversationAnalysisResultDto analyzeAndPersist(ConversationAnalysisRequest request,
+                                                    String analysisId,
+                                                    Consumer<ConversationAnalysisProgress> onProgress);
+
+    void saveFailed(String analysisId, String conversationContent, String errorMessage, long processingTimeMs);
+
     ConversationAnalysisResultDto save(ConversationAnalysisSaveRequest request);
 
     ConversationAnalysisDetailDto getDetail(String analysisId);

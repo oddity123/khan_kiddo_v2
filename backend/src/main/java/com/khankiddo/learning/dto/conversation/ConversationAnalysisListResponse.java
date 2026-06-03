@@ -27,5 +27,9 @@ public class ConversationAnalysisListResponse {
         private Long processingTimeMs;
         private LocalDateTime createdAt;
         private String preview;
+        /** 综合口语自然度（来自 educational_summary JSON） */
+        private Integer performanceScore;
+        /** 四维度分项得分（来自 educational_summary JSON） */
+        private PerformanceDimensionScoresDto dimensionScores;
     }
 }
