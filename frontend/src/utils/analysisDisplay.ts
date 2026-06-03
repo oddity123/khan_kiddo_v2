@@ -1,4 +1,31 @@
-import type {AnalysisError, AnalysisItem} from '@/types/conversation'
+import type {
+    AnalysisError,
+    AnalysisItem,
+    EducationalSummaryStats,
+    PerformanceDimensionScores,
+} from '@/types/conversation'
+
+/** 与后端 performance-scoring 配置的分数上下限一致 */
+export const PERFORMANCE_SCORE_MIN = 60
+export const PERFORMANCE_SCORE_MAX = 98
+
+export interface PerformanceDimensionItem {
+    key: keyof PerformanceDimensionScores
+    label: string
+    value: number
+    emphasis?: boolean
+}
+
+export const PERFORMANCE_DIMENSION_META: ReadonlyArray<{
+    key: keyof PerformanceDimensionScores
+    label: string
+    emphasis?: boolean
+}> = [
+    {key: 'naturalness', label: '表达自然', emphasis: true},
+    {key: 'accuracy', label: '语法准确'},
+    {key: 'fluency', label: '文本流畅'},
+    {key: 'lexical', label: '词汇表达'},
+]
 
 export function displayTypeLabel(type?: string) {
   if (!type) {
@@ -101,10 +128,52 @@ export function formatProcessingTime(ms?: number) {
   return `${ms} 毫秒`
 }
 
+export function scoreBarPercent(score: number): number {
+    const clamped = Math.max(
+        PERFORMANCE_SCORE_MIN,
+        Math.min(PERFORMANCE_SCORE_MAX, score),
+    )
+    return Math.round(
+        ((clamped - PERFORMANCE_SCORE_MIN) / (PERFORMANCE_SCORE_MAX - PERFORMANCE_SCORE_MIN)) * 100,
+    )
+}
+
+export function listPerformanceDimensions(
+    scores?: PerformanceDimensionScores,
+): PerformanceDimensionItem[] {
+    if (!scores) {
+        return []
+    }
+    return PERFORMANCE_DIMENSION_META.flatMap((meta) => {
+        const value = scores[meta.key]
+        if (value == null) {
+            return []
+        }
+        return [{...meta, value}]
+    })
+}
+
+/** 优先使用后端写入的 performanceScore，旧数据回退到简易估算 */
+export function resolvePerformanceScore(
+    stats: EducationalSummaryStats | undefined,
+    fallbackIssues: number,
+    fallbackSentences: number,
+): number {
+    if (stats?.performanceScore != null) {
+        return stats.performanceScore
+    }
+    return estimatePerformanceScoreLegacy(fallbackIssues, fallbackSentences)
+}
+
+/** @deprecated 仅用于无 performanceScore 的历史记录 */
 export function estimatePerformanceScore(
     totalIssues: number,
     totalSentences: number,
 ): number {
+    return estimatePerformanceScoreLegacy(totalIssues, totalSentences)
+}
+
+function estimatePerformanceScoreLegacy(totalIssues: number, totalSentences: number): number {
   const issues = totalIssues || 0
   const sentences = Math.max(1, totalSentences || 1)
   return Math.round(Math.max(55, Math.min(95, 100 - Math.min(40, Math.round((issues / sentences) * 8)))))

@@ -1,21 +1,20 @@
 package com.khankiddo.learning.conversation;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.ai.conversation.model.GrammarErrorDto;
 import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
+import com.khankiddo.learning.conversation.scoring.PerformanceScoreResult;
+import com.khankiddo.learning.conversation.scoring.PerformanceScorer;
+import com.khankiddo.learning.conversation.scoring.PerformanceScoringInput;
+import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.model.enums.ProblemType;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -32,15 +31,18 @@ public class EducationalSummaryParser {
             Pattern.MULTILINE);
 
     private final ObjectMapper objectMapper;
+    private final PerformanceScorer performanceScorer;
 
-    public EducationalSummaryParser(ObjectMapper objectMapper) {
+    public EducationalSummaryParser(ObjectMapper objectMapper, PerformanceScorer performanceScorer) {
         this.objectMapper = objectMapper;
+        this.performanceScorer = performanceScorer;
     }
 
-    public Map<String, Object> parseMarkdownSummary(String markdown, GrammarAnalysisResult grammar, int userSentenceCount) {
+    public EducationalSummaryDto parseMarkdownSummary(
+            String markdown, GrammarAnalysisResult grammar, int userSentenceCount) {
         int totalIssues = countIssues(grammar);
         if (!StringUtils.hasText(markdown)) {
-            return buildReport(totalIssues, userSentenceCount, "无", "本次扫描未发现句子级错误。");
+            return buildReport(grammar, totalIssues, userSentenceCount, "无", "本次扫描未发现句子级错误。");
         }
         String trimmed = markdown.trim();
         String mainCategory = sanitizeMainCategory(extractSection(trimmed, MARKDOWN_MAIN_SECTION));
@@ -51,49 +53,107 @@ public class EducationalSummaryParser {
         if (!StringUtils.hasText(levelSummary)) {
             levelSummary = "请以句子级分析为准。";
         }
-        return buildReport(totalIssues, userSentenceCount, mainCategory, levelSummary.trim());
+        return buildReport(grammar, totalIssues, userSentenceCount, mainCategory, levelSummary.trim());
     }
 
-    public Map<String, Object> defaultReport(GrammarAnalysisResult grammar, int userSentenceCount) {
+    public EducationalSummaryDto defaultReport(GrammarAnalysisResult grammar, int userSentenceCount) {
         int totalIssues = countIssues(grammar);
         if (totalIssues == 0) {
-            return buildReport(0, userSentenceCount, "无", "本次扫描未发现句子级错误，表达与输入一致。");
+            return buildReport(grammar, 0, userSentenceCount, "无", "本次扫描未发现句子级错误，表达与输入一致。");
         }
-        return buildReport(totalIssues, userSentenceCount, computeMainCategory(grammar),
+        return buildReport(grammar, totalIssues, userSentenceCount, computeMainCategory(grammar),
                 "会话概要生成中断，请以句子级分析为准。");
     }
 
-    public String toJson(Map<String, Object> reportRoot) {
+    /**
+     * 为历史记录补全 performanceScore（DB 中无分时按 items 重算）。
+     */
+    public EducationalSummaryDto enrichReportWithScores(
+            EducationalSummaryDto summaryRoot,
+            List<AnalysisItemDto> items,
+            int totalSentences) {
+        if (ObjectUtils.isEmpty(summaryRoot) || ObjectUtils.isEmpty(summaryRoot.getReport())) {
+            return summaryRoot;
+        }
+        EducationalSummaryReportDto report = summaryRoot.getReport();
+        EducationalSummaryStatsDto stats = report.getOverallStats();
+        if (ObjectUtils.isNotEmpty(stats) && stats.getPerformanceScore() != null) {
+            return summaryRoot;
+        }
+        PerformanceScoreResult scores = performanceScorer.score(
+                PerformanceScoringInput.fromAnalysisItems(items, totalSentences));
+        EducationalSummaryStatsDto enrichedStats = mergeScores(
+                stats,
+                totalSentences,
+                scores);
+        return EducationalSummaryDto.builder()
+                .report(EducationalSummaryReportDto.builder()
+                        .overallStats(enrichedStats)
+                        .overallSummary(report.getOverallSummary())
+                        .build())
+                .build();
+    }
+
+    public String toJson(EducationalSummaryDto summaryRoot) {
         try {
-            return objectMapper.writeValueAsString(reportRoot);
+            return objectMapper.writeValueAsString(summaryRoot);
         } catch (Exception ex) {
             throw new IllegalStateException("序列化教育总结失败", ex);
         }
     }
 
-    public Map<String, Object> fromJson(String json) {
+    public EducationalSummaryDto fromJson(String json) {
         if (!StringUtils.hasText(json)) {
-            return Map.of();
+            return EducationalSummaryDto.builder().build();
         }
         try {
-            return objectMapper.readValue(json, new TypeReference<>() {
-            });
+            return objectMapper.readValue(json, EducationalSummaryDto.class);
         } catch (Exception ex) {
-            return Map.of();
+            return EducationalSummaryDto.builder().build();
         }
     }
 
-    private Map<String, Object> buildReport(int totalIssues, int sentenceCount, String mainCategory, String levelSummary) {
-        Map<String, Object> overallStats = new LinkedHashMap<>();
-        overallStats.put("totalIssues", totalIssues);
-        overallStats.put("totalSentences", sentenceCount);
-        overallStats.put("mainCategory", mainCategory);
+    private EducationalSummaryDto buildReport(
+            GrammarAnalysisResult grammar,
+            int totalIssues,
+            int sentenceCount,
+            String mainCategory,
+            String levelSummary) {
+        PerformanceScoreResult scores = performanceScorer.score(
+                PerformanceScoringInput.fromGrammar(grammar, sentenceCount));
+        EducationalSummaryStatsDto overallStats = EducationalSummaryStatsDto.builder()
+                .totalIssues(totalIssues)
+                .totalSentences(sentenceCount)
+                .mainCategory(mainCategory)
+                .performanceScore(scores.overall())
+                .dimensionScores(scores.toDimensionScoresDto())
+                .build();
+        EducationalSummaryReportDto report = EducationalSummaryReportDto.builder()
+                .overallStats(overallStats)
+                .overallSummary(EducationalSummaryOverallDto.builder()
+                        .levelSummary(levelSummary)
+                        .build())
+                .build();
+        return EducationalSummaryDto.builder().report(report).build();
+    }
 
-        Map<String, Object> overallSummary = Map.of("levelSummary", levelSummary);
-        Map<String, Object> report = new LinkedHashMap<>();
-        report.put("overallStats", overallStats);
-        report.put("overallSummary", overallSummary);
-        return Map.of("report", report);
+    private static EducationalSummaryStatsDto mergeScores(
+            EducationalSummaryStatsDto existing,
+            int totalSentences,
+            PerformanceScoreResult scores) {
+        EducationalSummaryStatsDto.EducationalSummaryStatsDtoBuilder builder = EducationalSummaryStatsDto.builder();
+        if (ObjectUtils.isNotEmpty(existing)) {
+            builder.totalIssues(existing.getTotalIssues())
+                    .totalSentences(existing.getTotalSentences())
+                    .mainCategory(existing.getMainCategory());
+        }
+        if (ObjectUtils.isEmpty(existing) || existing.getTotalSentences() == null) {
+            builder.totalSentences(totalSentences);
+        }
+        return builder
+                .performanceScore(scores.overall())
+                .dimensionScores(scores.toDimensionScoresDto())
+                .build();
     }
 
     private int countIssues(GrammarAnalysisResult grammar) {

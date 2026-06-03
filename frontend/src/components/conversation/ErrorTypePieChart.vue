@@ -10,6 +10,10 @@ const props = withDefaults(
       colors?: string[]
       animate?: boolean
       compact?: boolean
+      /** 紧凑模式下图例置于饼图右侧 */
+      legendRight?: boolean
+      /** summary：图例与 meta 使用 0.84rem */
+      bodySize?: 'default' | 'summary'
       centerValue?: string | number
       centerLabel?: string
       size?: number
@@ -19,6 +23,8 @@ const props = withDefaults(
       animate: true,
       centerLabel: '综合得分',
       compact: false,
+      legendRight: false,
+      bodySize: 'default',
     },
 )
 
@@ -75,6 +81,8 @@ const segments = computed((): PieSegment[] => {
 const COMPACT_LEGEND_ROWS = 3
 const COMPACT_LEGEND_COLS = 2
 const COMPACT_LEGEND_VISIBLE = COMPACT_LEGEND_ROWS * COMPACT_LEGEND_COLS
+/** 概要侧栏：图例仅展示前三项，为饼图留出空间 */
+const LEGEND_RIGHT_VISIBLE = 3
 
 const activeIndex = ref<number | null>(null)
 const legendExpanded = ref(false)
@@ -83,23 +91,29 @@ const activeSegment = computed(() =>
     activeIndex.value != null ? segments.value[activeIndex.value] : null,
 )
 
-const compactLegendLimit = computed(() =>
-    props.compact ? COMPACT_LEGEND_VISIBLE : segments.value.length,
-)
+const legendVisibleLimit = computed(() => {
+  if (props.compact && props.legendRight) {
+    return LEGEND_RIGHT_VISIBLE
+  }
+  if (props.compact) {
+    return COMPACT_LEGEND_VISIBLE
+  }
+  return segments.value.length
+})
 
 const hasCollapsedLegend = computed(
-    () => props.compact && segments.value.length > compactLegendLimit.value,
+    () => props.compact && segments.value.length > legendVisibleLimit.value,
 )
 
 const legendSegments = computed(() => {
   if (!props.compact || legendExpanded.value) {
     return segments.value
   }
-  return segments.value.slice(0, compactLegendLimit.value)
+  return segments.value.slice(0, legendVisibleLimit.value)
 })
 
 const collapsedLegendCount = computed(() =>
-    Math.max(0, segments.value.length - compactLegendLimit.value),
+    Math.max(0, segments.value.length - legendVisibleLimit.value),
 )
 
 function toggleLegendExpanded() {
@@ -165,6 +179,8 @@ watch(() => props.items, () => {
       :class="{
         'pie-chart--focus': activeIndex != null,
         'pie-chart--compact': compact,
+        'pie-chart--legend-right': compact && legendRight,
+        'pie-chart--body-summary': bodySize === 'summary',
       }"
       @mouseleave="onSliceLeave"
   >
@@ -309,8 +325,20 @@ watch(() => props.items, () => {
   gap: 0.75rem;
 }
 
+.pie-chart--compact.pie-chart--legend-right {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.65rem;
+}
+
 .pie-chart--compact .pie-chart__viz {
   align-self: center;
+}
+
+.pie-chart--legend-right .pie-chart__viz {
+  flex: none;
+  width: fit-content;
 }
 
 .pie-legend-wrap {
@@ -324,12 +352,49 @@ watch(() => props.items, () => {
   min-width: 0;
 }
 
+.pie-chart--legend-right .pie-legend-wrap {
+  flex: none;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  margin-left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  justify-self: start;
+}
+
 .pie-chart--compact .pie-legend {
   flex: none;
   width: 100%;
   min-width: 0;
   grid-template-columns: 1fr 1fr;
   gap: 0.35rem 0.5rem;
+}
+
+.pie-chart--legend-right .pie-legend {
+  flex: none;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 1fr;
+  gap: 0.3rem;
+}
+
+.pie-chart--legend-right .pie-legend-item {
+  width: 100%;
+  max-width: 11rem;
+  padding: 0.28rem 0.35rem;
+}
+
+.pie-chart--legend-right .pie-legend-label,
+.pie-chart--legend-right .pie-legend-meta {
+  text-align: left;
+}
+
+.pie-chart--legend-right .pie-legend-toggle {
+  text-align: left;
+  padding-left: 0.35rem;
 }
 
 .pie-legend-toggle {
@@ -366,6 +431,16 @@ watch(() => props.items, () => {
   font-size: 0.68rem;
 }
 
+.pie-chart--body-summary .pie-legend-label,
+.pie-chart--body-summary .pie-legend-meta,
+.pie-chart--body-summary .pie-legend-toggle {
+  font-size: 0.84rem;
+}
+
+.pie-chart--body-summary .pie-center-label {
+  font-size: 0.84rem;
+}
+
 .pie-center-label {
   margin-top: 0.2rem;
   font-size: 0.68rem;
@@ -373,6 +448,13 @@ watch(() => props.items, () => {
   color: var(--kk-color-text-subtle);
   max-width: 5.5rem;
   line-height: 1.3;
+  text-align: center;
+  width: 100%;
+}
+
+.pie-chart--legend-right .pie-center-label {
+  max-width: none;
+  padding-inline: 0.15rem;
 }
 
 .pie-center--hover .pie-center-label {

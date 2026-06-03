@@ -1,0 +1,79 @@
+# 口语自然度综合评分配置（修改后重启生效）
+# 权重键使用 ProblemType 枚举名（与 model.enums.ProblemType 一致）
+app:
+  performance-scoring:
+    base-score: 98
+    min-score: 60
+    max-score: 98
+    # penalty = density-multiplier * (1 - exp(-density-decay * weightedDensity))
+    density-decay: 0.22
+    density-multiplier: 34
+    # 单句加权扣分上限，避免一句多错过度拉低分数
+    max-weighted-penalty-per-sentence: 6.0
+    # 含高严重度错误句子的额外扣分系数
+    severe-sentence-penalty: 4.0
+    # 含自然度类错误句子的额外扣分系数
+    naturalness-sentence-penalty: 5.0
+    # 单条错误权重 >= 此值视为「高严重度句子」
+    severe-weight-threshold: 2.8
+    # 未知错误类型默认权重
+    default-type-weight: 1.0
+
+    type-weights:
+      CHINESE: 4.0
+      INCOMPLETE: 3.5
+      CHINGLISH: 3.2
+      COLLOCATION: 3.0
+      UNNATURAL: 2.8
+      STRUCTURE: 2.8
+      WORD_CHOICE: 2.4
+      TENSE: 2.2
+      AGREEMENT: 2.1
+      PREPOSITION: 1.9
+      CLAUSE: 2.4
+      FORMAL: 1.8
+      VOCABULARY: 1.8
+      WORD_FORM: 1.6
+      PRONOUN: 1.5
+      ARTICLE: 1.2
+      PLURAL: 1.2
+      REDUNDANCY: 1.1
+      TONE: 1.4
+      COMPARISON: 1.4
+
+    dimensions:
+      naturalness:
+        weight-in-overall: 0.40
+        types:
+          - CHINGLISH
+          - COLLOCATION
+          - UNNATURAL
+          - WORD_CHOICE
+          - REDUNDANCY
+          - TONE
+          - FORMAL
+      accuracy:
+        weight-in-overall: 0.25
+        types:
+          - TENSE
+          - AGREEMENT
+          - PREPOSITION
+          - STRUCTURE
+          - CLAUSE
+          - PLURAL
+          - ARTICLE
+          - PRONOUN
+          - WORD_FORM
+          - COMPARISON
+      fluency:
+        weight-in-overall: 0.20
+        types:
+          - INCOMPLETE
+          - CHINESE
+          - REDUNDANCY
+      lexical:
+        weight-in-overall: 0.15
+        types:
+          - VOCABULARY
+          - WORD_CHOICE
+          - COLLOCATION

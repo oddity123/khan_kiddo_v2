@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: khanKiddo-v2
+  config:
+    import: optional:classpath:scoring/performance-scoring.yml
 
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/khan_kiddo_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}

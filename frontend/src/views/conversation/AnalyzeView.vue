@@ -4,10 +4,8 @@ import {ElMessage} from 'element-plus'
 import {computed, ref} from 'vue'
 import {useRouter} from 'vue-router'
 
-import {
-  analyzeConversationStream,
-  saveConversationAnalysis,
-} from '@/api/conversationAnalysis'
+import {analyzeConversationStream, saveConversationAnalysis,} from '@/api/conversationAnalysis'
+import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
 import type {
   AnalysisItem,
   ConversationAnalysisProgress,
@@ -17,6 +15,7 @@ import type {
   StreamingPreviewCard,
 } from '@/types/conversation'
 import {PROGRESS_STATUS} from '@/types/conversation'
+import {resolvePerformanceScore} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
 const router = useRouter()
@@ -42,6 +41,19 @@ const summaryRoot = computed(
     () => result.value?.analysisResults?.educationalSummary,
 )
 const summaryReport = computed(() => summaryRoot.value?.report)
+
+const summaryStats = computed(() => summaryReport.value?.overallStats)
+
+const revisionCount = computed(() =>
+    analysisItems.value.reduce((sum, item) => sum + (item.errors?.length ?? 0), 0),
+)
+
+const performanceScore = computed(() => {
+  const st = summaryStats.value
+  const issues = st?.totalIssues ?? revisionCount.value
+  const sentences = st?.totalSentences ?? analysisItems.value.length
+  return resolvePerformanceScore(st, issues, sentences)
+})
 
 const distribution = computed(
     () => result.value?.analysisResults?.errorTypeDistribution ?? [],
@@ -367,27 +379,38 @@ async function onSave() {
           </article>
 
           <div v-if="summaryReport" class="summary-block">
-            <h3 class="summary-title">学习诊断概要</h3>
-            <div class="summary-stats">
-              <div class="summary-stat">
-                <span class="summary-stat-label">优化点</span>
-                <span class="summary-stat-value">{{ summaryReport.overallStats?.totalIssues ?? '—' }}</span>
+            <header class="summary-hero">
+              <h3 class="summary-title">学习诊断概要</h3>
+              <div class="summary-hero-score" aria-label="综合口语自然度得分">
+                <span class="summary-hero-num">{{ performanceScore }}</span>
+                <span class="summary-hero-lbl">综合自然度</span>
               </div>
-              <div class="summary-stat">
-                <span class="summary-stat-label">分析句子数</span>
-                <span class="summary-stat-value">{{ summaryReport.overallStats?.totalSentences ?? '—' }}</span>
-              </div>
-              <div class="summary-stat summary-stat--wide">
-                <span class="summary-stat-label">主要挑战</span>
-                <span class="summary-stat-value summary-stat-value--text">
-                  {{ summaryReport.overallStats?.mainCategory || '—' }}
-                </span>
-              </div>
+            </header>
+            <div class="summary-strip">
+              <span class="summary-kpi">
+                <strong>{{ summaryStats?.totalIssues ?? revisionCount ?? '—' }}</strong>
+                优化点
+              </span>
+              <span class="summary-dot" aria-hidden="true">·</span>
+              <span class="summary-kpi">
+                <strong>{{ summaryStats?.totalSentences ?? analysisItems.length ?? '—' }}</strong>
+                句
+              </span>
+              <span v-if="summaryStats?.mainCategory" class="summary-challenge-inline">
+                <span class="summary-challenge-tag">主要挑战</span>
+                {{ summaryStats.mainCategory }}
+              </span>
             </div>
-            <div v-if="summaryReport.overallSummary?.levelSummary" class="summary-overall">
-              <h4 class="summary-subtitle">整体总结</h4>
-              <p class="summary-text">{{ summaryReport.overallSummary.levelSummary }}</p>
+            <div v-if="summaryStats?.dimensionScores" class="summary-dims">
+              <PerformanceDimensionBars :scores="summaryStats.dimensionScores"/>
             </div>
+            <p
+                v-if="summaryReport.overallSummary?.levelSummary"
+                class="summary-brief"
+            >
+              <span class="summary-brief-label">总结</span>
+              {{ summaryReport.overallSummary.levelSummary }}
+            </p>
           </div>
 
           <div class="save-bar">
@@ -693,74 +716,118 @@ async function onSave() {
 }
 
 .summary-block {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--kk-glass-divider);
-}
-
-.summary-title {
-  margin: 0 0 0.65rem;
-  font-family: var(--kk-font-display);
-  font-size: 1.05rem;
-  color: var(--kk-color-primary);
-}
-
-.summary-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.summary-stat {
+  margin-top: 0.75rem;
   padding: 0.65rem 0.75rem;
   border-radius: var(--kk-radius-md);
   background: var(--kk-glass-inner-bg);
   border: 1px solid var(--kk-glass-inner-border);
+  border-top: 2px solid var(--kk-color-accent);
 }
 
-.summary-stat--wide {
-  grid-column: 1 / -1;
+.summary-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 
-.summary-stat-label {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--kk-color-text-subtle);
-  margin-bottom: 0.2rem;
-}
-
-.summary-stat-value {
+.summary-title {
+  margin: 0;
   font-family: var(--kk-font-display);
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 800;
   color: var(--kk-color-primary);
-  line-height: 1.2;
 }
 
-.summary-stat-value--text {
-  font-size: 0.95rem;
+.summary-hero-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--kk-radius-sm);
+  background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
+}
+
+.summary-hero-num {
+  font-family: var(--kk-font-display);
+  font-size: 1.5rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--kk-color-primary);
+}
+
+.summary-hero-lbl {
+  font-size: 0.58rem;
   font-weight: 700;
+  color: var(--kk-color-text-subtle);
 }
 
-.summary-subtitle {
-  margin: 0 0 0.4rem;
+.summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.35rem;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--kk-glass-divider);
   font-size: 0.72rem;
+  color: var(--kk-color-text-muted);
+}
+
+.summary-kpi strong {
+  font-family: var(--kk-font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--kk-color-primary);
+  margin-right: 0.1rem;
+}
+
+.summary-dot {
+  color: var(--kk-color-text-subtle);
+}
+
+.summary-challenge-inline {
+  flex: 1 1 100%;
+  margin-top: 0.08rem;
+  padding: 0.25rem 0.38rem;
+  border-radius: var(--kk-radius-sm);
+  background: var(--kk-color-accent-bg);
+  font-family: var(--kk-font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--kk-color-primary);
+}
+
+.summary-challenge-tag {
+  margin-right: 0.3rem;
+  font-size: 0.56rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--kk-color-accent-text);
 }
 
-.summary-overall {
-  padding-top: 0.25rem;
+.summary-dims {
+  margin-bottom: 0.35rem;
 }
 
-.summary-text {
+.summary-brief {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.65;
+  padding-left: 0.45rem;
+  border-left: 2px solid var(--kk-color-primary-soft);
+  font-size: 0.72rem;
+  line-height: 1.5;
   color: var(--kk-color-text-muted);
+}
+
+.summary-brief-label {
+  margin-right: 0.3rem;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kk-color-primary-soft);
 }
 
 .save-bar {

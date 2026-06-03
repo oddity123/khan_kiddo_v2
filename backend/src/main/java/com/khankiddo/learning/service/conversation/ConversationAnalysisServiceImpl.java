@@ -1,18 +1,9 @@
 package com.khankiddo.learning.service.conversation;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
-import com.khankiddo.learning.dto.conversation.AnalysisErrorDto;
-import com.khankiddo.learning.dto.conversation.AnalysisItemDto;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisDetailDto;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisListResponse;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisSaveRequest;
-import com.khankiddo.learning.dto.conversation.ErrorTypeDistributionDto;
+import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.exception.UnauthorizedException;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
@@ -30,12 +21,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -151,7 +137,11 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .map(e -> ErrorTypeDistributionDto.builder().type(e.getKey()).count(e.getValue()).build())
                 .toList();
 
-        Object summary = summaryParser.fromJson(analysis.getEducationalSummary()).get("report");
+        List<AnalysisItemDto> items = new ArrayList<>(grouped.values());
+        EducationalSummaryDto summaryRoot = summaryParser.fromJson(analysis.getEducationalSummary());
+        int totalSentences = resolveTotalSentences(summaryRoot, items.size());
+        EducationalSummaryDto enrichedSummary = summaryParser.enrichReportWithScores(
+                summaryRoot, items, totalSentences);
 
         return ConversationAnalysisDetailDto.builder()
                 .analysisId(analysis.getAnalysisId())
@@ -159,10 +149,22 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .status(analysis.getStatus())
                 .processingTimeMs(analysis.getProcessingTimeMs())
                 .createdAt(analysis.getCreatedAt())
-                .educationalSummary(new ConversationAnalysisDetailDto.MapHolder(summary))
-                .items(new ArrayList<>(grouped.values()))
+                .educationalSummary(enrichedSummary)
+                .items(items)
                 .errorTypeDistribution(distribution)
                 .build();
+    }
+
+    private int resolveTotalSentences(EducationalSummaryDto summaryRoot, int fallbackFromItems) {
+        if (ObjectUtils.isEmpty(summaryRoot) || ObjectUtils.isEmpty(summaryRoot.getReport())) {
+            return Math.max(1, fallbackFromItems);
+        }
+        EducationalSummaryReportDto report = summaryRoot.getReport();
+        EducationalSummaryStatsDto stats = report.getOverallStats();
+        if (ObjectUtils.isEmpty(stats) || stats.getTotalSentences() == null) {
+            return Math.max(1, fallbackFromItems);
+        }
+        return Math.max(1, stats.getTotalSentences());
     }
 
     @Override

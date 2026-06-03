@@ -54,10 +54,20 @@ export interface EducationalSummaryReport {
   overallSummary?: EducationalSummaryOverall
 }
 
+export interface PerformanceDimensionScores {
+    naturalness?: number
+    accuracy?: number
+    fluency?: number
+    lexical?: number
+}
+
 export interface EducationalSummaryStats {
   totalIssues?: number
   totalSentences?: number
   mainCategory?: string
+    /** 后端确定性算法计算的综合口语自然度分（60–98） */
+    performanceScore?: number
+    dimensionScores?: PerformanceDimensionScores
 }
 
 export interface EducationalSummaryOverall {
@@ -121,7 +131,7 @@ export interface ConversationAnalysisDetail {
   status: string
   processingTimeMs?: number
   createdAt?: string
-  educationalSummary?: { report?: EducationalSummaryReport }
+    educationalSummary?: EducationalSummaryRoot
   items?: AnalysisItem[]
   errorTypeDistribution?: ErrorTypeDistribution[]
 }

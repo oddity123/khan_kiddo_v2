@@ -90,7 +90,7 @@ public class ConversationAnalysisPipeline {
 
         onProgress.accept(ConversationAnalysisProgress.of(
                 ConversationAnalysisProgress.STATUS_SUMMARIZING, "正在生成学习诊断概要..."));
-        Map<String, Object> summaryReport;
+        EducationalSummaryDto summaryReport;
         try {
             String summaryTemplate = promptLoader.getEducationalSummaryTemplate();
             String summaryPrompt = promptLoader.fillTemplate(summaryTemplate, "itemsSummary",
