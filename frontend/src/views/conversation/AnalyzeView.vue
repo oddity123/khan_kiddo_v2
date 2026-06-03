@@ -387,18 +387,15 @@ async function onSave() {
               </div>
             </header>
             <div class="summary-strip">
-              <span class="summary-kpi">
-                <strong>{{ summaryStats?.totalIssues ?? revisionCount ?? '—' }}</strong>
-                优化点
+              <span class="summary-kpi summary-kpi--challenge">
+                <span class="summary-kpi-stack-label">主要挑战</span>
+                <span class="summary-kpi-stack-value">{{ summaryStats?.mainCategory || '—' }}</span>
               </span>
               <span class="summary-dot" aria-hidden="true">·</span>
               <span class="summary-kpi">
+                深度分析
                 <strong>{{ summaryStats?.totalSentences ?? analysisItems.length ?? '—' }}</strong>
-                句
-              </span>
-              <span v-if="summaryStats?.mainCategory" class="summary-challenge-inline">
-                <span class="summary-challenge-tag">主要挑战</span>
-                {{ summaryStats.mainCategory }}
+                个句子
               </span>
             </div>
             <div v-if="summaryStats?.dimensionScores" class="summary-dims">
@@ -783,29 +780,33 @@ async function onSave() {
   margin-right: 0.1rem;
 }
 
-.summary-dot {
-  color: var(--kk-color-text-subtle);
+.summary-kpi--challenge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
-.summary-challenge-inline {
-  flex: 1 1 100%;
-  margin-top: 0.08rem;
-  padding: 0.25rem 0.38rem;
-  border-radius: var(--kk-radius-sm);
-  background: var(--kk-color-accent-bg);
+.summary-kpi-stack-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--kk-color-accent-text);
+  white-space: nowrap;
+}
+
+.summary-kpi-stack-value {
   font-family: var(--kk-font-display);
   font-size: 0.76rem;
   font-weight: 700;
+  line-height: 1.35;
   color: var(--kk-color-primary);
+  word-break: break-word;
 }
 
-.summary-challenge-tag {
-  margin-right: 0.3rem;
-  font-size: 0.56rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--kk-color-accent-text);
+.summary-dot {
+  color: var(--kk-color-text-subtle);
 }
 
 .summary-dims {

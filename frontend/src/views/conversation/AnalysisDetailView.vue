@@ -3,9 +3,10 @@ import {
   ArrowLeft,
   ChatDotRound,
   Clock,
+  DataAnalysis,
   Delete,
   Document,
-  EditPen,
+  Flag,
   Medal,
   PieChart,
   Reading,
@@ -173,31 +174,29 @@ watch(analysisId, loadDetail)
                   <span class="summary-badge-caption">综合自然度</span>
                 </div>
               </div>
-              <div class="summary-kpis">
-                <div class="summary-kpi">
-                  <el-icon class="summary-kpi-icon">
-                    <EditPen/>
-                  </el-icon>
-                  <span class="summary-kpi-text">
-                    <strong>{{ overallStats?.totalIssues ?? revisionCount ?? '—' }}</strong>
-                    优化点
+              <div class="summary-mini-cards">
+                <article class="summary-mini-card summary-mini-card--challenge">
+                  <span class="summary-mini-card-icon summary-mini-card-icon--accent" aria-hidden="true">
+                    <el-icon><Flag/></el-icon>
                   </span>
-                </div>
-                <div class="summary-kpi">
-                  <el-icon class="summary-kpi-icon">
-                    <ChatDotRound/>
-                  </el-icon>
-                  <span class="summary-kpi-text">
-                    <strong>{{ overallStats?.totalSentences ?? sortedItems.length ?? '—' }}</strong>
-                    分析句
+                  <div class="summary-mini-card-body">
+                    <span class="summary-mini-card-label">主要挑战</span>
+                    <p class="summary-mini-card-text">{{ mainCategory || '—' }}</p>
+                  </div>
+                </article>
+                <article class="summary-mini-card summary-mini-card--depth">
+                  <span class="summary-mini-card-icon" aria-hidden="true">
+                    <el-icon><DataAnalysis/></el-icon>
                   </span>
-                </div>
+                  <div class="summary-mini-card-body">
+                    <p class="summary-mini-card-text summary-mini-card-text--inline">
+                      深度分析
+                      <strong>{{ overallStats?.totalSentences ?? sortedItems.length ?? '—' }}</strong>
+                      个句子
+                    </p>
+                  </div>
+                </article>
               </div>
-            </div>
-
-            <div v-if="mainCategory" class="summary-challenge">
-              <span class="summary-challenge-tag">主要挑战</span>
-              <span class="summary-challenge-text">{{ mainCategory }}</span>
             </div>
 
             <div
@@ -423,7 +422,7 @@ watch(analysisId, loadDetail)
 .summary-top {
   display: flex;
   align-items: stretch;
-  gap: 0.65rem;
+  gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
@@ -489,64 +488,81 @@ watch(analysisId, loadDetail)
   white-space: nowrap;
 }
 
-.summary-kpis {
+.summary-mini-cards {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 0.4rem;
   min-width: 0;
-  padding-left: 0.55rem;
-  border-left: 1px solid color-mix(in srgb, var(--kk-color-primary) 16%, transparent);
 }
 
-.summary-kpi {
+.summary-mini-card {
   display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: var(--kk-radius-md);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 10%, var(--kk-glass-inner-border));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.summary-mini-card-icon {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: var(--summary-body);
-  color: var(--kk-color-text-muted);
-  line-height: 1.3;
-}
-
-.summary-kpi-icon {
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
   flex-shrink: 0;
-  font-size: 0.95rem;
+  border-radius: var(--kk-radius-sm);
+  background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
   color: var(--kk-color-primary-soft);
+  font-size: 0.85rem;
 }
 
-.summary-kpi-text strong {
+.summary-mini-card-icon--accent {
+  background: color-mix(in srgb, var(--kk-color-accent) 22%, white);
+  color: var(--kk-color-accent-text);
+  border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, transparent);
+}
+
+.summary-mini-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.summary-mini-card-label {
+  font-size: var(--summary-body);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--kk-color-accent-text);
+}
+
+.summary-mini-card-text {
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: var(--summary-body);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--kk-color-primary);
+  word-break: break-word;
+}
+
+.summary-mini-card-text--inline {
+  font-family: var(--kk-font-body);
+  font-weight: 500;
+  color: var(--kk-color-text-muted);
+}
+
+.summary-mini-card-text--inline strong {
   font-family: var(--kk-font-display);
   font-size: var(--summary-heading);
   font-weight: 800;
   color: var(--kk-color-primary);
-  margin-right: 0.2rem;
-}
-
-.summary-challenge {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.3rem 0.4rem;
-  margin-bottom: 0.45rem;
-  padding: 0.4rem 0.5rem;
-  border-radius: var(--kk-radius-sm);
-  background: var(--kk-color-accent-bg);
-  border: 1px solid rgba(184, 148, 31, 0.28);
-}
-
-.summary-challenge-tag {
-  font-size: var(--summary-body);
-  font-weight: 700;
-  color: var(--kk-color-accent-text);
-}
-
-.summary-challenge-text {
-  font-size: var(--summary-body);
-  font-weight: 700;
-  font-family: var(--kk-font-display);
-  color: var(--kk-color-primary);
-  line-height: 1.4;
+  margin: 0 0.15rem;
 }
 
 .summary-sections {
