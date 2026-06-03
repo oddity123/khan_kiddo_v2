@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import {ArrowLeft, Clock, Delete} from '@element-plus/icons-vue'
+import {ArrowLeft, ChatDotRound, Clock, DataAnalysis, Delete, Document, EditPen, Timer,} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {computed, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
-import {
-  deleteConversationAnalysis,
-  getConversationAnalysisDetail,
-} from '@/api/conversationAnalysis'
+import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
+import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
+import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import type {ConversationAnalysisDetail} from '@/types/conversation'
+import {estimatePerformanceScore, formatProcessingTime, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
 const route = useRoute()
@@ -16,10 +16,26 @@ const router = useRouter()
 
 const loading = ref(true)
 const detail = ref<ConversationAnalysisDetail | null>(null)
+const pageReady = ref(false)
 
 const analysisId = computed(() => String(route.params.id ?? ''))
-
 const summaryReport = computed(() => detail.value?.educationalSummary?.report)
+
+const sortedItems = computed(() => {
+  const items = detail.value?.items ?? []
+  return sortItemsByPriority(items)
+})
+
+const revisionCount = computed(() =>
+    sortedItems.value.reduce((sum, item) => sum + (item.errors?.length ?? 0), 0),
+)
+
+const performanceScore = computed(() => {
+  const st = summaryReport.value?.overallStats
+  const issues = st?.totalIssues ?? revisionCount.value
+  const sentences = st?.totalSentences ?? sortedItems.value.length
+  return estimatePerformanceScore(issues, sentences)
+})
 
 function formatTime(value?: string) {
   if (!value) {
@@ -28,34 +44,18 @@ function formatTime(value?: string) {
   return value.replace('T', ' ').slice(0, 19)
 }
 
-function formatDuration(ms?: number) {
-  if (ms == null) {
-    return '—'
-  }
-  if (ms < 1000) {
-    return `${ms} ms`
-  }
-  return `${(ms / 1000).toFixed(1)} s`
-}
-
-function errorBadgeClass(level?: string) {
-  if (level === 'FATAL' || level === 'BASIC') {
-    return 'tag--fatal'
-  }
-  if (level === 'NATURAL') {
-    return 'tag--warn'
-  }
-  return 'tag--soft'
-}
-
 async function loadDetail() {
   if (!analysisId.value) {
     return
   }
   loading.value = true
+  pageReady.value = false
   try {
     const {data} = await getConversationAnalysisDetail(analysisId.value)
     detail.value = data
+    requestAnimationFrame(() => {
+      pageReady.value = true
+    })
   } catch (error) {
     detail.value = null
     ElMessage.error(getErrorMessage(error, '加载详情失败'))
@@ -91,93 +91,147 @@ watch(analysisId, loadDetail)
 </script>
 
 <template>
-  <div v-loading="loading" class="detail-page">
-    <header class="detail-head">
+  <div
+      v-loading="loading"
+      class="detail-page"
+      :class="{ 'detail-page--ready': pageReady }"
+  >
+    <header class="detail-topbar kk-glass">
       <router-link to="/conversation/analyses" class="back-link">
         <el-icon><ArrowLeft/></el-icon>
         返回列表
       </router-link>
-      <div class="head-actions">
-        <el-button type="danger" plain :icon="Delete" @click="onDelete">删除</el-button>
-      </div>
+      <h1 class="topbar-title">对话分析详情</h1>
+      <el-button type="danger" plain :icon="Delete" @click="onDelete">删除</el-button>
     </header>
 
     <template v-if="detail">
-      <section class="meta-panel kk-glass kk-glass--panel">
-        <h1 class="page-title">分析详情</h1>
-        <div class="meta-row">
-          <span><el-icon><Clock/></el-icon>{{ formatTime(detail.createdAt) }}</span>
-          <span>耗时 {{ formatDuration(detail.processingTimeMs) }}</span>
-          <span>ID {{ detail.analysisId }}</span>
-        </div>
-        <details v-if="detail.conversationContent" class="content-fold">
-          <summary>原始对话内容</summary>
-          <pre class="content-pre">{{ detail.conversationContent }}</pre>
-        </details>
-      </section>
+      <div class="detail-grid">
+        <main class="detail-main">
+          <section class="sentences-panel">
+            <header class="sentences-head">
+              <h2 class="section-title">
+                <el-icon>
+                  <ChatDotRound/>
+                </el-icon>
+                句子级检查
+              </h2>
+            </header>
 
-      <section
-          v-if="detail.errorTypeDistribution?.length"
-          class="dist-panel kk-glass kk-glass--panel"
-      >
-        <h2 class="section-title">错误类型分布</h2>
-        <div class="dist-row">
-          <span
-              v-for="d in detail.errorTypeDistribution"
-              :key="d.type"
-              class="dist-chip"
-          >{{ d.type }} × {{ d.count }}</span>
-        </div>
-      </section>
+            <el-empty
+                v-if="!sortedItems.length"
+                description="恭喜！暂未发现需要优化的表达"
+            />
+            <SentenceAnalysisCard
+                v-for="(item, idx) in sortedItems"
+                :key="item.sentenceId ?? item.originalSentence"
+                :item="item"
+                :index="idx"
+            />
+          </section>
 
-      <section class="items-panel kk-glass kk-glass--panel">
-        <h2 class="section-title">逐句分析</h2>
-        <el-empty v-if="!detail.items?.length" description="暂无分析条目"/>
-        <article
-            v-for="item in detail.items"
-            :key="item.sentenceId ?? item.originalSentence"
-            class="item-card"
-        >
-          <p class="item-original">{{ item.originalSentence }}</p>
-          <div v-if="item.errors?.length" class="item-errors">
-            <span
-                v-for="(err, i) in item.errors"
-                :key="i"
-                class="error-tag"
-                :class="errorBadgeClass(err.errorLevel)"
-            >{{ err.type }}</span>
-            <p v-for="(err, i) in item.errors" :key="`p-${i}`" class="error-point">{{ err.point }}</p>
-          </div>
-          <p v-if="item.suggestion" class="item-suggestion">
-            <span class="suggestion-label">建议</span>
-            {{ item.suggestion }}
-          </p>
-        </article>
-      </section>
+          <details v-if="detail.conversationContent" class="raw-fold kk-glass kk-glass--panel">
+            <summary>
+              <el-icon>
+                <Document/>
+              </el-icon>
+              原始对话内容
+            </summary>
+            <pre class="content-pre">{{ detail.conversationContent }}</pre>
+          </details>
+        </main>
 
-      <section v-if="summaryReport" class="summary-panel kk-glass kk-glass--panel">
-        <h2 class="section-title">学习诊断概要</h2>
-        <div class="summary-stats">
-          <div class="summary-stat">
-            <span class="summary-stat-label">优化点</span>
-            <span class="summary-stat-value">{{ summaryReport.overallStats?.totalIssues ?? '—' }}</span>
-          </div>
-          <div class="summary-stat">
-            <span class="summary-stat-label">分析句子数</span>
-            <span class="summary-stat-value">{{ summaryReport.overallStats?.totalSentences ?? '—' }}</span>
-          </div>
-          <div class="summary-stat summary-stat--wide">
-            <span class="summary-stat-label">主要挑战</span>
-            <span class="summary-stat-value summary-stat-value--text">
-              {{ summaryReport.overallStats?.mainCategory || '—' }}
-            </span>
-          </div>
-        </div>
-        <div v-if="summaryReport.overallSummary?.levelSummary" class="summary-overall">
-          <h3 class="sub-title">整体总结</h3>
-          <p class="summary-text">{{ summaryReport.overallSummary.levelSummary }}</p>
-        </div>
-      </section>
+        <aside class="detail-aside">
+          <section class="summary-panel kk-glass kk-glass--panel">
+            <header class="summary-head">
+              <h2 class="summary-title">会话概要</h2>
+              <div class="summary-score" aria-label="综合表现得分">
+                <span class="summary-score-num">{{ performanceScore }}</span>
+                <span class="summary-score-label">综合得分</span>
+              </div>
+            </header>
+
+            <div class="summary-metrics">
+              <article class="metric-tile">
+                <span class="metric-tile-icon metric-tile-icon--primary">
+                  <el-icon><EditPen/></el-icon>
+                </span>
+                <div class="metric-tile-body">
+                  <span class="metric-tile-value">
+                    {{ summaryReport?.overallStats?.totalIssues ?? revisionCount ?? '—' }}
+                  </span>
+                  <span class="metric-tile-label">优化点</span>
+                </div>
+              </article>
+              <article class="metric-tile">
+                <span class="metric-tile-icon metric-tile-icon--primary">
+                  <el-icon><ChatDotRound/></el-icon>
+                </span>
+                <div class="metric-tile-body">
+                  <span class="metric-tile-value">
+                    {{ summaryReport?.overallStats?.totalSentences ?? sortedItems.length ?? '—' }}
+                  </span>
+                  <span class="metric-tile-label">分析句子数</span>
+                </div>
+              </article>
+            </div>
+
+            <div
+                v-if="detail.errorTypeDistribution?.length"
+                class="summary-distribution"
+            >
+              <h3 class="summary-subheading">
+                <el-icon>
+                  <DataAnalysis/>
+                </el-icon>
+                优化类型分布
+              </h3>
+              <ErrorTypePieChart
+                  compact
+                  :items="detail.errorTypeDistribution"
+                  :animate="pageReady"
+              />
+            </div>
+
+            <div class="summary-challenge">
+              <span class="summary-challenge-label">
+                <el-icon><DataAnalysis/></el-icon>
+                主要挑战
+              </span>
+              <p class="summary-challenge-value">
+                {{ summaryReport?.overallStats?.mainCategory || '—' }}
+              </p>
+            </div>
+
+            <blockquote
+                v-if="summaryReport?.overallSummary?.levelSummary"
+                class="summary-quote"
+            >
+              <span class="summary-quote-label">整体总结</span>
+              <p class="summary-quote-text">{{ summaryReport.overallSummary.levelSummary }}</p>
+            </blockquote>
+
+            <footer class="summary-foot">
+              <div class="summary-foot-item">
+                <span class="summary-foot-key">
+                  <el-icon><Clock/></el-icon>
+                  分析时间
+                </span>
+                <span class="summary-foot-val">{{ formatTime(detail.createdAt) }}</span>
+              </div>
+              <div class="summary-foot-item">
+                <span class="summary-foot-key">
+                  <el-icon><Timer/></el-icon>
+                  分析耗时
+                </span>
+                <span class="summary-foot-val">
+                  {{ formatProcessingTime(detail.processingTimeMs) }}
+                </span>
+              </div>
+            </footer>
+          </section>
+        </aside>
+      </div>
     </template>
   </div>
 </template>
@@ -186,13 +240,27 @@ watch(analysisId, loadDetail)
 .detail-page {
   font-family: var(--kk-font-body);
   color: var(--kk-color-text);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.45s var(--kk-ease-out), transform 0.45s var(--kk-ease-out);
 }
 
-.detail-head {
-  display: flex;
+.detail-page--ready {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.detail-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  padding: 0.75rem 1.1rem;
+  margin-bottom: 1.25rem;
+  border-radius: var(--kk-radius-lg);
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
 }
 
 .back-link {
@@ -202,54 +270,83 @@ watch(analysisId, loadDetail)
   color: var(--kk-color-primary);
   font-weight: 600;
   text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
 .back-link:hover {
   color: var(--kk-color-accent);
+  transform: translateX(-2px);
 }
 
-.meta-panel,
-.dist-panel,
-.items-panel,
-.summary-panel {
-  padding: 1.25rem 1.35rem;
-  margin-bottom: 1rem;
-}
-
-.page-title {
-  margin: 0 0 0.5rem;
+.topbar-title {
+  margin: 0;
   font-family: var(--kk-font-display);
-  font-size: 1.5rem;
+  font-size: clamp(1.15rem, 2.5vw, 1.45rem);
   font-weight: 800;
   color: var(--kk-color-primary);
+  text-align: center;
 }
 
-.meta-row {
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.detail-aside {
+  order: -1;
+}
+
+@media (min-width: 1024px) {
+  .detail-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+  }
+
+  .detail-aside {
+    order: 0;
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
+.summary-panel,
+.raw-fold {
+  padding: 1.25rem 1.35rem;
+}
+
+.section-title {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  font-size: 0.85rem;
-  color: var(--kk-color-text-subtle);
-}
-
-.meta-row span {
-  display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-}
-
-.content-fold {
-  margin-top: 1rem;
-}
-
-.content-fold summary {
-  cursor: pointer;
-  font-weight: 600;
+  gap: 0.4rem;
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
   color: var(--kk-color-primary);
+}
+
+.sentences-head {
+  margin-bottom: 1rem;
+  padding: 0 0.15rem;
+}
+
+.raw-fold summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--kk-color-primary);
+  list-style: none;
+}
+
+.raw-fold summary::-webkit-details-marker {
+  display: none;
 }
 
 .content-pre {
-  margin: 0.65rem 0 0;
+  margin: 0.75rem 0 0;
   padding: 0.85rem 1rem;
   border-radius: var(--kk-radius-md);
   background: var(--kk-glass-inner-bg);
@@ -262,124 +359,22 @@ watch(analysisId, loadDetail)
   overflow-y: auto;
 }
 
-.section-title {
-  margin: 0 0 0.85rem;
-  font-family: var(--kk-font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--kk-color-primary);
+.summary-panel {
+  margin-bottom: 1rem;
+  border-top: 3px solid var(--kk-color-accent);
+  overflow: hidden;
 }
 
-.sub-title {
-  margin: 0.75rem 0 0.35rem;
-  font-size: 0.92rem;
-  color: var(--kk-color-text-secondary);
-}
-
-.dist-row {
+.summary-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  margin-bottom: 1.15rem;
 }
 
-.dist-chip {
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: var(--kk-color-accent-bg);
-  color: var(--kk-color-accent-text);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.item-card {
-  padding: 0.9rem 1rem;
-  margin-bottom: 0.65rem;
-  border-radius: var(--kk-radius-md);
-  background: var(--kk-glass-inner-bg);
-  border-left: 3px solid var(--kk-color-primary);
-}
-
-.item-original {
-  margin: 0 0 0.5rem;
-  font-family: var(--kk-font-mono);
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
-.error-tag {
-  display: inline-block;
-  margin: 0 0.35rem 0.35rem 0;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.tag--fatal {
-  background: #ffecec;
-  color: #a01818;
-}
-
-.tag--warn {
-  background: #fff8e0;
-  color: #7a6200;
-}
-
-.tag--soft {
-  background: #e8f2ff;
-  color: #0e5080;
-}
-
-.error-point {
-  margin: 0.15rem 0;
-  font-size: 0.85rem;
-  color: #b42318;
-}
-
-.item-suggestion {
-  margin: 0.35rem 0 0;
-  font-size: 0.88rem;
-  line-height: 1.55;
-  color: var(--kk-color-primary-soft);
-  font-weight: 600;
-}
-
-.suggestion-label {
-  display: inline-block;
-  margin-right: 0.35rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--kk-color-text-subtle);
-}
-
-.summary-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.summary-stat {
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--kk-radius-md);
-  background: var(--kk-glass-inner-bg);
-  border: 1px solid var(--kk-glass-inner-border);
-}
-
-.summary-stat--wide {
-  grid-column: 1 / -1;
-}
-
-.summary-stat-label {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--kk-color-text-subtle);
-  margin-bottom: 0.2rem;
-}
-
-.summary-stat-value {
+.summary-title {
+  margin: 0;
   font-family: var(--kk-font-display);
   font-size: 1.25rem;
   font-weight: 800;
@@ -387,19 +382,201 @@ watch(analysisId, loadDetail)
   line-height: 1.2;
 }
 
-.summary-stat-value--text {
-  font-size: 0.95rem;
+.summary-score {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.25rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--kk-radius-md);
+  background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--kk-color-primary) 14%, white),
+      var(--kk-glass-inner-bg)
+  );
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 18%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.summary-score-num {
+  font-family: var(--kk-font-display);
+  font-size: 1.75rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--kk-color-primary);
+}
+
+.summary-score-label {
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--kk-color-text-subtle);
+  white-space: nowrap;
+}
+
+.summary-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.85rem 0.75rem;
+  border-radius: var(--kk-radius-md);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid var(--kk-glass-inner-border);
+}
+
+.metric-tile-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--kk-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.metric-tile-icon--primary {
+  background: color-mix(in srgb, var(--kk-color-primary) 12%, white);
+  color: var(--kk-color-primary);
+}
+
+.metric-tile-value {
+  display: block;
+  font-family: var(--kk-font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--kk-color-primary);
+}
+
+.metric-tile-label {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--kk-color-text-subtle);
+}
+
+.summary-distribution {
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.65rem;
+  border-radius: var(--kk-radius-md);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid var(--kk-glass-inner-border);
+}
+
+.summary-subheading {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.65rem;
+  font-family: var(--kk-font-display);
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kk-color-primary-soft);
 }
 
-.summary-overall {
-  padding-top: 0.25rem;
+.summary-challenge {
+  padding: 0.85rem 0.9rem;
+  margin-bottom: 0.85rem;
+  border-radius: var(--kk-radius-md);
+  background: var(--kk-color-accent-bg);
+  border: 1px solid rgba(184, 148, 31, 0.28);
 }
 
-.summary-text {
+.summary-challenge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kk-color-accent-text);
+}
+
+.summary-challenge-value {
+  margin: 0.4rem 0 0;
+  font-family: var(--kk-font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--kk-color-primary);
+}
+
+.summary-quote {
+  margin: 0 0 0.9rem;
+  padding: 0.75rem 0.85rem 0.75rem 0.95rem;
+  border-radius: var(--kk-radius-md);
+  border-left: 3px solid var(--kk-color-primary-soft);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.summary-quote-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kk-color-primary-soft);
+}
+
+.summary-quote-text {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   line-height: 1.65;
   color: var(--kk-color-text-muted);
+}
+
+.summary-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--kk-glass-inner-border);
+}
+
+.summary-foot-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 0.5rem 0.75rem;
+  font-size: 0.78rem;
+}
+
+.summary-foot-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--kk-color-text-subtle);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.summary-foot-val {
+  text-align: right;
+  color: var(--kk-color-text-secondary);
+  font-weight: 500;
+  font-family: var(--kk-font-mono);
+  font-size: 0.76rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .detail-page {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 </style>

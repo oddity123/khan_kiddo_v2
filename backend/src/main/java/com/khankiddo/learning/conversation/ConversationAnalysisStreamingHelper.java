@@ -51,22 +51,72 @@ public class ConversationAnalysisStreamingHelper {
             String systemPrompt,
             String userPrompt,
             Consumer<ConversationAnalysisProgress> onProgress) {
+        return streamGrammarAnalysis(systemPrompt, userPrompt, 0, 0, onProgress);
+    }
 
-        onProgress.accept(ConversationAnalysisProgress.builder()
+    public GrammarAnalysisResult streamGrammarAnalysis(
+            String systemPrompt,
+            String userPrompt,
+            int batchNum,
+            int totalBatches,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+
+        boolean batched = totalBatches > 1;
+        Consumer<ConversationAnalysisProgress> progressSink = batched
+                ? progress -> onProgress.accept(withBatchPrefix(progress, batchNum, totalBatches))
+                : onProgress;
+
+        String startMessage = batched
+                ? String.format("正在分析第 %d 批（共 %d 批）...", batchNum, totalBatches)
+                : "正在分析用户英文表达...";
+
+        progressSink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
-                .message("正在分析用户英文表达...")
+                .message(startMessage)
                 .streamingOriginal("...")
                 .build());
 
-        String jsonText = streamJsonText(systemPrompt, userPrompt, onProgress);
-        onProgress.accept(ConversationAnalysisProgress.builder()
+        String jsonText = streamJsonText(systemPrompt, userPrompt, progressSink);
+        progressSink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
-                .message("正在接收 AI 分析结果...")
+                .message(batched ? "正在接收第 " + batchNum + " 批分析结果..." : "正在接收 AI 分析结果...")
                 .streamingOriginal("")
                 .streamingSuggestion("")
                 .streamingErrorsHint("")
                 .build());
         return parseGrammarJson(jsonText);
+    }
+
+    private static ConversationAnalysisProgress withBatchPrefix(
+            ConversationAnalysisProgress progress,
+            int batchNum,
+            int totalBatches) {
+
+        String tag = "[" + batchNum + "/" + totalBatches + "] ";
+        ConversationAnalysisProgress.ConversationAnalysisProgressBuilder builder =
+                ConversationAnalysisProgress.builder()
+                        .status(progress.getStatus())
+                        .message(prefixIfHasText(progress.getMessage(), tag))
+                        .result(progress.getResult())
+                        .errorMessage(progress.getErrorMessage())
+                        .messageStats(progress.getMessageStats())
+                        .streamingOriginal(prefixIfHasText(progress.getStreamingOriginal(), tag))
+                        .streamingSuggestion(prefixIfHasText(progress.getStreamingSuggestion(), tag))
+                        .streamingErrorsHint(prefixIfHasText(progress.getStreamingErrorsHint(), tag))
+                        .streamingCommitOriginal(prefixIfHasText(progress.getStreamingCommitOriginal(), tag))
+                        .streamingCommitSuggestion(prefixIfHasText(progress.getStreamingCommitSuggestion(), tag))
+                        .streamingCommitErrorsHint(prefixIfHasText(progress.getStreamingCommitErrorsHint(), tag));
+        return builder.build();
+    }
+
+    private static String prefixIfHasText(String value, String prefix) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        if (value.startsWith(prefix)) {
+            return value;
+        }
+        return prefix + value;
     }
 
     private String streamJsonText(

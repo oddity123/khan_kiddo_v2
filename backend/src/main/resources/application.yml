@@ -20,6 +20,8 @@ app:
     min-content-length: 10
     max-content-length: 10000
     batch-threshold: 15
+    batch-size: 5
+    batch-concurrent-limit: 5
     # Stage 1 对话分离：Flash 模型 + 低 temperature（对齐 v1）
     separation-model-name: ${AI_SEPARATION_MODEL:doubao-seed-1-6-flash-250828}
     separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
@@ -44,6 +46,10 @@ langchain4j:
       max-retries: ${AI_MAX_RETRIES:3}
       log-requests: true
       log-responses: true
+      return-thinking: false
+      custom-parameters:
+        thinking:
+          type: disabled
     streaming-chat-model:
       api-key: ${AI_API_KEY:}
       base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
@@ -54,3 +60,7 @@ langchain4j:
       max-retries: ${AI_MAX_RETRIES:3}
       log-requests: true
       log-responses: true
+      return-thinking: false
+      custom-parameters:
+        thinking:
+          type: disabled

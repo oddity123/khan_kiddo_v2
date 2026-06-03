@@ -11,8 +11,20 @@ public class ConversationAnalysisProperties {
 
     private int minContentLength = 10;
     private int maxContentLength = 10000;
-    /** 用户句数超过此值时可扩展分批分析（Phase 1 仍单次调用） */
+    /**
+     * 用户句数超过此值时启用分批分析
+     */
     private int batchThreshold = 15;
+
+    /**
+     * 每批用户句数（ceil(n / batchSize) 批，最后一批可不足 batchSize）
+     */
+    private int batchSize = 5;
+
+    /**
+     * 分批分析最大并发批数
+     */
+    private int batchConcurrentLimit = 5;
 
     /** Stage 1 对话分离模型（Flash，对齐 v1 LlmModelKind.FLASH） */
     private String separationModelName = "doubao-seed-1-6-flash-250828";

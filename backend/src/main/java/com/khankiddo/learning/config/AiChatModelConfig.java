@@ -22,6 +22,7 @@ public class AiChatModelConfig {
 
     @Bean
     ChatModel conversationSeparationChatModel(
+            AiLlmProperties aiLlmProperties,
             ConversationAnalysisProperties conversationAnalysisProperties,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.api-key:}") String apiKey,
@@ -45,6 +46,7 @@ public class AiChatModelConfig {
                 .maxRetries(maxRetries)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .customParameters(aiLlmProperties.thinkingCustomParameters())
                 .build();
     }
 

@@ -2,18 +2,9 @@ package com.khankiddo.learning.conversation;
 
 import com.khankiddo.learning.ai.conversation.ConversationSeparationAi;
 import com.khankiddo.learning.ai.conversation.EducationalSummaryAi;
-import com.khankiddo.learning.ai.conversation.model.ConversationMessageDto;
-import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
-import com.khankiddo.learning.ai.conversation.model.GrammarErrorDto;
-import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
-import com.khankiddo.learning.ai.conversation.model.SeparationResult;
+import com.khankiddo.learning.ai.conversation.model.*;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
-import com.khankiddo.learning.dto.conversation.AnalysisErrorDto;
-import com.khankiddo.learning.dto.conversation.AnalysisItemDto;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
-import com.khankiddo.learning.dto.conversation.ErrorTypeDistributionDto;
+import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.prompt.PromptLoader;
@@ -25,12 +16,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 /**
@@ -44,6 +30,7 @@ public class ConversationAnalysisPipeline {
 
     private final ConversationSeparationAi separationAi;
     private final ConversationAnalysisStreamingHelper streamingHelper;
+    private final ConversationBatchGrammarAnalyzer batchAnalyzer;
     private final EducationalSummaryAi summaryAi;
     private final PromptLoader promptLoader;
     private final ConversationAnalysisProperties properties;
@@ -79,20 +66,19 @@ public class ConversationAnalysisPipeline {
                         .build())
                 .build());
 
-        if (userCount > properties.getBatchThreshold()) {
-            log.info("用户句数 {} 超过阈值 {}，Phase 1 仍使用单次分析（后续可扩展分批）",
-                    userCount, properties.getBatchThreshold());
-        }
-
-        String formattedConversation = formatMessages(messages);
+        List<String> userSentences = extractUserSentences(messages);
         String systemPrompt = promptLoader.getSystemPromptConversationAnalysis();
-        String userPrompt = promptLoader.fillTemplate(
-                promptLoader.getConversationAnalysisTemplate(),
-                "conversationContent",
-                formattedConversation);
-
-        GrammarAnalysisResult grammar = streamingHelper.streamGrammarAnalysis(
-                systemPrompt, userPrompt, onProgress);
+        GrammarAnalysisResult grammar;
+        if (userSentences.size() > properties.getBatchThreshold()) {
+            grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, onProgress);
+        } else {
+            String formattedConversation = formatMessages(messages);
+            String userPrompt = promptLoader.fillTemplate(
+                    promptLoader.getConversationAnalysisTemplate(),
+                    "conversationContent",
+                    formattedConversation);
+            grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, onProgress);
+        }
         if (grammar == null) {
             grammar = GrammarAnalysisResult.builder().build();
         }
@@ -146,6 +132,19 @@ public class ConversationAnalysisPipeline {
         if (len > properties.getMaxContentLength()) {
             throw new BadRequestException("对话内容长度不能超过 " + properties.getMaxContentLength() + " 个字符");
         }
+    }
+
+    private List<String> extractUserSentences(List<ConversationMessageDto> messages) {
+        if (CollectionUtils.isEmpty(messages)) {
+            return List.of();
+        }
+        List<String> sentences = new ArrayList<>();
+        for (ConversationMessageDto message : messages) {
+            if ("user".equalsIgnoreCase(message.getRole()) && StringUtils.hasText(message.getContent())) {
+                sentences.add(message.getContent().trim());
+            }
+        }
+        return sentences;
     }
 
     private String formatMessages(List<ConversationMessageDto> messages) {
