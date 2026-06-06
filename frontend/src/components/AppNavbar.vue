@@ -3,7 +3,6 @@ import {
   ChatDotRound,
   Clock,
   Collection,
-  Cpu,
   House,
   Message,
   SwitchButton,
@@ -62,7 +61,7 @@ async function onLogout() {
     <div class="kk-page-shell">
       <nav class="navbar-glass kk-glass kk-glass--nav" :class="{ 'navbar-glass--open': mobileOpen }">
         <router-link to="/" class="navbar-brand" @click="mobileOpen = false">
-          <el-icon><Cpu /></el-icon>
+          <img src="/icon.svg" alt="" class="navbar-brand-icon" />
           <span class="navbar-brand-text">Khan Kiddo AI英语学习助手</span>
         </router-link>
 
@@ -117,10 +116,15 @@ async function onLogout() {
             笔记本
           </a>
 
-          <a class="nav-link" href="#" @click.prevent="onPending('用户反馈')">
+          <router-link
+              to="/feedback"
+              class="nav-link"
+              :class="{ active: isActive('/feedback') }"
+              @click="mobileOpen = false"
+          >
             <el-icon><Message /></el-icon>
             给我留言
-          </a>
+          </router-link>
 
           <div class="navbar-auth">
             <template v-if="isAuthenticated">
@@ -193,6 +197,14 @@ async function onLogout() {
 .navbar-brand:hover {
   color: var(--kk-color-primary-soft);
   background: var(--kk-glass-subtle-bg);
+}
+
+.navbar-brand-icon {
+  flex-shrink: 0;
+  display: block;
+  width: 35.04px;
+  height: 35.04px;
+  object-fit: contain;
 }
 
 .navbar-toggle {

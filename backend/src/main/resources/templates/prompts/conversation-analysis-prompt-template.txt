@@ -49,6 +49,11 @@
 - **按句子合并分析**：一句话如果有多个错误，必须合并在一个对象中。
 - **综合建议**：`suggestion` 必须是针对整句话的、最自然地道的完整表达。
 - **错误列表**：在 `errors` 数组中列出该句中的每一个具体错误。
+- **错误点 `point` 格式（必须遵守）**：每个 `point` 必须写成「原文错误片段 → 正确写法（简短中文原因）」三部分。
+  - 错误片段只截取出错的关键词或短语，**禁止照抄整句**。
+  - 必须给出修正写法，**禁止只指出位置而不给出怎么改**。
+  - 括号内用简短中文说明原因（一句话即可）。
+  - 示例：`have → has（主谓一致，主语第三人称单数）`、`oral English → spoken English（搭配更地道）`、`it will cost 100 seconds → it takes about 100 seconds（cost 不与时间搭配）`。
 
 ### 5. 输出格式（JSON）
 
@@ -69,15 +74,15 @@
       "errors": [
         {
           "type": "Agreement",
-          "point": "have→has"
+          "point": "have → has（主谓一致，主语 your model 为第三人称单数）"
         },
         {
           "type": "Redundancy",
-          "point": "some several"
+          "point": "some several → several（some 与 several 语义重复，保留其一）"
         },
         {
           "type": "Incomplete",
-          "point": "句子重复且未完成"
+          "point": "the first one you the first one → For example, the first one is...（句子重复且未完成，需补全）"
         }
       ]
     }

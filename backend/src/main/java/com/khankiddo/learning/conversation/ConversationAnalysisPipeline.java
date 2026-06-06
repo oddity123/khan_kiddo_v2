@@ -123,7 +123,7 @@ public class ConversationAnalysisPipeline {
                 .analysisResults(analysisResults)
                 .educationalSummaryJson(summaryJson)
                 .llmModelId(selectedModel.getId())
-                .llmModelName(selectedModel.getDisplayName())
+                .llmModelName(selectedModel.getConfig().getModelName())
                 .llmProvider(selectedModel.getProvider())
                 .build();
     }

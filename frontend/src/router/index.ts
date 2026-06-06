@@ -41,6 +41,12 @@ const router = createRouter({
           component: () => import('@/views/conversation/AnalysisDetailView.vue'),
           meta: {title: '分析详情', requiresAuth: true},
       },
+      {
+          path: '/feedback',
+          name: 'feedback',
+          component: () => import('@/views/FeedbackView.vue'),
+          meta: {title: '给我留言'},
+      },
   ],
 })
 

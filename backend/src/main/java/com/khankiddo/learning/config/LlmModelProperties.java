@@ -41,7 +41,7 @@ public class LlmModelProperties {
         private String id;
 
         /**
-         * 界面展示名称（如「Doubao Seed 1.8」），落库 {@code llm_model_name}。
+         * 界面展示名称（如「Doubao Seed 1.8」），仅用于模型下拉列表等前端展示。
          */
         private String displayName;
 
@@ -67,7 +67,8 @@ public class LlmModelProperties {
         private String apiKeyEnv;
 
         /**
-         * 厂商侧真实模型 ID。YAML 示例：{@code model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}}。
+         * 厂商侧真实模型 ID，落库 {@code llm_model_name}。
+         * YAML 示例：{@code model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}}。
          */
         private String modelName;
 
