@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.llm.LlmChatModelFactory;
+import com.khankiddo.learning.llm.ResolvedLlmModel;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -11,7 +13,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -34,29 +35,31 @@ public class ConversationAnalysisStreamingHelper {
 
     private static final int STREAMING_PREVIEW_MAX = 80;
 
-    private final StreamingChatModel streamingChatModel;
+    private final LlmChatModelFactory chatModelFactory;
     private final ObjectMapper objectMapper;
-
-    @Value("${langchain4j.open-ai.streaming-chat-model.timeout:120s}")
-    private Duration streamTimeout;
+    private final Duration streamTimeout;
 
     public ConversationAnalysisStreamingHelper(
-            @Qualifier("openAiStreamingChatModel") StreamingChatModel streamingChatModel,
-            ObjectMapper objectMapper) {
-        this.streamingChatModel = streamingChatModel;
+            LlmChatModelFactory chatModelFactory,
+            ObjectMapper objectMapper,
+            @Value("${langchain4j.open-ai.streaming-chat-model.timeout:120s}") Duration streamTimeout) {
+        this.chatModelFactory = chatModelFactory;
         this.objectMapper = objectMapper;
+        this.streamTimeout = streamTimeout;
     }
 
     public GrammarAnalysisResult streamGrammarAnalysis(
             String systemPrompt,
             String userPrompt,
+            ResolvedLlmModel model,
             Consumer<ConversationAnalysisProgress> onProgress) {
-        return streamGrammarAnalysis(systemPrompt, userPrompt, 0, 0, onProgress);
+        return streamGrammarAnalysis(systemPrompt, userPrompt, model, 0, 0, onProgress);
     }
 
     public GrammarAnalysisResult streamGrammarAnalysis(
             String systemPrompt,
             String userPrompt,
+            ResolvedLlmModel model,
             int batchNum,
             int totalBatches,
             Consumer<ConversationAnalysisProgress> onProgress) {
@@ -76,7 +79,7 @@ public class ConversationAnalysisStreamingHelper {
                 .streamingOriginal("...")
                 .build());
 
-        String jsonText = streamJsonText(systemPrompt, userPrompt, progressSink);
+        String jsonText = streamJsonText(systemPrompt, userPrompt, model, progressSink);
         progressSink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
                 .message(batched ? "正在接收第 " + batchNum + " 批分析结果..." : "正在接收 AI 分析结果...")
@@ -122,8 +125,10 @@ public class ConversationAnalysisStreamingHelper {
     private String streamJsonText(
             String systemPrompt,
             String userPrompt,
+            ResolvedLlmModel model,
             Consumer<ConversationAnalysisProgress> onProgress) {
 
+        StreamingChatModel streamingChatModel = chatModelFactory.streamingForGrammarAnalysis(model);
         StringBuilder accumulated = new StringBuilder();
         String[] last = {null, null, null};
         CountDownLatch latch = new CountDownLatch(1);

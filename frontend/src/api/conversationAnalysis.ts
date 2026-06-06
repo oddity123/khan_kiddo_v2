@@ -1,5 +1,5 @@
 import http from './http'
-import { AUTH_TOKEN_KEY } from '@/constants/auth'
+import {AUTH_TOKEN_KEY} from '@/constants/auth'
 import type {
   ConversationAnalysisDetail,
   ConversationAnalysisListResponse,
@@ -7,8 +7,9 @@ import type {
   ConversationAnalysisRequest,
   ConversationAnalysisResult,
   ConversationAnalysisSaveRequest,
+  LlmModelOption,
 } from '@/types/conversation'
-import { PROGRESS_STATUS } from '@/types/conversation'
+import {PROGRESS_STATUS} from '@/types/conversation'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -138,6 +139,10 @@ export async function analyzeConversationStream(
   }
 
   return consume()
+}
+
+export function listConversationLlmModels() {
+    return http.get<LlmModelOption[]>('/api/conversation/llm-models')
 }
 
 export function saveConversationAnalysis(payload: ConversationAnalysisSaveRequest) {

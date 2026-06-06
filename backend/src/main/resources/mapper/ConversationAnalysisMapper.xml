@@ -11,27 +11,41 @@
         <result column="error_message" property="errorMessage"/>
         <result column="processing_time_ms" property="processingTimeMs"/>
         <result column="educational_summary" property="educationalSummary"/>
+        <result column="llm_model_id" property="llmModelId"/>
+        <result column="llm_model_name" property="llmModelName"/>
+        <result column="llm_provider" property="llmProvider"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO conversation_analysis (user_id, analysis_id, conversation_content, status, error_message,
-                                         processing_time_ms, educational_summary, created_at, updated_at)
+                                           processing_time_ms, educational_summary, llm_model_id, llm_model_name,
+                                           llm_provider, created_at, updated_at)
         VALUES (#{userId}, #{analysisId}, #{conversationContent}, #{status}, #{errorMessage}, #{processingTimeMs},
-                #{educationalSummary}, #{createdAt}, #{updatedAt})
+                #{educationalSummary}, #{llmModelId}, #{llmModelName}, #{llmProvider}, #{createdAt}, #{updatedAt})
     </insert>
 
     <select id="findByAnalysisId" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
-               educational_summary, created_at, updated_at
+               educational_summary,
+               llm_model_id,
+               llm_model_name,
+               llm_provider,
+               created_at,
+               updated_at
         FROM conversation_analysis
         WHERE analysis_id = #{analysisId}
     </select>
 
     <select id="findByAnalysisIdAndUserId" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
-               educational_summary, created_at, updated_at
+               educational_summary,
+               llm_model_id,
+               llm_model_name,
+               llm_provider,
+               created_at,
+               updated_at
         FROM conversation_analysis
         WHERE analysis_id = #{analysisId}
           AND user_id = #{userId}
@@ -39,7 +53,12 @@
 
     <select id="findByUserId" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
-               educational_summary, created_at, updated_at
+               educational_summary,
+               llm_model_id,
+               llm_model_name,
+               llm_provider,
+               created_at,
+               updated_at
         FROM conversation_analysis
         WHERE user_id = #{userId}
         ORDER BY created_at DESC
@@ -54,7 +73,7 @@
 
     <select id="findByConditions" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
-               educational_summary, created_at, updated_at
+        educational_summary, llm_model_id, llm_model_name, llm_provider, created_at, updated_at
         FROM conversation_analysis
         <where>
             user_id = #{userId}

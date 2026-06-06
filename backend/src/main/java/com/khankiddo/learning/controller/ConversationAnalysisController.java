@@ -1,24 +1,16 @@
 package com.khankiddo.learning.controller;
 
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisDetailDto;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisListResponse;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
-import com.khankiddo.learning.dto.conversation.ConversationAnalysisSaveRequest;
+import com.khankiddo.learning.dto.conversation.*;
+import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisService;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisStreamService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/conversation")
@@ -27,6 +19,12 @@ public class ConversationAnalysisController {
 
     private final ConversationAnalysisService conversationAnalysisService;
     private final ConversationAnalysisStreamService conversationAnalysisStreamService;
+    private final LlmModelCatalog llmModelCatalog;
+
+    @GetMapping("/llm-models")
+    public List<LlmModelOptionDto> listLlmModels() {
+        return llmModelCatalog.listEnabled();
+    }
 
     @PostMapping(value = "/analyze/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter analyzeStream(@Valid @RequestBody ConversationAnalysisRequest request) {

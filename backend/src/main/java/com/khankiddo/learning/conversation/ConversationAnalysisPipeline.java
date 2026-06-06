@@ -1,11 +1,13 @@
 package com.khankiddo.learning.conversation;
 
 import com.khankiddo.learning.ai.conversation.ConversationSeparationAi;
-import com.khankiddo.learning.ai.conversation.EducationalSummaryAi;
 import com.khankiddo.learning.ai.conversation.model.*;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.llm.EducationalSummaryClient;
+import com.khankiddo.learning.llm.LlmModelCatalog;
+import com.khankiddo.learning.llm.ResolvedLlmModel;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +33,8 @@ public class ConversationAnalysisPipeline {
     private final ConversationSeparationAi separationAi;
     private final ConversationAnalysisStreamingHelper streamingHelper;
     private final ConversationBatchGrammarAnalyzer batchAnalyzer;
-    private final EducationalSummaryAi summaryAi;
+    private final EducationalSummaryClient summaryClient;
+    private final LlmModelCatalog modelCatalog;
     private final PromptLoader promptLoader;
     private final ConversationAnalysisProperties properties;
     private final EducationalSummaryParser summaryParser;
@@ -44,6 +47,7 @@ public class ConversationAnalysisPipeline {
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_START, "开始对话分析..."));
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_VALIDATING, "正在验证请求内容..."));
         validate(request);
+        ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(request.getModelId());
 
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_SEPARATING, "正在分离对话消息..."));
         SeparationResult separation = separationAi.separate(
@@ -70,14 +74,14 @@ public class ConversationAnalysisPipeline {
         String systemPrompt = promptLoader.getSystemPromptConversationAnalysis();
         GrammarAnalysisResult grammar;
         if (userSentences.size() > properties.getBatchThreshold()) {
-            grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, onProgress);
+            grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, selectedModel, onProgress);
         } else {
             String formattedConversation = formatMessages(messages);
             String userPrompt = promptLoader.fillTemplate(
                     promptLoader.getConversationAnalysisTemplate(),
                     "conversationContent",
                     formattedConversation);
-            grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, onProgress);
+            grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, selectedModel, onProgress);
         }
         if (grammar == null) {
             grammar = GrammarAnalysisResult.builder().build();
@@ -95,7 +99,7 @@ public class ConversationAnalysisPipeline {
             String summaryTemplate = promptLoader.getEducationalSummaryTemplate();
             String summaryPrompt = promptLoader.fillTemplate(summaryTemplate, "itemsSummary",
                     summaryParser.formatItemsForSummary(grammar));
-            String markdown = summaryAi.summarize(summaryPrompt);
+            String markdown = summaryClient.summarize(summaryPrompt, selectedModel);
             summaryReport = summaryParser.parseMarkdownSummary(markdown, grammar, userCount);
         } catch (Exception ex) {
             log.warn("教育总结生成失败，使用默认总结: {}", ex.getMessage());
@@ -118,6 +122,9 @@ public class ConversationAnalysisPipeline {
                 .status("success")
                 .analysisResults(analysisResults)
                 .educationalSummaryJson(summaryJson)
+                .llmModelId(selectedModel.getId())
+                .llmModelName(selectedModel.getDisplayName())
+                .llmProvider(selectedModel.getProvider())
                 .build();
     }
 

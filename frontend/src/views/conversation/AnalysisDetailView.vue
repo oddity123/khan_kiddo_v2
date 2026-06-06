@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ChatDotRound,
   Clock,
+  Cpu,
   DataAnalysis,
   Delete,
   Document,
@@ -270,6 +271,10 @@ watch(analysisId, loadDetail)
               <span class="summary-meta-item">
                 <el-icon><Clock/></el-icon>
                 {{ formatTime(detail.createdAt) }}
+              </span>
+              <span v-if="detail.llmModelName" class="summary-meta-item">
+                <el-icon><Cpu/></el-icon>
+                {{ detail.llmModelName }}
               </span>
               <span class="summary-meta-item">
                 <el-icon><Timer/></el-icon>

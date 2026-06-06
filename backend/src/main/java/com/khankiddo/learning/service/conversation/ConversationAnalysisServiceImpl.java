@@ -107,6 +107,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .status("success")
                 .processingTimeMs(processingTimeMs)
                 .educationalSummary(result.getEducationalSummaryJson())
+                .llmModelId(result.getLlmModelId())
+                .llmModelName(result.getLlmModelName())
+                .llmProvider(result.getLlmProvider())
                 .createdAt(analyzedAt)
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -124,6 +127,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .status("success")
                 .analysisResults(result.getAnalysisResults())
                 .educationalSummaryJson(result.getEducationalSummaryJson())
+                .llmModelId(result.getLlmModelId())
+                .llmModelName(result.getLlmModelName())
+                .llmProvider(result.getLlmProvider())
                 .build();
     }
 
@@ -263,6 +269,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .errorMessage(analysis.getErrorMessage())
                 .processingTimeMs(analysis.getProcessingTimeMs())
                 .createdAt(analysis.getCreatedAt())
+                .llmModelId(analysis.getLlmModelId())
+                .llmModelName(analysis.getLlmModelName())
+                .llmProvider(analysis.getLlmProvider())
                 .educationalSummary(enrichedSummary)
                 .items(items)
                 .errorTypeDistribution(distribution)
@@ -305,7 +314,11 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                                     .status(record.getStatus())
                                     .processingTimeMs(record.getProcessingTimeMs())
                                     .createdAt(record.getCreatedAt())
-                                    .preview(buildPreview(record.getConversationContent()));
+                                    .preview(buildPreview(record.getConversationContent()))
+                                    .contentCharCount(contentCharCount(record.getConversationContent()))
+                                    .llmModelId(record.getLlmModelId())
+                                    .llmModelName(record.getLlmModelName())
+                                    .llmProvider(record.getLlmProvider());
                     if (ObjectUtils.isNotEmpty(stats)) {
                         rowBuilder.performanceScore(stats.getPerformanceScore())
                                 .dimensionScores(stats.getDimensionScores());
@@ -355,5 +368,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         }
         String normalized = content.replaceAll("\\s+", " ").trim();
         return normalized.length() <= 80 ? normalized : normalized.substring(0, 80) + "...";
+    }
+
+    private int contentCharCount(String content) {
+        return StringUtils.hasText(content) ? content.length() : 0;
     }
 }

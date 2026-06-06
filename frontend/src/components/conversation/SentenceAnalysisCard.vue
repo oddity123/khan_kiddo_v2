@@ -1,6 +1,20 @@
 <script setup lang="ts">
-import {ArrowRight, ChatLineRound, MagicStick, WarningFilled} from '@element-plus/icons-vue'
+import type {Component} from 'vue'
 import {computed} from 'vue'
+import {
+  ArrowRight,
+  ChatLineSquare,
+  CircleCheck,
+  Clock,
+  Connection,
+  Document,
+  EditPen,
+  List,
+  MagicStick,
+  Promotion,
+  Rank,
+  Reading,
+} from '@element-plus/icons-vue'
 
 import type {AnalysisItem} from '@/types/conversation'
 import {displayTypeLabel, errorPointText, sortErrors} from '@/utils/analysisDisplay'
@@ -9,8 +23,6 @@ const props = defineProps<{
   item: AnalysisItem
   index?: number
 }>()
-
-const CHIP_ICONS = [MagicStick, ChatLineRound, WarningFilled] as const
 
 const sortedErrors = computed(() => sortErrors(props.item.errors ?? []))
 const errorCount = computed(() => sortedErrors.value.length)
@@ -26,6 +38,37 @@ function errorBadgeClass(level?: string) {
   }
   return 'chip--soft'
 }
+
+function chipIcon(type?: string): Component {
+  const label = displayTypeLabel(type)
+  if (label.includes('时态')) {
+    return Clock
+  }
+  if (label.includes('句式') || label.includes('结构') || label.includes('从句')) {
+    return Rank
+  }
+  if (
+      label.includes('用词') ||
+      label.includes('词汇') ||
+      label.includes('搭配') ||
+      label.includes('词性')
+  ) {
+    return EditPen
+  }
+  if (label.includes('语法') || label.includes('冠词') || label.includes('介词')) {
+    return Document
+  }
+  if (label.includes('语气') || label.includes('表达') || label.includes('口语')) {
+    return ChatLineSquare
+  }
+  if (label.includes('中式') || label.includes('冗余')) {
+    return Connection
+  }
+  if (label.includes('流畅') || label.includes('自然')) {
+    return Promotion
+  }
+  return Reading
+}
 </script>
 
 <template>
@@ -34,13 +77,26 @@ function errorBadgeClass(level?: string) {
       :style="{ '--card-delay': `${(index ?? 0) * 70}ms` }"
   >
     <section class="sentence-pane sentence-pane--before">
-      <span class="pane-tag">原句</span>
+      <header class="pane-head">
+        <span class="pane-head-icon pane-head-icon--orig" aria-hidden="true">
+          <el-icon><ChatLineSquare/></el-icon>
+        </span>
+        <span class="pane-tag">原句</span>
+      </header>
       <p class="pane-quote">{{ item.originalSentence }}</p>
-      <span v-if="!errorCount" class="ok-badge">表达到位</span>
+      <span v-if="!errorCount" class="ok-badge">
+        <el-icon class="ok-badge-icon" aria-hidden="true"><CircleCheck/></el-icon>
+        表达到位
+      </span>
     </section>
 
     <section v-if="item.suggestion" class="sentence-pane sentence-pane--after">
-      <span class="pane-tag pane-tag--ai">AI 建议</span>
+      <header class="pane-head">
+        <span class="pane-head-icon pane-head-icon--ai" aria-hidden="true">
+          <el-icon><MagicStick/></el-icon>
+        </span>
+        <span class="pane-tag pane-tag--ai">AI 建议</span>
+      </header>
       <p class="pane-improved">{{ item.suggestion }}</p>
     </section>
 
@@ -52,7 +108,7 @@ function errorBadgeClass(level?: string) {
           :class="errorBadgeClass(err.errorLevel)"
       >
         <el-icon class="chip-icon">
-          <component :is="CHIP_ICONS[i % CHIP_ICONS.length]"/>
+          <component :is="chipIcon(err.type)"/>
         </el-icon>
         {{ displayTypeLabel(err.type) }}
       </span>
@@ -62,7 +118,9 @@ function errorBadgeClass(level?: string) {
     <details v-if="errorCount" class="error-fold">
       <summary class="error-fold-summary">
         <el-icon class="chevron"><ArrowRight/></el-icon>
-        <el-icon class="fold-icon"><MagicStick/></el-icon>
+        <span class="fold-icon-wrap" aria-hidden="true">
+          <el-icon class="fold-icon"><List/></el-icon>
+        </span>
         <span>优化点（{{ errorCount }}）</span>
       </summary>
       <div class="error-fold-body">
@@ -72,6 +130,9 @@ function errorBadgeClass(level?: string) {
             class="error-point-card"
         >
           <span class="error-point-tag" :class="errorBadgeClass(err.errorLevel)">
+            <el-icon class="error-point-tag-icon">
+              <component :is="chipIcon(err.type)"/>
+            </el-icon>
             {{ displayTypeLabel(err.type) }}
           </span>
           <p class="error-point-text">{{ errorPointText(err) }}</p>
@@ -136,16 +197,49 @@ function errorBadgeClass(level?: string) {
   margin-top: 0.85rem;
   background: var(--kk-glass-inner-bg-muted);
   border: 1px solid var(--kk-glass-inner-border);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kk-color-primary) 6%, transparent);
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.5rem;
+}
+
+.pane-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: var(--kk-radius-sm);
+  flex-shrink: 0;
+  font-size: 0.9rem;
+}
+
+.pane-head-icon--orig {
+  background: color-mix(in srgb, var(--kk-color-accent) 18%, white);
+  color: var(--kk-color-accent-text);
+  border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, transparent);
+}
+
+.pane-head-icon--ai {
+  background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--kk-color-primary) 14%, white),
+      color-mix(in srgb, var(--kk-color-link) 10%, white)
+  );
+  color: var(--kk-color-primary);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 16%, transparent);
 }
 
 .pane-tag {
-  display: block;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(11, 26, 125, 0.55);
-  margin-bottom: 0.4rem;
 }
 
 .pane-tag--ai {
@@ -157,7 +251,7 @@ function errorBadgeClass(level?: string) {
   font-family: var(--kk-font-mono);
   font-size: 0.9rem;
   line-height: 1.65;
-  color: #4a5068;
+  color: var(--kk-color-text-muted);
   font-style: italic;
 }
 
@@ -171,14 +265,21 @@ function errorBadgeClass(level?: string) {
 }
 
 .ok-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   margin-top: 0.55rem;
-  padding: 0.15rem 0.55rem;
+  padding: 0.15rem 0.55rem 0.15rem 0.4rem;
   border-radius: var(--kk-radius-pill);
   background: var(--kk-color-accent-bg);
   color: var(--kk-color-accent-text);
   font-size: 0.72rem;
   font-weight: 700;
+}
+
+.ok-badge-icon {
+  font-size: 0.85rem;
+  color: var(--kk-color-success);
 }
 
 .chip-row {
@@ -218,9 +319,9 @@ function errorBadgeClass(level?: string) {
 }
 
 .chip--soft {
-  background: #e8f2ff;
-  color: #0e5080;
-  border: 1px solid rgba(14, 80, 128, 0.18);
+  background: color-mix(in srgb, var(--kk-color-link) 10%, white);
+  color: var(--kk-color-link);
+  border: 1px solid color-mix(in srgb, var(--kk-color-link) 18%, transparent);
 }
 
 .chip--more {
@@ -266,8 +367,19 @@ function errorBadgeClass(level?: string) {
   transform: rotate(90deg);
 }
 
-.fold-icon {
+.fold-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: var(--kk-radius-sm);
+  background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
   color: var(--kk-color-primary);
+}
+
+.fold-icon {
+  font-size: 0.8rem;
 }
 
 .error-fold-body {
@@ -285,12 +397,18 @@ function errorBadgeClass(level?: string) {
 }
 
 .error-point-tag {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-bottom: 0.35rem;
   padding: 0.12rem 0.45rem;
   border-radius: var(--kk-radius-sm);
   font-size: 0.68rem;
   font-weight: 700;
+}
+
+.error-point-tag-icon {
+  font-size: 0.75rem;
 }
 
 .error-point-text {

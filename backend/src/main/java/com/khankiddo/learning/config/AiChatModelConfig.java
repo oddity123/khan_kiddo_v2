@@ -1,8 +1,10 @@
 package com.khankiddo.learning.config;
 
+import com.khankiddo.learning.llm.LlmChatModelFactory;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.spring.restclient.SpringRestClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +26,7 @@ public class AiChatModelConfig {
     ChatModel conversationSeparationChatModel(
             AiLlmProperties aiLlmProperties,
             ConversationAnalysisProperties conversationAnalysisProperties,
+            LlmChatModelFactory llmChatModelFactory,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.api-key:}") String apiKey,
             @Value("${langchain4j.open-ai.chat-model.base-url:https://ark.cn-beijing.volces.com/api/v3}") String baseUrl,
@@ -35,7 +38,7 @@ public class AiChatModelConfig {
 
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(httpClientBuilder, timeout);
 
-        return OpenAiChatModel.builder()
+        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .httpClientBuilder(clientBuilder)
                 .baseUrl(normalizeBaseUrl(baseUrl))
                 .apiKey(apiKey)
@@ -46,8 +49,13 @@ public class AiChatModelConfig {
                 .maxRetries(maxRetries)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
-                .customParameters(aiLlmProperties.thinkingCustomParameters())
-                .build();
+                .customParameters(aiLlmProperties.thinkingCustomParameters());
+        if (conversationAnalysisProperties.isStrictJsonSchema()) {
+            ResponseFormat responseFormat = llmChatModelFactory.separationResponseFormat();
+            builder.responseFormat(responseFormat)
+                    .strictJsonSchema(true);
+        }
+        return builder.build();
     }
 
     private HttpClientBuilder copyHttpClientBuilder(HttpClientBuilder source, Duration timeout) {

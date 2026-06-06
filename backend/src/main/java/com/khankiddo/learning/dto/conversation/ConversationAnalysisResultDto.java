@@ -20,4 +20,8 @@ public class ConversationAnalysisResultDto {
     private String status;
     private Map<String, Object> analysisResults;
     private String educationalSummaryJson;
+
+    private String llmModelId;
+    private String llmModelName;
+    private String llmProvider;
 }

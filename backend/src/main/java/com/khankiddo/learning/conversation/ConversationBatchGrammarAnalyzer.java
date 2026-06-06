@@ -5,6 +5,7 @@ import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.llm.ResolvedLlmModel;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +37,7 @@ public class ConversationBatchGrammarAnalyzer {
     public GrammarAnalysisResult analyzeInBatches(
             List<String> userSentences,
             String systemPrompt,
+            ResolvedLlmModel model,
             Consumer<ConversationAnalysisProgress> onProgress) {
 
         if (CollectionUtils.isEmpty(userSentences)) {
@@ -66,7 +68,7 @@ public class ConversationBatchGrammarAnalyzer {
                         semaphore.acquire();
                         String userPrompt = buildBatchUserPrompt(batchSentences);
                         GrammarAnalysisResult result = streamingHelper.streamGrammarAnalysis(
-                                systemPrompt, userPrompt, batchNum, totalBatches, onProgress);
+                                systemPrompt, userPrompt, model, batchNum, totalBatches, onProgress);
                         orderedResults.set(index, result);
                         int done = completedCount.incrementAndGet();
                         onProgress.accept(ConversationAnalysisProgress.builder()

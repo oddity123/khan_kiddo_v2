@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import {Clock, Delete, Search, View} from '@element-plus/icons-vue'
+import {Clock, Cpu, Delete, Document, Search, View} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 
-import {
-  deleteConversationAnalysis,
-  listConversationAnalyses,
-} from '@/api/conversationAnalysis'
+import {deleteConversationAnalysis, listConversationAnalyses,} from '@/api/conversationAnalysis'
 import AnalysisHistoryScoreStrip from '@/components/conversation/AnalysisHistoryScoreStrip.vue'
 import type {AnalysisSummaryRow} from '@/types/conversation'
 import {getErrorMessage} from '@/utils/error'
@@ -53,6 +50,13 @@ function formatDuration(ms?: number) {
     return `${ms} ms`
   }
   return `${(ms / 1000).toFixed(1)} s`
+}
+
+function formatCharCount(count?: number) {
+  if (count == null) {
+    return '—'
+  }
+  return `${count} 字`
 }
 
 async function loadList() {
@@ -158,6 +162,10 @@ onMounted(loadList)
               <p class="record-preview">{{ row.preview || '（无预览）' }}</p>
               <div class="record-meta">
                 <span><el-icon><Clock/></el-icon>{{ formatTime(row.createdAt) }}</span>
+                <span><el-icon><Document/></el-icon>{{ formatCharCount(row.contentCharCount) }}</span>
+                <span v-if="row.llmModelName">
+                  <el-icon><Cpu/></el-icon>{{ row.llmModelName }}
+                </span>
                 <span>耗时 {{ formatDuration(row.processingTimeMs) }}</span>
                 <span class="status-tag" :class="statusClass(row.status)">{{ statusLabel(row.status) }}</span>
               </div>

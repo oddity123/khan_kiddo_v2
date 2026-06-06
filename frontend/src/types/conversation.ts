@@ -1,5 +1,14 @@
 export interface ConversationAnalysisRequest {
   conversationContent: string
+    /** Stage2/Stage3 分析模型配置 ID */
+    modelId?: string
+}
+
+export interface LlmModelOption {
+    id: string
+    displayName: string
+    provider: string
+    defaultModel: boolean
 }
 
 export interface ConversationAnalysisProgress {
@@ -9,6 +18,14 @@ export interface ConversationAnalysisProgress {
   errorMessage?: string
   analysisId?: string
   messageStats?: MessageStats
+    /** Stage2 流式预览：当前句原句（可能以 ... 结尾） */
+    streamingOriginal?: string
+    streamingSuggestion?: string
+    streamingErrorsHint?: string
+    /** 上一句已完成，用于追加卡片 */
+    streamingCommitOriginal?: string
+    streamingCommitSuggestion?: string
+    streamingCommitErrorsHint?: string
 }
 
 export interface MessageStats {
@@ -24,6 +41,9 @@ export interface ConversationAnalysisResult {
   status: string
   analysisResults?: AnalysisResultsPayload
   educationalSummaryJson?: string
+    llmModelId?: string
+    llmModelName?: string
+    llmProvider?: string
 }
 
 export interface AnalysisResultsPayload {
@@ -113,6 +133,11 @@ export interface AnalysisSummaryRow {
   processingTimeMs?: number
   createdAt?: string
   preview?: string
+    /** 对话原文字符数 */
+    contentCharCount?: number
+    llmModelId?: string
+    llmModelName?: string
+    llmProvider?: string
   performanceScore?: number
   dimensionScores?: PerformanceDimensionScores
 }
@@ -124,6 +149,9 @@ export interface ConversationAnalysisDetail {
   errorMessage?: string
   processingTimeMs?: number
   createdAt?: string
+    llmModelId?: string
+    llmModelName?: string
+    llmProvider?: string
   educationalSummary?: EducationalSummaryRoot
   items?: AnalysisItem[]
   errorTypeDistribution?: ErrorTypeDistribution[]

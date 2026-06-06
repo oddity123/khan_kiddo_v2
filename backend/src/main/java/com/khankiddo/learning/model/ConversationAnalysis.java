@@ -21,6 +21,9 @@ public class ConversationAnalysis {
     private String errorMessage;
     private Long processingTimeMs;
     private String educationalSummary;
+    private String llmModelId;
+    private String llmModelName;
+    private String llmProvider;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

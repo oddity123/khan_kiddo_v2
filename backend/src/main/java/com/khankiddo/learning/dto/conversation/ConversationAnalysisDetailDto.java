@@ -37,6 +37,10 @@ public class ConversationAnalysisDetailDto {
     /** 记录创建时间 */
     private LocalDateTime createdAt;
 
+    private String llmModelId;
+    private String llmModelName;
+    private String llmProvider;
+
     /**
      * 教育诊断概要（统计、综合得分、AI 文字总结）
      */

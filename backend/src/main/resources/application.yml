@@ -10,10 +10,35 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/khan_kiddo_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root}
+    password: ${DB_PASSWORD:1134836877}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 app:
+  # 对话分析 Stage2/Stage3 用户可选模型（密钥与端点见 .env：DOUBAO_* / QWEN_*）
+  llm:
+    # 前端未选 modelId 时的默认条目 id
+    default-model-id: doubao-seed
+    models:
+      # 豆包（敏感项仅通过环境变量注入，勿写入仓库）
+      - id: doubao-seed
+        display-name: Doubao Seed 1.8
+        provider: doubao
+        base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+        api-key: ${DOUBAO_API_KEY:}
+        model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}
+        temperature: ${AI_TEMPERATURE:0.4}
+        max-tokens: ${AI_MAX_TOKENS:10240}
+        enabled: true
+      # 通义千问（DashScope 兼容模式）
+      - id: qwen-plus
+        display-name: Qwen Plus
+        provider: qwen
+        base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+        api-key: ${QWEN_API_KEY:}
+        model-name: ${QWEN_MODEL_NAME:qwen-plus}
+        temperature: 0.4
+        max-tokens: ${AI_MAX_TOKENS:20480}
+        enabled: true
   auth:
     # 生产环境务必通过环境变量 JWT_SECRET 覆盖（至少 32 字符）
     jwt-secret: ${JWT_SECRET:khankiddo-v2-dev-jwt-secret-change-me-in-production}
@@ -27,6 +52,8 @@ app:
     # Stage 1 对话分离：Flash 模型 + 低 temperature（对齐 v1）
     separation-model-name: ${AI_SEPARATION_MODEL:doubao-seed-1-6-flash-250828}
     separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
+    # Stage1/Stage2 使用 response_format json_schema + strict（对齐 v1 Doubao Responses）
+    strict-json-schema: ${AI_STRICT_JSON_SCHEMA:true}
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
@@ -34,14 +61,13 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
-# LangChain4j — 火山方舟豆包（OpenAI Chat Completions 兼容）
-# 环境变量与 v1 保持一致：AI_API_KEY、AI_BASE_URL、AI_MODEL
+# LangChain4j 默认 Bean（/api/ai/chat、Stage1 分离 HttpClient 等）；与 app.llm 豆包条目共用 DOUBAO_*
 langchain4j:
   open-ai:
     chat-model:
-      api-key: ${AI_API_KEY:}
-      base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
-      model-name: ${AI_MODEL:doubao-seed-1-8-251228}
+      api-key: ${DOUBAO_API_KEY:${AI_API_KEY:}}
+      base-url: ${DOUBAO_BASE_URL:${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}}
+      model-name: ${DOUBAO_MODEL_NAME:${AI_MODEL:doubao-seed-1-8-251228}}
       temperature: ${AI_TEMPERATURE:0.4}
       max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_TIMEOUT_MS:120s}
@@ -52,17 +78,6 @@ langchain4j:
       custom-parameters:
         thinking:
           type: disabled
+    # 仅 timeout 被 ConversationAnalysisStreamingHelper 引用；模型实例由 app.llm + LlmChatModelFactory 创建
     streaming-chat-model:
-      api-key: ${AI_API_KEY:}
-      base-url: ${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
-      model-name: ${AI_MODEL:doubao-seed-1-8-251228}
-      temperature: ${AI_TEMPERATURE:0.4}
-      max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_TIMEOUT_MS:120s}
-      max-retries: ${AI_MAX_RETRIES:3}
-      log-requests: true
-      log-responses: true
-      return-thinking: false
-      custom-parameters:
-        thinking:
-          type: disabled

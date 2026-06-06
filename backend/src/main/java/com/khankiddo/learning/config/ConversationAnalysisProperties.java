@@ -31,4 +31,10 @@ public class ConversationAnalysisProperties {
 
     /** Stage 1 对话分离 temperature（v1 使用 0.3） */
     private double separationTemperature = 0.3;
+
+    /**
+     * 是否在 API 层启用 JSON Schema 严格模式（response_format json_schema + strict）。
+     * 关闭时仅依赖 prompt，易出现未转义字符导致 Jackson 解析失败。
+     */
+    private boolean strictJsonSchema = true;
 }
