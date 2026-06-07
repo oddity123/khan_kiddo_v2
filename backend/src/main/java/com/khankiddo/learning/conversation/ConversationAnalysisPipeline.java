@@ -51,6 +51,7 @@ public class ConversationAnalysisPipeline {
 
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_SEPARATING, "正在分离对话消息..."));
         SeparationResult separation = separationAi.separate(
+                promptLoader.getSystemPromptConversationSeparation(),
                 promptLoader.getConversationSeparationTemplate(),
                 request.getConversationContent().trim());
         List<ConversationMessageDto> messages = ObjectUtils.defaultIfNull(separation.getMessages(), List.of());
@@ -99,7 +100,8 @@ public class ConversationAnalysisPipeline {
             String summaryTemplate = promptLoader.getEducationalSummaryTemplate();
             String summaryPrompt = promptLoader.fillTemplate(summaryTemplate, "itemsSummary",
                     summaryParser.formatItemsForSummary(grammar));
-            String markdown = summaryClient.summarize(summaryPrompt, selectedModel);
+            String markdown = summaryClient.summarize(
+                    promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, selectedModel);
             summaryReport = summaryParser.parseMarkdownSummary(markdown, grammar, userCount);
         } catch (Exception ex) {
             log.warn("教育总结生成失败，使用默认总结: {}", ex.getMessage());

@@ -1,137 +1,41 @@
-You are a conversation structure parsing assistant.
+Convert the raw real-time conversation subtitles into structured messages.
 
-I will provide a piece of real-time conversation subtitles.
-The subtitles contain messages spoken by a **user** and an **AI assistant**.
-
-The subtitles may contain:
-- English
-- Chinese
-- mixed languages
-- speech recognition noise
-- incomplete sentences
-
-Your task is to convert the subtitles into structured conversation messages.
-
----
+The subtitles may contain English, Chinese, mixed languages, speech-recognition noise, and incomplete sentences.
 
 ## Tasks
+1. Parse the subtitles line by line in the original order.
+2. Label each line with a speaker: "user" or "assistant".
+3. Clean only spoken noise from USER messages.
+4. Keep ASSISTANT messages unchanged.
 
-1. Parse the subtitles **line by line in the original order**
-2. Determine the **speaker** for each line:
-   - "user"
-   - "assistant"
-3. Only clean **spoken noise from user messages**
-4. Assistant messages must remain **unchanged**
+## Spoken-noise cleaning (USER messages only)
+Allowed, minimal cleanup to improve readability:
+- Remove repeated words: "i i i think" → "I think"
+- Remove fillers: "um", "uh", "er", "ah" → e.g. "uh I think maybe" → "I think maybe"
+- Fix obvious casing: "i'm" → "I'm"
 
----
+Never do any of these:
+- Do NOT change the meaning.
+- Do NOT rewrite sentences or fix grammar.
+- Do NOT translate Chinese; preserve it exactly.
 
-## Spoken Noise Cleaning Rules (USER ONLY)
+## Speaker identification
+- USER lines usually contain: questions, requests, broken grammar, thinking-out-loud ("Can you...", "I want to know...", "I think...").
+- ASSISTANT lines usually contain: explanations, structured/informative answers ("Sure, I can explain...", "The X was...").
+- If uncertain, pick the most reasonable guess; never drop the line.
 
-You may clean minor speech noise to improve readability.
-
-Allowed changes:
-
-Remove repeated words
-
-Example:
-i i i think → I think
-
-Remove filler words
-
-Examples:
-um
-uh
-er
-ah
-
-Example:
-uh I think maybe → I think maybe
-
-Fix simple casing
-
-Example:
-i'm → I'm
-
-Important rules:
-- Do NOT change sentence meaning
-- Do NOT rewrite sentences
-- Do NOT fix grammar
-- Only remove obvious speech noise
-
----
-
-## Speaker Identification Guidelines
-
-Use context to determine the speaker.
-
-User messages typically contain:
-
-- questions
-- requests
-- broken grammar
-- thinking expressions
-
-Examples:
-Can you tell me...
-I want to know...
-I think...
-
-Assistant messages typically contain:
-
-- explanations
-- structured answers
-- informative responses
-
-Examples:
-Sure, I can explain that.
-The National Revolutionary Army was...
-
-If uncertain, choose the most reasonable guess.
-
----
-
-## Multilingual Handling
-
-The subtitles may contain Chinese or mixed language.
-
-Rules:
-
-- Do NOT translate Chinese
-- Preserve Chinese exactly
-- Treat Chinese sentences as normal messages
-
-Example:
-
-User:
-我想知道这个军队是谁领导的
-
-Assistant:
-这个军队主要由蒋介石领导。
-
----
-
-## Important Structural Rules
-
-1. Keep the **exact original order**
-2. Do NOT merge messages
-3. Do NOT split messages
-4. Do NOT delete messages
-5. Each subtitle line becomes **one message**
-
----
-
----
+## Structural rules
+- Keep the exact original order.
+- Do NOT merge or delete messages.
+- Split a USER line into one message per sentence when it clearly contains multiple complete sentences (e.g. "First, ... . Second, ... . Then, ..." → three user messages). Keep each ASSISTANT line as a single message.
 
 ## Example
-
 Input subtitles:
-
-yeah uh i i want to know the leaders of the national revolutionary army  
-Sure. The National Revolutionary Army had several important leaders.  
-蒋介石是其中最重要的领导人之一。  
+yeah uh i i want to know the leaders of the national revolutionary army
+Sure. The National Revolutionary Army had several important leaders.
+蒋介石是其中最重要的领导人之一。
 
 Output:
-
 {
   "messages": [
     {
@@ -149,8 +53,15 @@ Output:
   ]
 }
 
----
+Example of splitting a multi-sentence USER line:
+Input subtitles:
+At first the user talks with the AI. The second the website can generate the subtitles. Then the user copies the content to my website.
 
-## Conversation
-
-{conversationContent}
+Output:
+{
+  "messages": [
+    { "role": "user", "content": "At first the user talks with the AI." },
+    { "role": "user", "content": "The second the website can generate the subtitles." },
+    { "role": "user", "content": "Then the user copies the content to my website." }
+  ]
+}

@@ -19,6 +19,14 @@ public class PromptLoader {
         return readPrompt("system-prompt-conversation-analysis.txt");
     }
 
+    public String getSystemPromptConversationSeparation() {
+        return readPrompt("system-prompt-conversation-separation.txt");
+    }
+
+    public String getSystemPromptEducationalSummary() {
+        return readPrompt("system-prompt-educational-summary.txt");
+    }
+
     public String getConversationAnalysisTemplate() {
         return readPrompt("conversation-analysis-prompt-template.txt");
     }

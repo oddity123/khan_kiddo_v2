@@ -16,10 +16,7 @@ import dev.langchain4j.service.spring.AiServiceWiringMode;
 @AiService(wiringMode = AiServiceWiringMode.EXPLICIT, chatModel = "conversationSeparationChatModel")
 public interface ConversationSeparationAi {
 
-    @SystemMessage("""
-            You are a conversation structure parsing assistant.
-            Reply with ONLY valid JSON matching the requested structure. No markdown fences, no extra text.
-            """)
+    @SystemMessage("{{systemPrompt}}")
     @UserMessage("""
             {{promptTemplate}}
 
@@ -27,5 +24,7 @@ public interface ConversationSeparationAi {
             Raw subtitles:
             {{rawContent}}
             """)
-    SeparationResult separate(@V("promptTemplate") String promptTemplate, @V("rawContent") String rawContent);
+    SeparationResult separate(@V("systemPrompt") String systemPrompt,
+                              @V("promptTemplate") String promptTemplate,
+                              @V("rawContent") String rawContent);
 }

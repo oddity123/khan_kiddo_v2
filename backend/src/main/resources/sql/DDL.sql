@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     `sentence_id`       BIGINT       NOT NULL COMMENT '句子ID（同一个句子的不同错误使用相同的sentenceId）',
     `original_sentence` TEXT         NOT NULL COMMENT '用户原句',
     `problem_types`     VARCHAR(100) NOT NULL COMMENT '问题类型，如 "Tense"',
-    `error_point`       VARCHAR(200) NOT NULL COMMENT '错误点描述',
+    `error_point`       VARCHAR(500) NOT NULL COMMENT '错误点描述',
     `suggestion`        TEXT         NOT NULL COMMENT '修改建议或正确英文表达',
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX `idx_analysis_id` (`analysis_id`),
