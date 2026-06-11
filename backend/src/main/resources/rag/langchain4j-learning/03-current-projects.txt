@@ -1,0 +1,16 @@
+【文档类型：当前项目说明】
+
+项目名称：Khan Kiddo AI 英语学习助手（v2）
+项目定位：面向中国用户的 AI 英语口语与写作辅助工具
+
+我负责的后端模块：
+1. 对话分析流水线（分离 → 语法分析 → 教育总结）
+2. LangChain4j AiService 与 StreamingChatModel 集成
+3. 多模型配置（豆包 Seed、通义千问 Plus）
+
+本学习 Demo 说明：
+在 Khan Kiddo v2 中新增了「LangChain for Java 学习」页面，
+使用 langchain4j-easy-rag 加载 classpath 下的个人文档（自我介绍、工作文件），
+通过千问流式回答，练习 Easy RAG 的完整链路。
+
+文档存放路径：backend/src/main/resources/rag/langchain4j-learning/

@@ -35,8 +35,8 @@ app:
         provider: qwen
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
-        model-name: ${QWEN_MODEL_NAME:qwen-plus}
-        temperature: 0.4
+        model-name: ${QWEN_MODEL_NAME:qwen3.6-plus}
+        temperature: 0.7
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
   auth:
@@ -45,7 +45,7 @@ app:
     jwt-expiration-hours: ${JWT_EXPIRATION_HOURS:168}
   conversation-analysis:
     min-content-length: 10
-    max-content-length: 10000
+    max-content-length: 20000
     batch-threshold: 15
     batch-size: 5
     batch-concurrent-limit: 5
@@ -54,6 +54,12 @@ app:
     separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
     # Stage1/Stage2 使用 response_format json_schema + strict（对齐 v1 Doubao Responses）
     strict-json-schema: ${AI_STRICT_JSON_SCHEMA:true}
+  # LangChain for Java 学习（Easy RAG）
+  langchain4j-learning:
+    embedding-model-name: text-embedding-v3
+    embedding-max-segments-per-batch: 10
+    retrieval-max-results: 5
+    retrieval-min-score: 0.55
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml

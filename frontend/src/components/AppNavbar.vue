@@ -1,14 +1,5 @@
 <script setup lang="ts">
-import {
-  ChatDotRound,
-  Clock,
-  Collection,
-  House,
-  Message,
-  SwitchButton,
-  User,
-  VideoPlay,
-} from '@element-plus/icons-vue'
+import {ChatDotRound, Clock, Collection, House, Message, SwitchButton, User, VideoPlay,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {storeToRefs} from 'pinia'
 import {ref} from 'vue'
@@ -115,6 +106,18 @@ async function onLogout() {
             <el-icon><Collection /></el-icon>
             笔记本
           </a>
+
+          <router-link
+              to="/langchain4j-learning"
+              class="nav-link"
+              :class="{ active: isActive('/langchain4j-learning') }"
+              @click="mobileOpen = false"
+          >
+            <el-icon>
+              <ChatDotRound/>
+            </el-icon>
+            LangChain for Java 学习
+          </router-link>
 
           <router-link
               to="/feedback"

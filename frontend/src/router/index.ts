@@ -47,6 +47,12 @@ const router = createRouter({
           component: () => import('@/views/FeedbackView.vue'),
           meta: {title: '给我留言'},
       },
+      {
+          path: '/langchain4j-learning',
+          name: 'langchain4j-learning',
+          component: () => import('@/views/langchain4j/LearningView.vue'),
+          meta: {title: 'LangChain for Java 学习', requiresAuth: true},
+      },
   ],
 })
 

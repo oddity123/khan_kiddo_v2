@@ -1,0 +1,422 @@
+# DDL
+## 睿策
+```sql
+-- ----------------------------
+-- Table structure for structured_data_storage_config
+-- ----------------------------
+DROP TABLE IF EXISTS `structured_data_storage_config`;
+CREATE TABLE `structured_data_storage_config`
+(
+    `id`            bigint(0) UNSIGNED NOT NULL COMMENT '主键ID',
+    `domain_id`     bigint(0)          NOT NULL DEFAULT 0 COMMENT '项目ID',
+    `decision_id`   bigint(0)          NOT NULL DEFAULT 0 COMMENT '决策服务ID',
+    `decision_name` varchar(256)       NOT NULL COMMENT '决策服务名称',
+    `decision_type` int(0)             NOT NULL DEFAULT 1 COMMENT '决策服务类型1:自有决策服务 2:公共决策模块',
+    `config_flag`   tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否配置 0:否；1:是',
+    `update_flag`   tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否更新标识 0:否；1:是',
+    `delete_flag`   tinyint(1)         NULL     DEFAULT 1 COMMENT '删除状态 0:已删除 1:未删除',
+    `dept_id`       bigint(0)          NOT NULL COMMENT '创建部门id',
+    `created_user`  varchar(64)        NULL     DEFAULT NULL COMMENT '创建用户',
+    `updated_user`  varchar(64)        NULL     DEFAULT NULL COMMENT '更新用户',
+    `created_time`  datetime(0)        NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '创建时间',
+    `updated_time`  datetime(0)        NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_decision` (`decision_id`) USING BTREE
+) ENGINE = InnoDB
+    COMMENT = '决策服务结果配置'
+  ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for structured_data_storage_config_detail
+-- ----------------------------
+DROP TABLE IF EXISTS `structured_data_storage_config_detail`;
+CREATE TABLE `structured_data_storage_config_detail`
+(
+    `id`                     bigint(0) UNSIGNED NOT NULL COMMENT '主键id',
+    `domain_id`              bigint(0)          NOT NULL DEFAULT 0 COMMENT '项目ID',
+    `decision_id`            bigint(0)          NOT NULL COMMENT '服务id',
+    `group_id`               bigint(0)          NOT NULL COMMENT '分组id, ds_service_result_config_group表的id',
+    `saved_column_name`      varchar(256)       NOT NULL COMMENT '落库字段名',
+    `saved_column_desc`      varchar(256)       NOT NULL COMMENT '落库字段描述',
+    `saved_column_type`      varchar(256)       NOT NULL COMMENT '落库字段类型',
+    `saved_column_nullable`  tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否为空, 0: 否, 1: 是',
+    `saved_column_indexable` tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否索引, 0: 否, 1: 是',
+    `saved_column_related`   tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否关联字段, 0: 否, 1: 是',
+    `variable_path`          varchar(256)       NOT NULL COMMENT '变量全路径',
+    `variable_name`          varchar(100)       NOT NULL COMMENT '变量名称',
+    `variable_type`          varchar(100)       NOT NULL COMMENT '变量类型',
+    `update_flag`            tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否更新标识 0:否；1:是',
+    `array_flag`             int(0)             NOT NULL DEFAULT 0 COMMENT '是否是数组 0:否 1:是',
+    `created_user`           varchar(24)        NULL     DEFAULT NULL COMMENT '创建人',
+    `created_time`           datetime(0)        NOT NULL DEFAULT CURRENT_TIMESTAMP(0) COMMENT '创建时间',
+    `updated_user`           varchar(24)        NULL     DEFAULT NULL COMMENT '更新人',
+    `updated_time`           datetime(0)        NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `group_id_index` (`group_id`) USING BTREE,
+    INDEX `idx_decision_id` (`decision_id`) USING BTREE
+) ENGINE = InnoDB
+    COMMENT = '决策服务结果配置详细表'
+  ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for structured_data_storage_config_group
+-- ----------------------------
+DROP TABLE IF EXISTS `structured_data_storage_config_group`;
+CREATE TABLE `structured_data_storage_config_group`
+(
+    `id`                      bigint(0) UNSIGNED NOT NULL COMMENT '主键ID',
+    `domain_id`               bigint(0)          NOT NULL DEFAULT 0 COMMENT '项目ID',
+    `decision_id`             bigint(0)          NOT NULL DEFAULT 0 COMMENT '决策服务ID',
+    `decision_name`           varchar(256)       NOT NULL COMMENT '决策服务名称',
+    `group_type`              varchar(256)       NOT NULL DEFAULT 'COMMON' COMMENT '变量分组类型(COMMON:一般属性,ARRAY:数组对象)',
+    `saved_table_name`        varchar(256)       NOT NULL DEFAULT '' COMMENT '落库表名称',
+    `saved_array_object_path` varchar(256)       NULL     DEFAULT NULL COMMENT '数组对象的全路径, ARRAY类型使用',
+    `saved_table_desc`        varchar(256)       NOT NULL DEFAULT '' COMMENT '落库表名称描述',
+    `update_flag`             tinyint(1)         NOT NULL DEFAULT 0 COMMENT '是否更新标识 0:否；1:是',
+    `delete_flag`             tinyint(1)         NULL     DEFAULT 1 COMMENT '删除状态 0:已删除 1:未删除',
+    `created_user`            varchar(64)        NULL     DEFAULT NULL COMMENT '创建用户',
+    `updated_user`            varchar(64)        NULL     DEFAULT NULL COMMENT '更新用户',
+    `created_time`            datetime(0)        NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '创建时间',
+    `updated_time`            datetime(0)        NOT NULL DEFAULT CURRENT_TIMESTAMP(0) ON UPDATE CURRENT_TIMESTAMP(0) COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_decision` (`decision_id`) USING BTREE
+) ENGINE = InnoDB
+    COMMENT = '决策服务结果配置分组表'
+  ROW_FORMAT = Dynamic;
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+CREATE TABLE `structured_landing_exception_record`
+(
+    `id`               bigint NOT NULL COMMENT '主键',
+    `service_id`       bigint NOT NULL COMMENT '服务id, 睿测是决策id, 其它都是服务id',
+    `global_serial_no` varchar(128)  DEFAULT NULL COMMENT '全局流水号',
+    `landing_table`    varchar(128)  DEFAULT NULL COMMENT '落库表',
+    `landing_time`     datetime      DEFAULT NULL COMMENT '落库时间',
+    `failure_reason`   varchar(1000) DEFAULT NULL COMMENT '失败原因',
+    `created_time`     datetime      DEFAULT NULL COMMENT '创建时间',
+    `updated_time`     datetime      DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_global_serial_no` (`global_serial_no`),
+    KEY `idx_landing_time` (`landing_time`)
+) COMMENT ='结构化落库异常记录表';
+```
+
+## 外数
+```sql
+-- 外数服务结果配置 
+-- auto-generated definition
+create table outside_structured_data_storage_config
+(
+    id            bigint unsigned                      not null comment '主键ID'
+        primary key,
+    service_id   bigint     default 0                 not null comment '外数服务ID',
+    service_name varchar(256)                         not null comment '服务名称',
+    service_group int        default 1                 not null comment '服务类型：0-外部接口服务，1-内部数据库服务',
+    config_flag   tinyint(1) default 0                 not null comment '是否配置 0:否；1:是',
+    update_flag   tinyint(1) default 0                 not null comment '是否更新标识 0:否；1:是',
+    delete_flag   tinyint(1) default 1                 null comment '删除状态 0:已删除 1:未删除',
+    dept_id       bigint                               not null comment '创建部门id',
+    created_user  varchar(64)                          null comment '创建用户',
+    updated_user  varchar(64)                          null comment '更新用户',
+    created_time  datetime   default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '创建时间',
+    updated_time  datetime   default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
+)
+    comment '外数服务结果配置';
+
+create index idx_service
+    on outside_structured_data_storage_config (service_id);
+
+-- 外数服务结果配置分组表 
+-- auto-generated definition
+create table outside_structured_data_storage_config_group
+(
+    id                      bigint unsigned                        not null comment '主键ID'
+        primary key,
+    service_id             bigint       default 0                 not null comment '外数服务ID',
+    service_name           varchar(256)                           not null comment '服务名称',
+    group_type              varchar(256) default 'COMMON'          not null comment '变量分组类型(COMMON:一般属性,ARRAY:数组对象)',
+    saved_table_name        varchar(256) default ''                not null comment '落库表名称',
+    saved_array_object_path varchar(256)                           null comment '数组对象的全路径, ARRAY类型使用',
+    saved_table_desc        varchar(256) default ''                not null comment '落库表名称描述',
+    update_flag             tinyint(1)   default 0                 not null comment '是否更新标识 0:否；1:是',
+    delete_flag             tinyint(1)   default 1                 null comment '删除状态 0:已删除 1:未删除',
+    created_user            varchar(64)                            null comment '创建用户',
+    updated_user            varchar(64)                            null comment '更新用户',
+    created_time            datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '创建时间',
+    updated_time            datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
+)
+    comment '外数服务结果配置分组表';
+
+create index idx_service
+    on outside_structured_data_storage_config_group (service_id);
+
+-- 外数服务结果配置详细表 
+-- auto-generated definition
+create table outside_structured_data_storage_config_detail
+(
+    id                     bigint unsigned                      not null comment '主键id'
+        primary key,
+    service_id            bigint                               not null comment '服务id',
+    group_id               bigint                               not null comment '分组id, ds_service_result_config_group表的id',
+    saved_column_name      varchar(256)                         not null comment '落库字段名',
+    saved_column_desc      varchar(256)                         not null comment '落库字段描述',
+    saved_column_type      varchar(256)                         not null comment '落库字段类型',
+    saved_column_nullable  tinyint(1) default 0                 not null comment '是否为空, 0: 否, 1: 是',
+    saved_column_indexable tinyint(1) default 0                 not null comment '是否索引, 0: 否, 1: 是',
+    saved_column_related   tinyint(1) default 0                 not null comment '是否关联字段, 0: 否, 1: 是',
+    variable_path          varchar(256)                         not null comment '变量全路径',
+    variable_name          varchar(100)                         not null comment '变量名称',
+    variable_type          varchar(100)                         not null comment '变量类型',
+    update_flag            tinyint(1) default 0                 not null comment '是否更新标识 0:否；1:是',
+    array_flag             int        default 0                 not null comment '是否是数组 0:否 1:是',
+    created_user           varchar(24)                          null comment '创建人',
+    created_time           datetime   default CURRENT_TIMESTAMP not null comment '创建时间',
+    updated_user           varchar(24)                          null comment '更新人',
+    updated_time           datetime   default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
+)
+    comment '外数服务结果配置详细表';
+
+create index group_id_index
+    on outside_structured_data_storage_config_detail (group_id);
+
+create index idx_service_id
+    on outside_structured_data_storage_config_detail (service_id);
+```
+
+```sql
+alter table trace_report_external
+    add structured_landing_status TINYINT default 2 not null comment '结构化落库结果：1-成功, 0-失败, 2-未落库';
+
+alter table trace_report_external
+    add structured_landing_time DATETIME null comment '结构化落库时间';
+
+alter table trace_report_external
+    add structured_landing_error_msg VARCHAR(1024) null comment '结构化落库异常描述';
+```
+
+```sql
+-- 外数结构化落库异常记录表
+-- auto-generated definition
+create table outside_structured_landing_exception_record
+(
+    id               bigint        not null comment '主键'
+        primary key,
+    service_id       bigint        not null comment '服务id, 睿测是外数id, 其它都是服务id',
+    global_serial_no varchar(128)  null comment '全局流水号',
+    landing_table    varchar(128)  null comment '落库表',
+    landing_time     datetime      null comment '落库时间',
+    failure_reason   varchar(1000) null comment '失败原因',
+    created_time     datetime      null comment '创建时间',
+    updated_time     datetime      null comment '更新时间'
+)
+    comment '外数结构化落库异常记录表' ;
+
+create index idx_global_serial_no
+    on outside_structured_landing_exception_record (global_serial_no);
+
+create index idx_landing_time
+    on outside_structured_landing_exception_record (landing_time);
+```
+
+## 睿信
+```sql
+
+create table variable_structured_data_storage_config
+(
+    id                   bigint       not null comment '主键ID'
+        primary key,
+    created_time         datetime     null comment '创建时间',
+    updated_time         datetime     null comment '更新时间',
+    manifest_id          bigint       null comment '清单ID',
+    manifest_name        varchar(255) null comment '清单名称',
+    update_flag          tinyint(1)   null comment '是否更新标识 0:否 1:是',
+    delete_flag          tinyint(1)   null comment '删除状态 0:已删除 1:未删除',
+    realtime_config_flag tinyint(1)   null comment '实时服务是否已配置 0:否；1:是',
+    batch_config_flag    tinyint(1)   null comment '批量回溯是否已配置 0:否；1:是',
+    created_user         varchar(64)  null comment '创建用户',
+    updated_user         varchar(64)  null comment '更新用户',
+    dept_id              bigint       null comment '部门ID'
+)
+    comment '变量服务结果配置';
+
+create index idx_created_time
+    on variable_structured_data_storage_config (created_time);
+
+create index idx_service_id
+    on variable_structured_data_storage_config (manifest_id);
+
+create table variable_structured_data_storage_config_detail
+(
+    id                     bigint       not null comment '主键ID'
+        primary key,
+    manifest_id            bigint       null comment '清单ID',
+    group_id               bigint       null comment '分组ID variable_structured_data_storage_config_group表id',
+    saved_column_name      varchar(128) null comment '落库字段名',
+    saved_column_desc      varchar(255) null comment '落库字段描述',
+    saved_column_type      varchar(32)  null comment '落库字段类型',
+    saved_column_nullable  int          null comment '是否为空 0:否 1:是',
+    saved_column_indexable int          null comment '是否索引 0:否 1:是',
+    saved_column_related   int          null comment '是否关联字段 0:否 1:是',
+    variable_path          varchar(512) null comment '变量全路径',
+    variable_name          varchar(128) null comment '变量名称',
+    variable_type          varchar(32)  null comment '变量类型',
+    update_flag            int          null comment '是否更新标识 0:否 1:是',
+    array_flag             int          null comment '是否是数组 0:否 1:是',
+    created_time           datetime     null comment '创建时间',
+    updated_time           datetime     null comment '更新时间',
+    created_user           varchar(64)  null comment '创建人',
+    updated_user           varchar(64)  null comment '更新人'
+)
+    comment '变量服务结果配置详细表';
+
+create index idx_created_time
+    on variable_structured_data_storage_config_detail (created_time);
+
+create index idx_group_id
+    on variable_structured_data_storage_config_detail (group_id);
+
+create index idx_service_group
+    on variable_structured_data_storage_config_detail (manifest_id, group_id);
+
+create index idx_service_id
+    on variable_structured_data_storage_config_detail (manifest_id);
+
+create table variable_structured_data_storage_config_group
+(
+    id                      bigint       not null comment '主键ID'
+        primary key,
+    created_time            datetime     null comment '创建时间',
+    updated_time            datetime     null comment '更新时间',
+    manifest_id             bigint       null comment '清单ID',
+    manifest_name           varchar(255) null comment '清单名称',
+    config_type             int          null comment '配置类型 1:实时服务落库配置 2:批量回溯落库配置',
+    group_type              varchar(32)  null comment '变量分组类型 COMMON:一般属性 ARRAY:数组对象',
+    saved_table_name        varchar(128) null comment '落库表名称',
+    saved_array_object_path varchar(512) null comment '数组对象的全路径 ARRAY类型使用',
+    saved_table_desc        varchar(255) null comment '落库表名称描述',
+    update_flag             tinyint(1)   null comment '是否更新标识 0:否 1:是',
+    created_user            varchar(64)  null comment '创建用户',
+    updated_user            varchar(64)  null comment '更新用户'
+)
+    comment '变量服务结果配置分组表';
+
+create index idx_config_type
+    on variable_structured_data_storage_config_group (config_type);
+
+create index idx_created_time
+    on variable_structured_data_storage_config_group (created_time);
+
+create index idx_group_id_service
+    on variable_structured_data_storage_config_group (manifest_id, config_type);
+
+create index idx_service_id
+    on variable_structured_data_storage_config_group (manifest_id);
+```
+
+```sql
+alter table wiseco_admin_business.var_process_log
+    add structured_landing_status TINYINT default 2 not null comment '结构化落库结果：1-成功, 0-失败, 2-未落库';
+
+alter table wiseco_admin_business.var_process_log
+    add structured_landing_time DATETIME null comment '结构化落库时间';
+
+alter table wiseco_admin_business.var_process_log
+    add structured_landing_error_msg VARCHAR(1024) null comment '结构化落库异常描述';
+```
+
+```sql
+-- 变量结构化落库异常记录表
+-- auto-generated definition
+create table variable_structured_landing_exception_record
+(
+    id               bigint        not null comment '主键'
+        primary key,
+    service_id       bigint        not null comment '清单id',
+    global_serial_no varchar(128)  null comment '全局流水号',
+    landing_table    varchar(128)  null comment '落库表',
+    landing_time     datetime      null comment '落库时间',
+    failure_reason   varchar(1000) null comment '失败原因',
+    created_time     datetime      null comment '创建时间',
+    updated_time     datetime      null comment '更新时间'
+)
+    comment '变量结构化落库异常记录表' ;
+
+create index idx_global_serial_no
+    on variable_structured_landing_exception_record (global_serial_no);
+
+create index idx_landing_time
+    on variable_structured_landing_exception_record (landing_time);
+```
+
+变量清单 变量列表 去除列角色, 此字段刷成GENERAL类型, 不改代码, 处理历史的数据
+
+```sql
+# admin
+update var_process_manifest_variable
+set col_role = 'GENERAL'
+where col_role != 'GENERAL';
+
+# business
+update var_process_manifest_header
+set col_role = 'GENERAL'
+where col_role != 'GENERAL';
+```
+
+# 配置项
+```java
+//结构化分布式锁超时时间
+@Value("${decision.report.structuredLanding.lockTimeOutSecond:7200}")
+private Long lockTimeOutSecond;
+
+//每次分页大小
+@Value("${decision.report.structuredLanding.pageSize:1000}")
+private Long pageSize;
+
+//结构化执行频率
+@Scheduled(cron = "${decision.report.structuredLanding.cron:0 */5 * * * ?}")
+
+/**
+ * 批量执行SQL的批次大小限制
+ * 某些数据库对单次批量执行的大小有限制，超过限制需要分批执行
+ */
+@Value("${decision.report.structuredLanding.batchSize:1000}")
+private int batchSize;
+
+```
+
+# Task
+| 任务 | 详细 | 备注 | 状态 |
+| --- | --- | --- | --- |
+| 落库配置的增删改查 | 选择变量接口增加systemParam根节点, 可以选择内置字段 | + 内置字段: com.wiseco.admin.decision.biz.service.DsServiceSearchBiz#extracted | |
+| 分支 | `feature/structured_storage_config`<br/>1. auth double枚举修改<br/>2. wiseco-admin<br/>3. wiseco-report |  | |
+| 外数trace_report_external表增加字段 |  |  | |
+| 外数/睿信增加 保存/查询时变量的校验 |  |  | |
+
+
+# 接口文档
+## 睿策
+查询内数表接口: internalDataTable/listQuery
+
+查询内数表字段详细接口: internalDataTable/queryTable
+
+引入配置-查询其它服务: /statistical/getServiceList
+
+  
+/template/findTreeBaseVarAndBaseArray 一般变量  
+/template/decision/findTreeVarBaseAllArrayByType 添加数组对象  
+/template/decision/findArrayObjectSubFieldV2 数组对象下的属性, 
+
++ 关联字段也是这个接口
++ configTypeEnum来判断是数组下的一般字段还是关联字段, INDICATOR: 一般, RELATION: 关联
+
+## 外数
+选择变量:
+
+template/outsideStatic/findTreeBaseVarAndBaseArray: 选择一般变量 
+
+template/findTreeVarBaseAllArrayByType: 选择数组对象
+
+outsideServiceSaveDataConfig/findArrayObjectSubField: 选择数组对象下的变量
+
+outsideServiceSaveDataConfig/findArrayObjectSubFieldV2: 选择数组对象关联字段的变量
