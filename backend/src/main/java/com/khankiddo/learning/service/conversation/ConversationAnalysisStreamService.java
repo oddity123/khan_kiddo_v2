@@ -1,9 +1,11 @@
 package com.khankiddo.learning.service.conversation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.khankiddo.learning.conversation.ConversationAnalyzeRateLimiter;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
+import com.khankiddo.learning.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContext;
@@ -23,9 +25,12 @@ public class ConversationAnalysisStreamService {
     private static final long SSE_TIMEOUT_MS = 10 * 60 * 1000L;
 
     private final ConversationAnalysisService conversationAnalysisService;
+    private final ConversationAnalyzeRateLimiter analyzeRateLimiter;
     private final ObjectMapper objectMapper;
 
     public SseEmitter analyzeStream(ConversationAnalysisRequest request) {
+        analyzeRateLimiter.checkAllowed(SecurityUtils.getCurrentUserId());
+
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         AtomicBoolean finished = new AtomicBoolean(false);
         String analysisId = UUID.randomUUID().toString();

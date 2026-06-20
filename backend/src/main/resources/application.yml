@@ -54,6 +54,10 @@ app:
     separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
     # Stage1/Stage2 使用 response_format json_schema + strict（对齐 v1 Doubao Responses）
     strict-json-schema: ${AI_STRICT_JSON_SCHEMA:true}
+    # 对话分析限流：每用户每窗口最多 N 次（单实例内存计数）
+    analyze-rate-limit-enabled: true
+    analyze-rate-limit-max-requests: 5
+    analyze-rate-limit-window-minutes: 1
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
