@@ -6,7 +6,6 @@ import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
-import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -31,7 +30,7 @@ import java.util.function.Consumer;
 public class ConversationBatchGrammarAnalyzer {
 
     private final ConversationAnalysisStreamingHelper streamingHelper;
-    private final PromptLoader promptLoader;
+    private final GrammarAnalysisUserPromptBuilder userPromptBuilder;
     private final ConversationAnalysisProperties properties;
 
     public GrammarAnalysisResult analyzeInBatches(
@@ -52,6 +51,8 @@ public class ConversationBatchGrammarAnalyzer {
                 .message("正在分析（共 " + totalBatches + " 批）...")
                 .build());
 
+        Consumer<ConversationAnalysisProgress> batchProgress =
+                ConversationAnalysisProgressRelay.synchronizedBatchLevelSink(onProgress);
         Semaphore semaphore = new Semaphore(properties.getBatchConcurrentLimit());
         AtomicInteger completedCount = new AtomicInteger(0);
         List<GrammarAnalysisResult> orderedResults =
@@ -66,12 +67,12 @@ public class ConversationBatchGrammarAnalyzer {
                 futures.add(executor.submit(() -> {
                     try {
                         semaphore.acquire();
-                        String userPrompt = buildBatchUserPrompt(batchSentences);
+                        String userPrompt = userPromptBuilder.buildFromUserSentences(batchSentences);
                         GrammarAnalysisResult result = streamingHelper.streamGrammarAnalysis(
-                                systemPrompt, userPrompt, model, batchNum, totalBatches, onProgress);
+                                systemPrompt, userPrompt, model, batchNum, totalBatches, batchProgress);
                         orderedResults.set(index, result);
                         int done = completedCount.incrementAndGet();
-                        onProgress.accept(ConversationAnalysisProgress.builder()
+                        batchProgress.accept(ConversationAnalysisProgress.builder()
                                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
                                 .message("已完成 " + done + "/" + totalBatches + " 批")
                                 .build());
@@ -109,20 +110,6 @@ public class ConversationBatchGrammarAnalyzer {
             batches.add(userSentences.subList(i, Math.min(i + batchSize, userSentences.size())));
         }
         return batches;
-    }
-
-    String buildBatchUserPrompt(List<String> sentences) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < sentences.size(); i++) {
-            if (i > 0) {
-                sb.append("\n\n");
-            }
-            sb.append(i + 1).append(". ").append(sentences.get(i));
-        }
-        return promptLoader.fillTemplate(
-                promptLoader.getConversationAnalysisTemplate(),
-                "conversationContent",
-                sb.toString());
     }
 
     static GrammarAnalysisResult mergeResults(List<GrammarAnalysisResult> orderedResults) {

@@ -24,7 +24,6 @@ import java.util.function.Consumer;
 
 /**
  * 三阶段对话分析编排器：分离 → 语法分析 → 教育总结。
- * 各阶段通过 LangChain4j {@code @AiService} 调用，便于单独扩展或替换模型。
  */
 @Slf4j
 @Component
@@ -40,6 +39,7 @@ public class ConversationAnalysisPipeline {
     private final ConversationAnalysisProperties properties;
     private final EducationalSummaryParser summaryParser;
     private final GrammarSystemPromptComposer grammarSystemPromptComposer;
+    private final GrammarAnalysisUserPromptBuilder grammarUserPromptBuilder;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -48,10 +48,33 @@ public class ConversationAnalysisPipeline {
 
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_START, "开始对话分析..."));
         onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_VALIDATING, "正在验证请求内容..."));
-        validate(request);
-        ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(request.getModelId());
+        validateRequest(request);
 
-        onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_SEPARATING, "正在分离对话消息..."));
+        ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(request.getModelId());
+        SeparationContext separation = separateConversation(request, onProgress);
+        requireUserSentences(separation);
+
+        GrammarAnalysisResult grammar = analyzeGrammar(separation, selectedModel, onProgress);
+        List<AnalysisItemDto> items = toDisplayItems(grammar);
+        List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
+
+        SummaryOutcome summaryOutcome = buildEducationalSummary(grammar, separation.userCount(), selectedModel, onProgress);
+
+        return assembleResult(
+                analysisId,
+                start,
+                selectedModel,
+                separation.userCount(),
+                items,
+                grammar,
+                distribution,
+                summaryOutcome);
+    }
+
+    private SeparationContext separateConversation(ConversationAnalysisRequest request,
+                                                    Consumer<ConversationAnalysisProgress> onProgress) {
+        onProgress.accept(ConversationAnalysisProgress.of(
+                ConversationAnalysisProgress.STATUS_SEPARATING, "正在分离对话消息..."));
         SeparationResult separation = separationAi.separate(
                 promptLoader.getSystemPromptConversationSeparation(),
                 promptLoader.getConversationSeparationTemplate(),
@@ -61,31 +84,44 @@ public class ConversationAnalysisPipeline {
             throw new BadRequestException("未能从字幕中分离出有效对话");
         }
 
-        int userCount = (int) messages.stream().filter(m -> "user".equalsIgnoreCase(m.getRole())).count();
-        int aiCount = messages.size() - userCount;
+        List<String> userSentences = extractUserSentences(messages);
+        int userRoleCount = (int) messages.stream()
+                .filter(m -> "user".equalsIgnoreCase(m.getRole()))
+                .count();
+        int aiCount = messages.size() - userRoleCount;
+
         onProgress.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_SEPARATING)
                 .message("对话分离完成")
                 .messageStats(ConversationAnalysisProgress.MessageStats.builder()
                         .totalMessages(messages.size())
-                        .userMessages(userCount)
+                        .userMessages(userRoleCount)
                         .aiMessages(aiCount)
                         .build())
                 .build());
 
-        List<String> userSentences = extractUserSentences(messages);
+        return new SeparationContext(messages, userSentences, userSentences.size(), aiCount);
+    }
+
+    private static void requireUserSentences(SeparationContext separation) {
+        if (CollectionUtils.isEmpty(separation.userSentences())) {
+            throw new BadRequestException("未能从字幕中分离出用户发言，无法进行分析");
+        }
+    }
+
+    private GrammarAnalysisResult analyzeGrammar(SeparationContext separation,
+                                                  ResolvedLlmModel model,
+                                                  Consumer<ConversationAnalysisProgress> onProgress) {
         String systemPrompt = grammarSystemPromptComposer.compose(
-                promptLoader.getSystemPromptConversationAnalysis(), selectedModel);
+                promptLoader.getSystemPromptConversationAnalysis(), model);
+        List<String> userSentences = separation.userSentences();
+
         GrammarAnalysisResult grammar;
         if (userSentences.size() > properties.getBatchThreshold()) {
-            grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, selectedModel, onProgress);
+            grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, model, onProgress);
         } else {
-            String formattedConversation = formatMessages(messages);
-            String userPrompt = promptLoader.fillTemplate(
-                    promptLoader.getConversationAnalysisTemplate(),
-                    "conversationContent",
-                    formattedConversation);
-            grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, selectedModel, onProgress);
+            String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(userSentences);
+            grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, model, onProgress);
         }
         if (grammar == null) {
             grammar = GrammarAnalysisResult.builder().build();
@@ -93,33 +129,57 @@ public class ConversationAnalysisPipeline {
 
         onProgress.accept(ConversationAnalysisProgress.of(
                 ConversationAnalysisProgress.STATUS_PARSING, "AI 分析成功，正在解析结果..."));
-        List<AnalysisItemDto> items = toDisplayItems(grammar);
-        List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
+        return grammar;
+    }
 
+    private SummaryOutcome buildEducationalSummary(GrammarAnalysisResult grammar,
+                                                    int userCount,
+                                                    ResolvedLlmModel model,
+                                                    Consumer<ConversationAnalysisProgress> onProgress) {
         onProgress.accept(ConversationAnalysisProgress.of(
                 ConversationAnalysisProgress.STATUS_SUMMARIZING, "正在生成学习诊断概要..."));
-        EducationalSummaryDto summaryReport;
         try {
             String summaryTemplate = promptLoader.getEducationalSummaryTemplate();
             String summaryPrompt = promptLoader.fillTemplate(summaryTemplate, "itemsSummary",
                     summaryParser.formatItemsForSummary(grammar));
             String markdown = summaryClient.summarize(
-                    promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, selectedModel);
-            summaryReport = summaryParser.parseMarkdownSummary(markdown, grammar, userCount);
-        } catch (Exception ex) {
-            log.warn("教育总结生成失败，使用默认总结: {}", ex.getMessage());
-            summaryReport = summaryParser.defaultReport(grammar, userCount);
+                    promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, model);
+            EducationalSummaryDto report = summaryParser.parseMarkdownSummary(markdown, grammar, userCount);
+            return new SummaryOutcome(report, false, null);
+        } catch (RuntimeException ex) {
+            log.warn("教育总结生成失败，使用默认总结: {}", ex.getMessage(), ex);
+            String reason = StringUtils.hasText(ex.getMessage())
+                    ? ex.getMessage()
+                    : ex.getClass().getSimpleName();
+            onProgress.accept(ConversationAnalysisProgress.builder()
+                    .status(ConversationAnalysisProgress.STATUS_SUMMARIZING)
+                    .message("学习诊断概要生成失败，已使用默认总结")
+                    .build());
+            return new SummaryOutcome(summaryParser.defaultReport(grammar, userCount), true, reason);
         }
+    }
 
-        String summaryJson = summaryParser.toJson(summaryReport);
+    private ConversationAnalysisResultDto assembleResult(String analysisId,
+                                                          long startMs,
+                                                          ResolvedLlmModel model,
+                                                          int userCount,
+                                                          List<AnalysisItemDto> items,
+                                                          GrammarAnalysisResult grammar,
+                                                          List<ErrorTypeDistributionDto> distribution,
+                                                          SummaryOutcome summaryOutcome) {
+        String summaryJson = summaryParser.toJson(summaryOutcome.report());
         Map<String, Object> analysisResults = new LinkedHashMap<>();
         analysisResults.put("items", items);
         analysisResults.put("totalSentences", userCount);
         analysisResults.put("totalErrors", countErrors(grammar));
-        analysisResults.put("educationalSummary", summaryReport);
+        analysisResults.put("educationalSummary", summaryOutcome.report());
         analysisResults.put("errorTypeDistribution", distribution);
+        analysisResults.put("summaryDegraded", summaryOutcome.degraded());
+        if (summaryOutcome.degraded()) {
+            analysisResults.put("summaryDegradedReason", summaryOutcome.degradedReason());
+        }
 
-        long elapsed = System.currentTimeMillis() - start;
+        long elapsed = System.currentTimeMillis() - startMs;
         return ConversationAnalysisResultDto.builder()
                 .analysisId(analysisId)
                 .analyzedAt(LocalDateTime.now())
@@ -127,13 +187,13 @@ public class ConversationAnalysisPipeline {
                 .status("success")
                 .analysisResults(analysisResults)
                 .educationalSummaryJson(summaryJson)
-                .llmModelId(selectedModel.getId())
-                .llmModelName(selectedModel.getConfig().getModelName())
-                .llmProvider(selectedModel.getProvider())
+                .llmModelId(model.getId())
+                .llmModelName(model.getConfig().getModelName())
+                .llmProvider(model.getProvider())
                 .build();
     }
 
-    private void validate(ConversationAnalysisRequest request) {
+    private void validateRequest(ConversationAnalysisRequest request) {
         if (ObjectUtils.isEmpty(request) || !StringUtils.hasText(request.getConversationContent())) {
             throw new BadRequestException("对话内容不能为空");
         }
@@ -157,18 +217,6 @@ public class ConversationAnalysisPipeline {
             }
         }
         return sentences;
-    }
-
-    private String formatMessages(List<ConversationMessageDto> messages) {
-        StringBuilder sb = new StringBuilder();
-        for (ConversationMessageDto message : messages) {
-            if (!StringUtils.hasText(message.getContent())) {
-                continue;
-            }
-            String roleLabel = "user".equalsIgnoreCase(message.getRole()) ? "用户" : "AI";
-            sb.append(roleLabel).append(": ").append(message.getContent().trim()).append("\n\n");
-        }
-        return sb.toString().trim();
     }
 
     private List<AnalysisItemDto> toDisplayItems(GrammarAnalysisResult grammar) {
@@ -231,5 +279,18 @@ public class ConversationAnalysisPipeline {
         return grammar.getItems().stream()
                 .mapToInt(item -> CollectionUtils.isEmpty(item.getErrors()) ? 0 : item.getErrors().size())
                 .sum();
+    }
+
+    private record SeparationContext(
+            List<ConversationMessageDto> messages,
+            List<String> userSentences,
+            int userCount,
+            int aiCount) {
+    }
+
+    private record SummaryOutcome(
+            EducationalSummaryDto report,
+            boolean degraded,
+            String degradedReason) {
     }
 }
