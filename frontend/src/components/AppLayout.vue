@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppNavbar from '@/components/AppNavbar.vue'
+import SiteBeian from '@/components/SiteBeian.vue'
 import {RouterView} from 'vue-router'
 </script>
 
@@ -12,6 +13,9 @@ import {RouterView} from 'vue-router'
         <RouterView />
       </div>
     </main>
+    <footer class="page-footer">
+      <SiteBeian variant="footer" />
+    </footer>
   </div>
 </template>
 
@@ -27,6 +31,12 @@ import {RouterView} from 'vue-router'
 .page-main {
   flex: 1;
   padding: var(--kk-navbar-offset) 0 2.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.page-footer {
+  padding: 1rem 0 1.5rem;
   position: relative;
   z-index: 1;
 }

@@ -1,5 +1,5 @@
 server:
-  port: ${PORT:8081}
+  port: ${PORT:8080}
 
 spring:
   application:
@@ -14,6 +14,11 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 app:
+  site:
+    icp-number: ${APP_ICP_NUMBER:鄂ICP备2026025924号}
+    icp-url: ${APP_ICP_URL:https://beian.miit.gov.cn/}
+    psb-number: ${APP_PSB_NUMBER:鄂公网安备42010202002911号}
+    psb-url: ${APP_PSB_URL:https://beian.mps.gov.cn/#/query/webSearch?code=42010202002911}
   # 对话分析 Stage2/Stage3 用户可选模型（密钥与端点见 .env：DOUBAO_* / QWEN_*）
   llm:
     # 前端未选 modelId 时的默认条目 id
