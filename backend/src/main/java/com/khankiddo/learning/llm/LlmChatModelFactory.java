@@ -1,7 +1,6 @@
 package com.khankiddo.learning.llm;
 
 import com.khankiddo.learning.config.AiLlmProperties;
-import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.config.LlmModelProperties;
 import com.khankiddo.learning.util.SchemaLoader;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -17,18 +16,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class LlmChatModelFactory {
 
-    private static final String CACHE_SUFFIX_GRAMMAR_SCHEMA = "|grammar-json-schema";
-
     private final LlmModelCatalog modelCatalog;
     private final AiLlmProperties aiLlmProperties;
     private final SchemaLoader schemaLoader;
-    private final ConversationAnalysisProperties conversationAnalysisProperties;
+    private final List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies;
     private final HttpClientBuilder httpClientBuilder;
     private final Duration defaultTimeout;
     private final Integer defaultMaxRetries;
@@ -39,7 +38,7 @@ public class LlmChatModelFactory {
             LlmModelCatalog modelCatalog,
             AiLlmProperties aiLlmProperties,
             SchemaLoader schemaLoader,
-            ConversationAnalysisProperties conversationAnalysisProperties,
+            List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.timeout:120s}") Duration defaultTimeout,
             @Value("${langchain4j.open-ai.chat-model.max-retries:3}") Integer defaultMaxRetries,
@@ -48,7 +47,7 @@ public class LlmChatModelFactory {
         this.modelCatalog = modelCatalog;
         this.aiLlmProperties = aiLlmProperties;
         this.schemaLoader = schemaLoader;
-        this.conversationAnalysisProperties = conversationAnalysisProperties;
+        this.grammarStructuredOutputPolicies = grammarStructuredOutputPolicies;
         this.httpClientBuilder = httpClientBuilder;
         this.defaultTimeout = defaultTimeout;
         this.defaultMaxRetries = defaultMaxRetries;
@@ -61,25 +60,35 @@ public class LlmChatModelFactory {
 
     public ChatModel chat(ResolvedLlmModel model) {
         String cacheKey = cacheKey(model);
-        return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig()));
+        return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), null));
+    }
+
+    /**
+     * Stage2 语法分析：与 {@link #streamingForGrammarAnalysis} 使用相同的结构化输出策略，非流式调用更稳定。
+     */
+    public ChatModel chatForGrammarAnalysis(ResolvedLlmModel model) {
+        GrammarStreamingModelSpec spec = resolveGrammarStreamingSpec(model);
+        String cacheKey = cacheKey(model) + spec.getCacheSuffix() + "|chat";
+        return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
     }
 
     public StreamingChatModel streaming(ResolvedLlmModel model) {
         String cacheKey = cacheKey(model);
-        return streamingCache.computeIfAbsent(cacheKey, key -> buildStreamingModel(model.getConfig(), null));
+        return streamingCache.computeIfAbsent(
+                cacheKey, key -> buildStreamingModel(model.getConfig(), null, false, false));
     }
 
     /**
-     * Stage2 语法分析：带对话分析 JSON Schema 的流式模型（strict 由 {@link ConversationAnalysisProperties} 控制）。
+     * Stage2 语法分析：由结构化输出策略决定 response_format / strict / max_tokens 行为。
      */
     public StreamingChatModel streamingForGrammarAnalysis(ResolvedLlmModel model) {
-        if (!conversationAnalysisProperties.isStrictJsonSchema()) {
+        GrammarStreamingModelSpec spec = resolveGrammarStreamingSpec(model);
+        if (spec.getResponseFormat() == null) {
             return streaming(model);
         }
-        String cacheKey = cacheKey(model) + CACHE_SUFFIX_GRAMMAR_SCHEMA;
-        ResponseFormat responseFormat = grammarAnalysisResponseFormat();
+        String cacheKey = cacheKey(model) + spec.getCacheSuffix();
         return streamingCache.computeIfAbsent(
-                cacheKey, key -> buildStreamingModel(model.getConfig(), responseFormat));
+                cacheKey, key -> buildStreamingModel(model.getConfig(), spec));
     }
 
     public ResponseFormat grammarAnalysisResponseFormat() {
@@ -103,26 +112,53 @@ public class LlmChatModelFactory {
                 + c.getMaxTokens();
     }
 
-    private ChatModel buildChatModel(LlmModelProperties.ModelConfig config) {
+    private ChatModel buildChatModel(LlmModelProperties.ModelConfig config, GrammarStreamingModelSpec spec) {
         Duration timeout = resolveTimeout(config);
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(timeout);
-        return OpenAiChatModel.builder()
+        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .httpClientBuilder(clientBuilder)
                 .baseUrl(normalizeBaseUrl(config.getBaseUrl()))
                 .apiKey(modelCatalog.resolveApiKey(config))
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature())
-                .maxTokens(config.getMaxTokens())
                 .timeout(timeout)
                 .maxRetries(defaultMaxRetries)
                 .logRequests(defaultLogRequests)
                 .logResponses(defaultLogResponses)
-                .customParameters(aiLlmProperties.thinkingCustomParameters())
-                .build();
+                .customParameters(aiLlmProperties.thinkingCustomParameters());
+        applyGrammarSpec(builder, config, spec);
+        return builder.build();
+    }
+
+    private void applyGrammarSpec(
+            OpenAiChatModel.OpenAiChatModelBuilder builder,
+            LlmModelProperties.ModelConfig config,
+            GrammarStreamingModelSpec spec) {
+        if (spec == null) {
+            if (config.getMaxTokens() != null) {
+                builder.maxTokens(config.getMaxTokens());
+            }
+            return;
+        }
+        if (!spec.isOmitMaxTokens() && config.getMaxTokens() != null) {
+            builder.maxTokens(config.getMaxTokens());
+        }
+        if (spec.getResponseFormat() != null) {
+            builder.responseFormat(spec.getResponseFormat())
+                    .strictJsonSchema(spec.isStrictJsonSchema());
+        }
     }
 
     private StreamingChatModel buildStreamingModel(
-            LlmModelProperties.ModelConfig config, ResponseFormat responseFormat) {
+            LlmModelProperties.ModelConfig config, GrammarStreamingModelSpec spec) {
+        return buildStreamingModel(config, spec.getResponseFormat(), spec.isStrictJsonSchema(), spec.isOmitMaxTokens());
+    }
+
+    private StreamingChatModel buildStreamingModel(
+            LlmModelProperties.ModelConfig config,
+            ResponseFormat responseFormat,
+            boolean strictJsonSchema,
+            boolean omitMaxTokens) {
         Duration timeout = resolveTimeout(config);
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(timeout);
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
@@ -131,16 +167,44 @@ public class LlmChatModelFactory {
                 .apiKey(modelCatalog.resolveApiKey(config))
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature())
-                .maxTokens(config.getMaxTokens())
                 .timeout(timeout)
                 .logRequests(defaultLogRequests)
                 .logResponses(defaultLogResponses)
                 .customParameters(aiLlmProperties.thinkingCustomParameters());
-        if (responseFormat != null) {
-            builder.responseFormat(responseFormat)
-                    .strictJsonSchema(conversationAnalysisProperties.isStrictJsonSchema());
-        }
+        GrammarStreamingModelSpec spec = GrammarStreamingModelSpec.builder()
+                .responseFormat(responseFormat)
+                .strictJsonSchema(strictJsonSchema)
+                .omitMaxTokens(omitMaxTokens)
+                .build();
+        applyGrammarSpec(builder, config, spec);
         return builder.build();
+    }
+
+    private void applyGrammarSpec(
+            OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder,
+            LlmModelProperties.ModelConfig config,
+            GrammarStreamingModelSpec spec) {
+        if (spec == null) {
+            if (config.getMaxTokens() != null) {
+                builder.maxTokens(config.getMaxTokens());
+            }
+            return;
+        }
+        if (!spec.isOmitMaxTokens() && config.getMaxTokens() != null) {
+            builder.maxTokens(config.getMaxTokens());
+        }
+        if (spec.getResponseFormat() != null) {
+            builder.responseFormat(spec.getResponseFormat())
+                    .strictJsonSchema(spec.isStrictJsonSchema());
+        }
+    }
+
+    private GrammarStreamingModelSpec resolveGrammarStreamingSpec(ResolvedLlmModel model) {
+        return grammarStructuredOutputPolicies.stream()
+                .filter(policy -> policy.supports(model))
+                .findFirst()
+                .map(policy -> policy.buildSpec(model))
+                .orElseThrow(() -> new IllegalStateException("未找到可用的语法分析结构化输出策略"));
     }
 
     private Duration resolveTimeout(LlmModelProperties.ModelConfig config) {

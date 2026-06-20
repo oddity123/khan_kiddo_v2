@@ -8,10 +8,14 @@ import com.khankiddo.learning.llm.LlmChatModelFactory;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
+import org.apache.commons.lang3.ObjectUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -34,6 +38,7 @@ import java.util.regex.Pattern;
 public class ConversationAnalysisStreamingHelper {
 
     private static final int STREAMING_PREVIEW_MAX = 80;
+    private static final int GRAMMAR_PARSE_MAX_ATTEMPTS = 2;
 
     private final LlmChatModelFactory chatModelFactory;
     private final ObjectMapper objectMapper;
@@ -79,7 +84,27 @@ public class ConversationAnalysisStreamingHelper {
                 .streamingOriginal("...")
                 .build());
 
-        String jsonText = streamJsonText(systemPrompt, userPrompt, model, progressSink);
+        GrammarAnalysisResult result = null;
+        for (int attempt = 1; attempt <= GRAMMAR_PARSE_MAX_ATTEMPTS; attempt++) {
+            StreamedGrammarJson streamed = attempt == 1
+                    ? streamJsonText(systemPrompt, userPrompt, model, progressSink)
+                    : fetchGrammarJsonSync(systemPrompt, userPrompt, model);
+            if (attempt == 1 && !streamed.streamCompletedNormally()) {
+                log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
+                        streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
+                streamed = fetchGrammarJsonSync(systemPrompt, userPrompt, model);
+            }
+            try {
+                result = parseGrammarJson(streamed.text(), streamed.finishReason());
+                break;
+            } catch (BadRequestException ex) {
+                if (attempt >= GRAMMAR_PARSE_MAX_ATTEMPTS) {
+                    throw ex;
+                }
+                log.warn("语法分析 JSON 解析失败，准备重试 ({}/{}): finishReason={}, length={}",
+                        attempt, GRAMMAR_PARSE_MAX_ATTEMPTS, streamed.finishReason(), streamed.text().length());
+            }
+        }
         progressSink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
                 .message(batched ? "正在接收第 " + batchNum + " 批分析结果..." : "正在接收 AI 分析结果...")
@@ -87,7 +112,7 @@ public class ConversationAnalysisStreamingHelper {
                 .streamingSuggestion("")
                 .streamingErrorsHint("")
                 .build());
-        return parseGrammarJson(jsonText);
+        return result;
     }
 
     private static ConversationAnalysisProgress withBatchPrefix(
@@ -122,7 +147,7 @@ public class ConversationAnalysisStreamingHelper {
         return prefix + value;
     }
 
-    private String streamJsonText(
+    private StreamedGrammarJson streamJsonText(
             String systemPrompt,
             String userPrompt,
             ResolvedLlmModel model,
@@ -133,6 +158,9 @@ public class ConversationAnalysisStreamingHelper {
         String[] last = {null, null, null};
         CountDownLatch latch = new CountDownLatch(1);
         AtomicReference<Throwable> errorRef = new AtomicReference<>();
+        AtomicReference<String> completeTextRef = new AtomicReference<>();
+        AtomicReference<FinishReason> finishReasonRef = new AtomicReference<>();
+        AtomicReference<TokenUsage> tokenUsageRef = new AtomicReference<>();
 
         ChatRequest chatRequest = ChatRequest.builder()
                 .messages(SystemMessage.from(systemPrompt), UserMessage.from(userPrompt))
@@ -141,12 +169,22 @@ public class ConversationAnalysisStreamingHelper {
         streamingChatModel.chat(chatRequest, new StreamingChatResponseHandler() {
             @Override
             public void onPartialResponse(String partialResponse) {
+                if (!StringUtils.hasText(partialResponse)) {
+                    return;
+                }
                 accumulated.append(partialResponse);
                 emitStreamingProgress(accumulated.toString(), last, onProgress);
             }
 
             @Override
             public void onCompleteResponse(ChatResponse response) {
+                if (response != null) {
+                    finishReasonRef.set(response.finishReason());
+                    tokenUsageRef.set(response.tokenUsage());
+                    if (response.aiMessage() != null && StringUtils.hasText(response.aiMessage().text())) {
+                        completeTextRef.set(response.aiMessage().text());
+                    }
+                }
                 latch.countDown();
             }
 
@@ -169,10 +207,56 @@ public class ConversationAnalysisStreamingHelper {
         if (errorRef.get() != null) {
             throw new BadRequestException("AI 分析失败: " + errorRef.get().getMessage());
         }
-        if (accumulated.isEmpty()) {
+        String finalText = resolveFinalStreamText(accumulated.toString(), completeTextRef.get());
+        if (!StringUtils.hasText(finalText)) {
             throw new BadRequestException("AI 未返回分析结果");
         }
-        return accumulated.toString();
+        return new StreamedGrammarJson(
+                finalText,
+                finishReasonRef.get(),
+                tokenUsageRef.get(),
+                isStreamCompletedNormally(finishReasonRef.get(), tokenUsageRef.get()));
+    }
+
+    private StreamedGrammarJson fetchGrammarJsonSync(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model) {
+
+        ChatModel chatModel = chatModelFactory.chatForGrammarAnalysis(model);
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(SystemMessage.from(systemPrompt), UserMessage.from(userPrompt))
+                .build();
+        ChatResponse response = chatModel.chat(chatRequest);
+        if (response == null || response.aiMessage() == null || !StringUtils.hasText(response.aiMessage().text())) {
+            throw new BadRequestException("AI 未返回分析结果");
+        }
+        FinishReason finishReason = response.finishReason();
+        TokenUsage tokenUsage = response.tokenUsage();
+        return new StreamedGrammarJson(
+                response.aiMessage().text(),
+                finishReason,
+                tokenUsage,
+                isStreamCompletedNormally(finishReason, tokenUsage));
+    }
+
+    private static boolean isStreamCompletedNormally(FinishReason finishReason, TokenUsage tokenUsage) {
+        return finishReason != null && ObjectUtils.isNotEmpty(tokenUsage);
+    }
+
+    private static String resolveFinalStreamText(String accumulated, String completeText) {
+        if (!StringUtils.hasText(accumulated)) {
+            return StringUtils.hasText(completeText) ? completeText.trim() : "";
+        }
+        if (!StringUtils.hasText(completeText)) {
+            return accumulated.trim();
+        }
+        String partial = accumulated.trim();
+        String complete = completeText.trim();
+        if (complete.length() >= partial.length()) {
+            return complete;
+        }
+        return partial;
     }
 
     private void emitStreamingProgress(
@@ -208,11 +292,19 @@ public class ConversationAnalysisStreamingHelper {
     }
 
     GrammarAnalysisResult parseGrammarJson(String raw) {
+        return parseGrammarJson(raw, null);
+    }
+
+    GrammarAnalysisResult parseGrammarJson(String raw, FinishReason finishReason) {
         try {
             String cleaned = stripMarkdownFence(raw);
             return objectMapper.readValue(cleaned, GrammarAnalysisResult.class);
         } catch (Exception ex) {
-            log.warn("语法分析 JSON 解析失败: {}", ex.getMessage());
+            log.warn("语法分析 JSON 解析失败: finishReason={}, length={}, error={}",
+                    finishReason, StringUtils.hasText(raw) ? raw.length() : 0, ex.getMessage());
+            if (finishReason == FinishReason.LENGTH) {
+                throw new BadRequestException("AI 分析结果被截断，请减少单次分析句数或稍后重试");
+            }
             throw new BadRequestException("AI 分析结果格式无效，请重试");
         }
     }
@@ -304,5 +396,12 @@ public class ConversationAnalysisStreamingHelper {
         private String original;
         private String suggestion;
         private String errorsHint;
+    }
+
+    private record StreamedGrammarJson(
+            String text,
+            FinishReason finishReason,
+            TokenUsage tokenUsage,
+            boolean streamCompletedNormally) {
     }
 }

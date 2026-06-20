@@ -6,6 +6,7 @@ import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.llm.EducationalSummaryClient;
+import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
 import com.khankiddo.learning.model.enums.ProblemType;
@@ -38,6 +39,7 @@ public class ConversationAnalysisPipeline {
     private final PromptLoader promptLoader;
     private final ConversationAnalysisProperties properties;
     private final EducationalSummaryParser summaryParser;
+    private final GrammarSystemPromptComposer grammarSystemPromptComposer;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -72,7 +74,8 @@ public class ConversationAnalysisPipeline {
                 .build());
 
         List<String> userSentences = extractUserSentences(messages);
-        String systemPrompt = promptLoader.getSystemPromptConversationAnalysis();
+        String systemPrompt = grammarSystemPromptComposer.compose(
+                promptLoader.getSystemPromptConversationAnalysis(), selectedModel);
         GrammarAnalysisResult grammar;
         if (userSentences.size() > properties.getBatchThreshold()) {
             grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, selectedModel, onProgress);
