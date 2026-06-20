@@ -1,6 +1,8 @@
 server:
   port: ${PORT:8080}
 
+# 生产部署请设置 SPRING_PROFILES_ACTIVE=prod，见 application-prod.yml
+
 spring:
   application:
     name: khanKiddo-v2

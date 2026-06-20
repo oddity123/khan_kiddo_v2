@@ -50,13 +50,15 @@ cp .env.example .env
 **相对 v1 必须新增/改名的变量：**
 
 ```bash
-# 必填（生产）
+# 必填（生产，无默认值，缺任一项 prod 启动失败）
+SPRING_PROFILES_ACTIVE=prod
 JWT_SECRET=<至少32字符随机串>
+DB_URL=jdbc:mysql://localhost:3306/khan_kiddo_dev?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
 DB_PASSWORD=<你的密码>
 DOUBAO_API_KEY=<豆包 API Key>
 
-# 端口（默认 8081，避免与 v1 冲突）
-PORT=8081
+# 端口（默认 8080）
+PORT=8080
 
 # 可选：通义千问
 QWEN_API_KEY=
@@ -146,9 +148,10 @@ server {
 
 ## 7. 上线前检查清单
 
-- [ ] `JWT_SECRET`、`DB_PASSWORD`、`DOUBAO_API_KEY` 已用环境变量注入，未依赖 yml 默认值
-- [ ] 生产关闭 LangChain4j 请求日志：`langchain4j.open-ai.chat-model.log-requests/responses: false`
-- [ ] 默认管理员 `admin/admin123`（`DefaultUserInitializer`）已禁用或改密
+- [ ] `SPRING_PROFILES_ACTIVE=prod`（启用 `application-prod.yml`）
+- [ ] `JWT_SECRET`、`DB_URL`、`DB_PASSWORD`、`DOUBAO_API_KEY` 已用环境变量注入（prod 无 yml 默认值）
+- [ ] LangChain4j 请求日志已在 prod profile 关闭（`log-requests/responses: false`）
+- [ ] prod 下不会自动创建 `admin/admin123`（`DefaultUserInitializer` 已禁用）
 - [ ] 对话分析限流已按需调整（`app.conversation-analysis.analyze-rate-limit-*`，默认每用户每分钟 5 次）
 - [ ] 健康检查：`GET /api/health`
 
