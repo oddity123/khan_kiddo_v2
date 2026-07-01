@@ -11,10 +11,13 @@ import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.enums.ProblemType;
+import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
+import com.khankiddo.learning.rag.grammar.GrammarErrorIndexedEvent;
 import com.khankiddo.learning.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -36,6 +39,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final ConversationAnalysisItemMapper itemMapper;
     private final EducationalSummaryParser summaryParser;
     private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
@@ -118,6 +122,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         List<ConversationAnalysisItem> dbItems = buildDbItems(analysisId, result);
         if (!CollectionUtils.isEmpty(dbItems)) {
             itemMapper.batchInsert(dbItems);
+            eventPublisher.publishEvent(new GrammarErrorIndexedEvent(userId, analysisId, dbItems));
         }
 
         return ConversationAnalysisResultDto.builder()
@@ -334,11 +339,19 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     @Transactional
     public void delete(String analysisId) {
         Long userId = requireUserId();
+        List<ConversationAnalysisItem> items = itemMapper.findByAnalysisId(analysisId);
+        List<Long> sentenceIds = items.stream()
+                .map(ConversationAnalysisItem::getSentenceId)
+                .distinct()
+                .toList();
         int deleted = analysisMapper.deleteByAnalysisIdAndUserId(analysisId, userId);
         if (deleted == 0) {
             throw new BadRequestException("分析记录不存在");
         }
         itemMapper.deleteByAnalysisId(analysisId);
+        if (!CollectionUtils.isEmpty(sentenceIds)) {
+            eventPublisher.publishEvent(new GrammarErrorDeletedEvent(userId, analysisId, sentenceIds));
+        }
     }
 
     private Long requireUserId() {

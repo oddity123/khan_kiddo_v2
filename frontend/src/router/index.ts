@@ -48,10 +48,10 @@ const router = createRouter({
           meta: {title: '给我留言'},
       },
       {
-          path: '/langchain4j-learning',
-          name: 'langchain4j-learning',
-          component: () => import('@/views/langchain4j/LearningView.vue'),
-          meta: {title: 'LangChain for Java 学习', requiresAuth: true},
+          path: '/conversation/grammar-rag',
+          name: 'conversation-grammar-rag',
+          component: () => import('@/views/conversation/GrammarRagView.vue'),
+          meta: {title: '语法复盘', requiresAuth: true},
       },
   ],
 })

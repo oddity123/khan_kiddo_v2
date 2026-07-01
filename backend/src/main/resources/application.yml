@@ -54,11 +54,18 @@ app:
     separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
     # Stage1/Stage2 使用 response_format json_schema + strict（对齐 v1 Doubao Responses）
     strict-json-schema: ${AI_STRICT_JSON_SCHEMA:true}
-  # LangChain for Java 学习（Easy RAG）
-  langchain4j-learning:
+  rag:
     embedding-model-name: text-embedding-v3
     embedding-max-segments-per-batch: 10
-    retrieval-max-results: 5
+  grammar-error-rag:
+    enabled: true
+    qdrant:
+      host: ${QDRANT_HOST:}
+      port: ${QDRANT_PORT:6334}
+      api-key: ${QDRANT_API_KEY:}
+      collection-name: ${QDRANT_GRAMMAR_COLLECTION:grammar_errors}
+      use-tls: ${QDRANT_USE_TLS:false}
+    retrieval-max-results: 8
     retrieval-min-score: 0.55
 
 mybatis-plus:

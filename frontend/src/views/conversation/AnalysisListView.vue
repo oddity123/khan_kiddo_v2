@@ -124,9 +124,14 @@ onMounted(loadList)
         <h1 class="page-title">分析历史</h1>
         <p class="page-desc">查看已保存的对话分析记录，点击可进入详情。</p>
       </div>
-      <router-link to="/conversation/analyze">
-        <el-button type="primary">开始分析</el-button>
-      </router-link>
+      <div class="page-actions">
+        <router-link to="/conversation/grammar-rag">
+          <el-button>语法复盘</el-button>
+        </router-link>
+        <router-link to="/conversation/analyze">
+          <el-button type="primary">开始分析</el-button>
+        </router-link>
+      </div>
     </header>
 
     <section class="list-panel kk-glass kk-glass--panel">
@@ -228,6 +233,12 @@ onMounted(loadList)
   margin: 0;
   color: var(--kk-color-text-muted);
   line-height: 1.6;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .list-panel {

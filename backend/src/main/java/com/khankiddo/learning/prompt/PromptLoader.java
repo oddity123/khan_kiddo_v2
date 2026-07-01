@@ -39,6 +39,10 @@ public class PromptLoader {
         return readPrompt("educational-summary-prompt-template.txt");
     }
 
+    public String getGrammarRagSystemPrompt() {
+        return readPrompt("grammar-rag-system.txt");
+    }
+
     public String fillTemplate(String template, String placeholder, String value) {
         return template.replace("{" + placeholder + "}", value);
     }

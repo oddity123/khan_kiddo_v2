@@ -30,6 +30,8 @@ function onAnalysisCommand(command: string) {
     router.push('/conversation/analyze')
   } else if (command === 'history') {
     router.push('/conversation/analyses')
+  } else if (command === 'grammar-rag') {
+    router.push('/conversation/grammar-rag')
   }
 }
 
@@ -98,6 +100,10 @@ async function onLogout() {
                   <el-icon><Clock /></el-icon>
                   查看历史记录
                 </el-dropdown-item>
+                <el-dropdown-item command="grammar-rag">
+                  <el-icon><Collection /></el-icon>
+                  语法复盘
+                </el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -106,18 +112,6 @@ async function onLogout() {
             <el-icon><Collection /></el-icon>
             笔记本
           </a>
-
-          <router-link
-              to="/langchain4j-learning"
-              class="nav-link"
-              :class="{ active: isActive('/langchain4j-learning') }"
-              @click="mobileOpen = false"
-          >
-            <el-icon>
-              <ChatDotRound/>
-            </el-icon>
-            LangChain for Java 学习
-          </router-link>
 
           <router-link
               to="/feedback"
