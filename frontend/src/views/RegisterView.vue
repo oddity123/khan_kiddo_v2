@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router'
 
 import { register as registerApi } from '@/api/auth'
 import { getErrorMessage } from '@/utils/error'
+import SiteBeian from '@/components/SiteBeian.vue'
 
 const router = useRouter()
 const submitting = ref(false)
@@ -141,6 +142,7 @@ async function onSubmit() {
         已有账号？
         <router-link to="/login" class="auth-link">去登录</router-link>
       </p>
+      <SiteBeian variant="auth" />
     </section>
   </div>
 </template>

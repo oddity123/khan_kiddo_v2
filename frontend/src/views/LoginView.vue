@@ -7,6 +7,7 @@ import {useRoute, useRouter} from 'vue-router'
 
 import {useAuthStore} from '@/stores/auth'
 import {getErrorMessage} from '@/utils/error'
+import SiteBeian from '@/components/SiteBeian.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -104,6 +105,7 @@ async function onSubmit() {
         还没有账号？
         <router-link to="/register" class="login-link">立即注册</router-link>
       </p>
+      <SiteBeian variant="auth" />
     </section>
   </div>
 </template>

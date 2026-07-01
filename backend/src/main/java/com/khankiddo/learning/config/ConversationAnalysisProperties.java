@@ -37,4 +37,13 @@ public class ConversationAnalysisProperties {
      * 关闭时仅依赖 prompt，易出现未转义字符导致 Jackson 解析失败。
      */
     private boolean strictJsonSchema = true;
+
+    /** 是否启用对话分析限流 */
+    private boolean analyzeRateLimitEnabled = true;
+
+    /** 限流窗口内允许的最大请求数 */
+    private int analyzeRateLimitMaxRequests = 5;
+
+    /** 限流窗口长度（分钟） */
+    private int analyzeRateLimitWindowMinutes = 1;
 }

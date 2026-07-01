@@ -1,0 +1,29 @@
+# 生产环境配置（需 SPRING_PROFILES_ACTIVE=prod）
+# 敏感项无默认值，必须通过环境变量注入：DB_URL、DB_PASSWORD、JWT_SECRET、DOUBAO_API_KEY
+
+#spring:
+#  datasource:
+#    url: ${DB_URL}
+#    username: ${DB_USERNAME:root}
+#    password: ${DB_PASSWORD}
+#
+#app:
+#  auth:
+#    jwt-secret: ${JWT_SECRET}
+
+langchain4j:
+  open-ai:
+    chat-model:
+#      api-key: ${DOUBAO_API_KEY}
+      log-requests: false
+      log-responses: false
+
+logging:
+  level:
+    root: INFO
+    com.khankiddo.learning: INFO
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never

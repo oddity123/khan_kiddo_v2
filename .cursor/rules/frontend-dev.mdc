@@ -1,5 +1,5 @@
 ---
-description: 前端开发在 frontend/ 目录执行 npm，API 开发代理到 backend:8081。
+description: 前端开发在 frontend/ 目录执行 npm，API 开发代理到 backend:8080。
 globs:
   - frontend/**
 alwaysApply: false
@@ -20,7 +20,7 @@ npm run build
 
 ## API
 
-- 开发环境 `VITE_API_BASE_URL` 为空，请求 `/api/*` 由 Vite 代理到 `http://localhost:<PORT>`（`PORT` 来自仓库根 `.env`，默认 8080）
+- 开发环境 `VITE_API_BASE_URL` 为空，请求 `/api/*` 由 Vite 代理到 `http://localhost:8080`
 - 先启动 backend：`cd .. && ./mvn.sh spring-boot:run` 或在 IDEA 运行 `KhanKiddoLearningApplication`
 
 ## 设计与样式（Editorial Calm）

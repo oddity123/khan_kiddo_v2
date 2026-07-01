@@ -1,5 +1,7 @@
 server:
-  port: ${PORT:8081}
+  port: ${PORT:8080}
+
+# 生产部署请设置 SPRING_PROFILES_ACTIVE=prod，见 application-prod.yml
 
 spring:
   application:
@@ -14,6 +16,11 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 app:
+  site:
+    icp-number: ${APP_ICP_NUMBER:鄂ICP备2026025924号}
+    icp-url: ${APP_ICP_URL:https://beian.miit.gov.cn/}
+    psb-number: ${APP_PSB_NUMBER:鄂公网安备42010202002911号}
+    psb-url: ${APP_PSB_URL:https://beian.mps.gov.cn/#/query/webSearch?code=42010202002911}
   # 对话分析 Stage2/Stage3 用户可选模型（密钥与端点见 .env：DOUBAO_* / QWEN_*）
   llm:
     # 前端未选 modelId 时的默认条目 id
@@ -54,6 +61,10 @@ app:
     separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
     # Stage1/Stage2 使用 response_format json_schema + strict（对齐 v1 Doubao Responses）
     strict-json-schema: ${AI_STRICT_JSON_SCHEMA:true}
+    # 对话分析限流：每用户每窗口最多 N 次（单实例内存计数）
+    analyze-rate-limit-enabled: true
+    analyze-rate-limit-max-requests: 5
+    analyze-rate-limit-window-minutes: 1
   rag:
     embedding-model-name: text-embedding-v3
     embedding-max-segments-per-batch: 10
