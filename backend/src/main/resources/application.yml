@@ -68,6 +68,7 @@ app:
   rag:
     embedding-model-name: text-embedding-v3
     embedding-max-segments-per-batch: 10
+    embedding-dimension: 1024
   grammar-error-rag:
     enabled: true
     qdrant:
