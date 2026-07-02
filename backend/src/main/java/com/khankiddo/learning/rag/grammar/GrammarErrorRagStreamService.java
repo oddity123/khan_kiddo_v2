@@ -31,7 +31,7 @@ public class GrammarErrorRagStreamService {
 
     private static final long SSE_TIMEOUT_MS = 5 * 60 * 1000L;
 
-    private final GrammarErrorSearchService searchService;
+    private final GrammarErrorRetrievalService retrievalService;
     private final RagChatOrchestrator chatOrchestrator;
     private final PromptLoader promptLoader;
     private final SseStreamHelper sseStreamHelper;
@@ -40,13 +40,13 @@ public class GrammarErrorRagStreamService {
     private final StreamingChatModel streamingChatModel;
 
     public GrammarErrorRagStreamService(
-            GrammarErrorSearchService searchService,
+            GrammarErrorRetrievalService retrievalService,
             RagChatOrchestrator chatOrchestrator,
             PromptLoader promptLoader,
             SseStreamHelper sseStreamHelper,
             @Qualifier(GrammarErrorRagConfig.GRAMMAR_RAG_STREAMING_CHAT_MODEL)
             StreamingChatModel streamingChatModel) {
-        this.searchService = searchService;
+        this.retrievalService = retrievalService;
         this.chatOrchestrator = chatOrchestrator;
         this.promptLoader = promptLoader;
         this.sseStreamHelper = sseStreamHelper;
@@ -71,7 +71,7 @@ public class GrammarErrorRagStreamService {
 
         Thread.startVirtualThread(() -> {
             try {
-                List<EmbeddingMatch<TextSegment>> matches = searchService.retrieveForChat(userId, trimmedMessage);
+                List<EmbeddingMatch<TextSegment>> matches = retrievalService.retrieveForChat(userId, trimmedMessage);
                 String systemPrompt = promptLoader.getGrammarRagSystemPrompt();
                 chatOrchestrator.streamAnswer(
                         streamingChatModel,

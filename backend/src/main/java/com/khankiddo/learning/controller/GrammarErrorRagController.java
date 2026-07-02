@@ -2,10 +2,7 @@ package com.khankiddo.learning.controller;
 
 import com.khankiddo.learning.config.condition.OnGrammarErrorRagCondition;
 import com.khankiddo.learning.dto.grammar.GrammarErrorChatRequest;
-import com.khankiddo.learning.dto.grammar.GrammarErrorSearchRequest;
-import com.khankiddo.learning.dto.grammar.GrammarErrorSearchResponse;
 import com.khankiddo.learning.rag.grammar.GrammarErrorRagStreamService;
-import com.khankiddo.learning.rag.grammar.GrammarErrorSearchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Conditional;
@@ -22,13 +19,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequiredArgsConstructor
 public class GrammarErrorRagController {
 
-    private final GrammarErrorSearchService searchService;
     private final GrammarErrorRagStreamService streamService;
-
-    @PostMapping("/search")
-    public GrammarErrorSearchResponse search(@Valid @RequestBody GrammarErrorSearchRequest request) {
-        return searchService.search(request);
-    }
 
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chatStream(@Valid @RequestBody GrammarErrorChatRequest request) {

@@ -1,6 +1,5 @@
-import http from './http'
 import { AUTH_TOKEN_KEY } from '@/constants/auth'
-import type { GrammarErrorSearchRequest, GrammarErrorSearchResponse, RagStreamEvent } from '@/types/grammarRag'
+import type { RagStreamEvent } from '@/types/grammarRag'
 import { RAG_STREAM_STATUS } from '@/types/grammarRag'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
@@ -43,10 +42,6 @@ function parseSseChunk(buffer: string): { remainder: string; events: RagStreamEv
     }
   }
   return { remainder, events }
-}
-
-export function searchGrammarErrors(payload: GrammarErrorSearchRequest) {
-  return http.post<GrammarErrorSearchResponse>('/api/conversation/grammar-rag/search', payload)
 }
 
 export async function chatGrammarRagStream(

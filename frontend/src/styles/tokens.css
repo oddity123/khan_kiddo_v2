@@ -103,6 +103,7 @@
   --kk-page-width: 80%;
   --kk-page-width-mobile: 94%;
   --kk-navbar-offset: 76px;
+  --kk-footer-offset: 5.5rem;
 
   /* Motion */
   --kk-ease-out: cubic-bezier(0.22, 1, 0.36, 1);

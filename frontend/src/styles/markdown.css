@@ -1,0 +1,79 @@
+.markdown-body {
+  font-family: var(--kk-font-body);
+  color: var(--kk-color-text-secondary);
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin: 0.85rem 0 0.45rem;
+  font-family: var(--kk-font-display);
+  color: var(--kk-color-primary);
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.markdown-body h1:first-child,
+.markdown-body h2:first-child,
+.markdown-body h3:first-child,
+.markdown-body h4:first-child,
+.markdown-body p:first-child {
+  margin-top: 0;
+}
+
+.markdown-body p,
+.markdown-body li {
+  margin: 0.4rem 0;
+  font-size: 0.92rem;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0.35rem 0;
+  padding-left: 1.35rem;
+}
+
+.markdown-body strong {
+  color: var(--kk-color-text);
+  font-weight: 600;
+}
+
+.markdown-body code {
+  padding: 0.12rem 0.38rem;
+  border-radius: 4px;
+  font-family: var(--kk-font-mono);
+  font-size: 0.86em;
+  background: rgba(11, 26, 125, 0.08);
+}
+
+.markdown-body pre {
+  margin: 0.55rem 0;
+  padding: 0.8rem 0.9rem;
+  overflow-x: auto;
+  border-radius: var(--kk-radius-sm);
+  background: rgba(11, 26, 125, 0.06);
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.markdown-body blockquote {
+  margin: 0.5rem 0;
+  padding: 0.35rem 0 0.35rem 0.85rem;
+  border-left: 3px solid rgba(11, 26, 125, 0.2);
+  color: var(--kk-color-text-muted);
+}
+
+.markdown-body--inverted strong {
+  color: #fff;
+}
+
+.markdown-body--inverted code {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
