@@ -107,6 +107,18 @@
         ORDER BY sentence_id ASC, id ASC
     </select>
 
+    <select id="countProblemTypesByUserId" resultType="com.khankiddo.learning.model.ProblemTypeCount">
+        SELECT cai.problem_types AS problemType, COUNT(*) AS count
+        FROM conversation_analysis_item cai
+            INNER JOIN conversation_analysis ca
+        ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+        GROUP BY cai.problem_types
+        ORDER BY count DESC
+            LIMIT 20
+    </select>
+
     <insert id="batchInsert">
         INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, error_point,
         suggestion, created_at)

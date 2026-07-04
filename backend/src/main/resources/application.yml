@@ -78,6 +78,8 @@ app:
       collection-name: ${QDRANT_GRAMMAR_COLLECTION:grammar_errors}
       use-tls: ${QDRANT_USE_TLS:false}
     retrieval-max-results: 8
+    retrieval-candidate-pool-size: 40
+    retrieval-max-secondary-results: 3
     retrieval-min-score: 0.55
 
 mybatis-plus:

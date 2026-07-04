@@ -1,6 +1,7 @@
 package com.khankiddo.learning.mapper;
 
 import com.khankiddo.learning.model.ConversationAnalysisItem;
+import com.khankiddo.learning.model.ProblemTypeCount;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -26,6 +27,8 @@ public interface ConversationAnalysisItemMapper {
                                                                  @Param("sentenceId") Long sentenceId);
 
     List<ConversationAnalysisItem> findByAnalysisId(@Param("analysisId") String analysisId);
+
+    List<ProblemTypeCount> countProblemTypesByUserId(@Param("userId") Long userId);
 
     int batchInsert(@Param("items") List<ConversationAnalysisItem> items);
 

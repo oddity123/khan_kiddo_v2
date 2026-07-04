@@ -8,11 +8,9 @@ import com.khankiddo.learning.prompt.PromptLoader;
 import com.khankiddo.learning.rag.core.RagChatOrchestrator;
 import com.khankiddo.learning.rag.core.SseStreamHelper;
 import com.khankiddo.learning.security.SecurityUtils;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -21,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
@@ -71,13 +68,17 @@ public class GrammarErrorRagStreamService {
 
         Thread.startVirtualThread(() -> {
             try {
-                List<EmbeddingMatch<TextSegment>> matches = retrievalService.retrieveForChat(userId, trimmedMessage);
+                GrammarErrorRetrievalResult retrievalResult =
+                        retrievalService.retrieveForChat(userId, trimmedMessage);
                 String systemPrompt = promptLoader.getGrammarRagSystemPrompt();
                 chatOrchestrator.streamAnswer(
                         streamingChatModel,
                         systemPrompt,
                         trimmedMessage,
-                        matches,
+                        retrievalResult.retrievalStrategy(),
+                        retrievalResult.statsSummary(),
+                        retrievalResult.matches(),
+                        retrievalResult.matchLabels(),
                         new StreamingChatResponseHandler() {
                             @Override
                             public void onPartialResponse(String partialResponse) {
