@@ -75,7 +75,7 @@ public class LlmModelProperties {
         /**
          * 采样温度，未配置时工厂侧默认 0.4。
          */
-        private Double temperature = 0.4;
+        private Double temperature = 0.2;
 
         /**
          * 单次请求最大输出 token 数。
