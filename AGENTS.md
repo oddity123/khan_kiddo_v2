@@ -15,7 +15,8 @@
   `mysql -h 127.0.0.1 -u root -proot < backend/src/main/resources/sql/DDL.sql`（DDL 全部 `IF NOT EXISTS`，幂等）。
 - **不要用仓库里的 `mvn.sh`**：它把 `JAVA_HOME` 写死为 macOS 路径，在此 Linux 环境无效。直接用系统 `mvn`
   （默认已是 Java 21），例如 `mvn -f backend/pom.xml ...`。
-- **Spring Boot 不会自动读 `.env`**：启动后端前先 `set -a && source .env && set +a`。本环境已放置一个（被 `.gitignore` 忽略、不会提交）的 dev `.env`，含 `DB_PASSWORD=root`、空 AI Key、`SPRING_PROFILES_ACTIVE=dev`。
+- **Spring Boot 不会自动读 `.env`**：启动后端前先 `set -a && source .env && set +a`。本环境已放置一个（被 `.gitignore` 忽略、不会提交）的 dev `.env`，含 `DB_PASSWORD=root`、`SPRING_PROFILES_ACTIVE=dev`，且 `DOUBAO_API_KEY=${DOUBAO_API_KEY}`（即从进程环境继承注入的密钥）。
+- **`DOUBAO_API_KEY` 由 Cloud 作为环境变量注入**：由于 `.env` 里写的是 `DOUBAO_API_KEY=${DOUBAO_API_KEY}`，务必**从已带该变量的 shell 启动后端**（新的 Shell 工具会话或新建的 tmux 会话会继承）。避免在密钥注入之前创建、之后复用的旧 tmux 会话里启动，否则展开为空、AI 分析会失败。验证：`curl -s localhost:8080/api/conversation/llm-models -H "Authorization: Bearer <token>"` 应返回 `doubao-seed` 而非 `[]`。
 - 运行后端（开发）：`set -a && source .env && set +a && mvn -f backend/pom.xml spring-boot:run`，或跑已构建的 jar
   `java -jar backend/target/khankiddo-v2-3.0.0-SNAPSHOT.jar`。
 - dev profile 会自动创建管理员账号 **`admin` / `admin123`**（`DefaultUserInitializer`，`test`/`prod` 下禁用）。
