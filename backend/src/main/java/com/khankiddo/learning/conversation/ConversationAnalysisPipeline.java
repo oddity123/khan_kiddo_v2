@@ -40,6 +40,7 @@ public class ConversationAnalysisPipeline {
     private final EducationalSummaryParser summaryParser;
     private final GrammarSystemPromptComposer grammarSystemPromptComposer;
     private final GrammarAnalysisUserPromptBuilder grammarUserPromptBuilder;
+    private final GrammarAnalysisSanitizer grammarAnalysisSanitizer;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -55,6 +56,7 @@ public class ConversationAnalysisPipeline {
         requireUserSentences(separation);
 
         GrammarAnalysisResult grammar = analyzeGrammar(separation, selectedModel, onProgress);
+        grammar = grammarAnalysisSanitizer.sanitize(grammar);
         List<AnalysisItemDto> items = toDisplayItems(grammar);
         List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
 

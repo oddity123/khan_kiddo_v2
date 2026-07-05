@@ -3,19 +3,19 @@
 app:
   performance-scoring:
     base-score: 98
-    min-score: 60
+    min-score: 45
     max-score: 98
     # penalty = density-multiplier * (1 - exp(-density-decay * weightedDensity))
     density-decay: 0.22
     density-multiplier: 34
+    # 密度/占比分母平滑：effectiveSentences = totalSentences + k，缓解极短对话过度扣分
+    density-smoothing-k: 2.0
     # 单句加权扣分上限，避免一句多错过度拉低分数
     max-weighted-penalty-per-sentence: 6.0
-    # 含高严重度错误句子的额外扣分系数
+    # 含 FATAL 级错误句子的额外扣分系数（与 ProblemType.getErrorLevel 对齐）
     severe-sentence-penalty: 4.0
-    # 含自然度类错误句子的额外扣分系数
+    # 含自然度类错误句子的额外扣分系数（仅作用于 naturalness 维度）
     naturalness-sentence-penalty: 5.0
-    # 单条错误权重 >= 此值视为「高严重度句子」
-    severe-weight-threshold: 2.8
     # 未知错误类型默认权重
     default-type-weight: 1.0
 

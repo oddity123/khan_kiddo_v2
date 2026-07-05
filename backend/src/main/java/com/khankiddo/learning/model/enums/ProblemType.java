@@ -56,8 +56,8 @@ public enum ProblemType {
 
     public ErrorLevel getErrorLevel() {
         return switch (this) {
-            case TENSE, AGREEMENT, PREPOSITION, STRUCTURE, CLAUSE, INCOMPLETE -> ErrorLevel.FATAL;
-            case PLURAL, ARTICLE, PRONOUN, WORD_FORM, COMPARISON -> ErrorLevel.BASIC;
+            case TENSE, AGREEMENT, STRUCTURE, CLAUSE, INCOMPLETE -> ErrorLevel.FATAL;
+            case PLURAL, ARTICLE, PRONOUN, WORD_FORM, COMPARISON, PREPOSITION -> ErrorLevel.BASIC;
             case WORD_CHOICE, COLLOCATION, CHINGLISH, UNNATURAL, REDUNDANCY -> ErrorLevel.NATURAL;
             default -> ErrorLevel.STYLE;
         };

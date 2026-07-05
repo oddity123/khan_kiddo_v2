@@ -75,7 +75,7 @@ export interface EducationalSummaryStats {
   totalIssues?: number
   totalSentences?: number
   mainCategory?: string
-    /** 后端确定性算法计算的综合口语自然度分（60–98） */
+    /** 后端确定性算法计算的综合口语自然度分（45–98） */
     performanceScore?: number
     dimensionScores?: PerformanceDimensionScores
 }
