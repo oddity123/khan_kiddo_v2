@@ -87,6 +87,9 @@ public class GrammarAnalysisSanitizer {
         if (error == null || !StringUtils.hasText(error.getPoint())) {
             return false;
         }
+        if (StringUtils.hasText(error.getType()) && "Chinese".equalsIgnoreCase(error.getType().trim())) {
+            return false;
+        }
         if (!StringUtils.hasText(normalizedOriginal)) {
             return true;
         }

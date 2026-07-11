@@ -51,4 +51,7 @@ public class ConversationAnalysisDetailDto {
 
     /** 错误类型分布，用于饼图等展示 */
     private List<ErrorTypeDistributionDto> errorTypeDistribution;
+
+    /** 含中文的用户句（表达缺口，不计入语法错误） */
+    private List<ChineseExpressionDto> chineseExpressions;
 }

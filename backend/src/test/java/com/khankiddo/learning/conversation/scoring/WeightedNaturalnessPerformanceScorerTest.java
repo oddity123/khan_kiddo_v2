@@ -129,7 +129,6 @@ class WeightedNaturalnessPerformanceScorerTest {
 
     private static Map<String, Double> defaultTypeWeights() {
         Map<String, Double> weights = new LinkedHashMap<>();
-        weights.put("CHINESE", 4.0);
         weights.put("INCOMPLETE", 3.5);
         weights.put("CHINGLISH", 3.2);
         weights.put("COLLOCATION", 3.0);
@@ -146,7 +145,7 @@ class WeightedNaturalnessPerformanceScorerTest {
         Map<String, PerformanceScoringProperties.DimensionConfig> dims = new LinkedHashMap<>();
         dims.put("naturalness", dimension(0.40, List.of("CHINGLISH", "COLLOCATION", "UNNATURAL", "TONE")));
         dims.put("accuracy", dimension(0.25, List.of("TENSE", "ARTICLE", "STRUCTURE")));
-        dims.put("fluency", dimension(0.20, List.of("INCOMPLETE", "CHINESE")));
+        dims.put("fluency", dimension(0.20, List.of("INCOMPLETE")));
         dims.put("lexical", dimension(0.15, List.of("COLLOCATION", "VOCABULARY")));
         return dims;
     }

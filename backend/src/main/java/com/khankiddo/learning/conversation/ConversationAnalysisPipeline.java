@@ -5,6 +5,7 @@ import com.khankiddo.learning.ai.conversation.model.*;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.llm.ChineseExpressionReviewClient;
 import com.khankiddo.learning.llm.EducationalSummaryClient;
 import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
 import com.khankiddo.learning.llm.LlmModelCatalog;
@@ -41,6 +42,8 @@ public class ConversationAnalysisPipeline {
     private final GrammarSystemPromptComposer grammarSystemPromptComposer;
     private final GrammarAnalysisUserPromptBuilder grammarUserPromptBuilder;
     private final GrammarAnalysisSanitizer grammarAnalysisSanitizer;
+    private final UtteranceRouter utteranceRouter;
+    private final ChineseExpressionReviewClient chineseExpressionReviewClient;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -55,21 +58,40 @@ public class ConversationAnalysisPipeline {
         SeparationContext separation = separateConversation(request, onProgress);
         requireUserSentences(separation);
 
-        GrammarAnalysisResult grammar = analyzeGrammar(separation, selectedModel, onProgress);
+        UtteranceRouter.RoutedUtterances routed = utteranceRouter.route(separation.userSentences());
+        if (routed.chineseCount() > 0) {
+            onProgress.accept(ConversationAnalysisProgress.of(
+                    ConversationAnalysisProgress.STATUS_ANALYZING,
+                    "检测到 " + routed.chineseCount() + " 句中文表达，已跳过语法分析"));
+        }
+
+        List<ChineseExpressionDto> chineseExpressions = reviewChineseExpressions(routed, selectedModel, onProgress);
+
+        GrammarAnalysisResult grammar = analyzeGrammar(routed.englishSentences(), selectedModel, onProgress);
         grammar = grammarAnalysisSanitizer.sanitize(grammar);
         List<AnalysisItemDto> items = toDisplayItems(grammar);
         List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
 
-        SummaryOutcome summaryOutcome = buildEducationalSummary(grammar, separation.userCount(), selectedModel, onProgress);
+        int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());
+        SummaryOutcome summaryOutcome = buildEducationalSummary(
+                grammar,
+                separation.userCount(),
+                englishPracticeCount,
+                routed.chineseCount(),
+                chineseExpressions,
+                selectedModel,
+                onProgress);
 
         return assembleResult(
                 analysisId,
                 start,
                 selectedModel,
                 separation.userCount(),
+                englishPracticeCount,
                 items,
                 grammar,
                 distribution,
+                chineseExpressions,
                 summaryOutcome);
     }
 
@@ -111,18 +133,35 @@ public class ConversationAnalysisPipeline {
         }
     }
 
-    private GrammarAnalysisResult analyzeGrammar(SeparationContext separation,
+    private List<ChineseExpressionDto> reviewChineseExpressions(
+            UtteranceRouter.RoutedUtterances routed,
+            ResolvedLlmModel model,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+        if (CollectionUtils.isEmpty(routed.chineseSentences())) {
+            return List.of();
+        }
+        onProgress.accept(ConversationAnalysisProgress.of(
+                ConversationAnalysisProgress.STATUS_ANALYZING, "正在生成中文表达英文建议..."));
+        return chineseExpressionReviewClient.review(routed.chineseSentences(), model);
+    }
+
+    private GrammarAnalysisResult analyzeGrammar(List<String> englishSentences,
                                                   ResolvedLlmModel model,
                                                   Consumer<ConversationAnalysisProgress> onProgress) {
+        if (CollectionUtils.isEmpty(englishSentences)) {
+            onProgress.accept(ConversationAnalysisProgress.of(
+                    ConversationAnalysisProgress.STATUS_PARSING, "无纯英文句，跳过语法分析"));
+            return GrammarAnalysisResult.builder().build();
+        }
+
         String systemPrompt = grammarSystemPromptComposer.compose(
                 promptLoader.getSystemPromptConversationAnalysis(), model);
-        List<String> userSentences = separation.userSentences();
 
         GrammarAnalysisResult grammar;
-        if (userSentences.size() > properties.getBatchThreshold()) {
-            grammar = batchAnalyzer.analyzeInBatches(userSentences, systemPrompt, model, onProgress);
+        if (englishSentences.size() > properties.getBatchThreshold()) {
+            grammar = batchAnalyzer.analyzeInBatches(englishSentences, systemPrompt, model, onProgress);
         } else {
-            String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(userSentences);
+            String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(englishSentences);
             grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, model, onProgress);
         }
         if (grammar == null) {
@@ -136,6 +175,9 @@ public class ConversationAnalysisPipeline {
 
     private SummaryOutcome buildEducationalSummary(GrammarAnalysisResult grammar,
                                                     int userCount,
+                                                    int englishPracticeCount,
+                                                    int chineseExpressionCount,
+                                                    List<ChineseExpressionDto> chineseExpressions,
                                                     ResolvedLlmModel model,
                                                     Consumer<ConversationAnalysisProgress> onProgress) {
         onProgress.accept(ConversationAnalysisProgress.of(
@@ -146,7 +188,9 @@ public class ConversationAnalysisPipeline {
                     summaryParser.formatItemsForSummary(grammar));
             String markdown = summaryClient.summarize(
                     promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, model);
-            EducationalSummaryDto report = summaryParser.parseMarkdownSummary(markdown, grammar, userCount);
+            EducationalSummaryDto report = summaryParser.parseMarkdownSummary(
+                    markdown, grammar, userCount, englishPracticeCount, chineseExpressionCount);
+            report.setChineseExpressions(chineseExpressions);
             return new SummaryOutcome(report, false, null);
         } catch (RuntimeException ex) {
             log.warn("教育总结生成失败，使用默认总结: {}", ex.getMessage(), ex);
@@ -157,7 +201,10 @@ public class ConversationAnalysisPipeline {
                     .status(ConversationAnalysisProgress.STATUS_SUMMARIZING)
                     .message("学习诊断概要生成失败，已使用默认总结")
                     .build());
-            return new SummaryOutcome(summaryParser.defaultReport(grammar, userCount), true, reason);
+            EducationalSummaryDto report = summaryParser.defaultReport(
+                    grammar, userCount, englishPracticeCount, chineseExpressionCount);
+            report.setChineseExpressions(chineseExpressions);
+            return new SummaryOutcome(report, true, reason);
         }
     }
 
@@ -165,15 +212,20 @@ public class ConversationAnalysisPipeline {
                                                           long startMs,
                                                           ResolvedLlmModel model,
                                                           int userCount,
+                                                          int englishPracticeCount,
                                                           List<AnalysisItemDto> items,
                                                           GrammarAnalysisResult grammar,
                                                           List<ErrorTypeDistributionDto> distribution,
+                                                          List<ChineseExpressionDto> chineseExpressions,
                                                           SummaryOutcome summaryOutcome) {
         String summaryJson = summaryParser.toJson(summaryOutcome.report());
         Map<String, Object> analysisResults = new LinkedHashMap<>();
         analysisResults.put("items", items);
         analysisResults.put("totalSentences", userCount);
+        analysisResults.put("englishPracticeCount", englishPracticeCount);
         analysisResults.put("totalErrors", countErrors(grammar));
+        analysisResults.put("chineseExpressions", chineseExpressions);
+        analysisResults.put("chineseExpressionCount", chineseExpressions.size());
         analysisResults.put("educationalSummary", summaryOutcome.report());
         analysisResults.put("errorTypeDistribution", distribution);
         analysisResults.put("summaryDegraded", summaryOutcome.degraded());

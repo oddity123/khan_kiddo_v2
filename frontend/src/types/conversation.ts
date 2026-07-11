@@ -49,14 +49,24 @@ export interface ConversationAnalysisResult {
 export interface AnalysisResultsPayload {
   items?: AnalysisItem[]
   totalSentences?: number
+  englishPracticeCount?: number
   totalErrors?: number
+  chineseExpressions?: ChineseExpressionItem[]
+  chineseExpressionCount?: number
   educationalSummary?: EducationalSummaryRoot
   errorTypeDistribution?: ErrorTypeDistribution[]
 }
 
-/** 与后端 EducationalSummaryParser / v1 一致：{ report: { overallStats, overallSummary } } */
+export interface ChineseExpressionItem {
+  originalIndex?: number
+  originalSentence: string
+  suggestion?: string
+}
+
+/** 与后端 EducationalSummaryParser / v1 一致：{ report: { overallStats, overallSummary }, chineseExpressions? } */
 export interface EducationalSummaryRoot {
   report?: EducationalSummaryReport
+  chineseExpressions?: ChineseExpressionItem[]
 }
 
 export interface EducationalSummaryReport {
@@ -74,6 +84,7 @@ export interface PerformanceDimensionScores {
 export interface EducationalSummaryStats {
   totalIssues?: number
   totalSentences?: number
+  chineseExpressionCount?: number
   mainCategory?: string
     /** 后端确定性算法计算的综合口语自然度分（45–98） */
     performanceScore?: number
@@ -155,6 +166,7 @@ export interface ConversationAnalysisDetail {
   educationalSummary?: EducationalSummaryRoot
   items?: AnalysisItem[]
   errorTypeDistribution?: ErrorTypeDistribution[]
+  chineseExpressions?: ChineseExpressionItem[]
 }
 
 export const PROGRESS_STATUS = {

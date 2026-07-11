@@ -37,29 +37,38 @@ public class EducationalSummaryParser {
     }
 
     public EducationalSummaryDto parseMarkdownSummary(
-            String markdown, GrammarAnalysisResult grammar, int userSentenceCount) {
+            String markdown,
+            GrammarAnalysisResult grammar,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount) {
         int totalIssues = countIssues(grammar);
         if (!StringUtils.hasText(markdown)) {
-            return buildReport(grammar, totalIssues, userSentenceCount, "无", "本次扫描未发现句子级错误。");
+            return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount,
+                    chineseExpressionCount, "无", "本次扫描未发现句子级错误。");
         }
         String trimmed = markdown.trim();
-        // 主要挑战始终由实际错误分布确定性推导，保证与 errorTypeDistribution 一致，
-        // 不再采信 LLM 自由生成的「主要挑战」文案（避免与统计对不上）。
         String mainCategory = computeMainCategory(grammar);
         String levelSummary = extractSection(trimmed, MARKDOWN_SUMMARY_SECTION);
         if (!StringUtils.hasText(levelSummary)) {
             levelSummary = "请以句子级分析为准。";
         }
-        return buildReport(grammar, totalIssues, userSentenceCount, mainCategory, levelSummary.trim());
+        return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount,
+                chineseExpressionCount, mainCategory, levelSummary.trim());
     }
 
-    public EducationalSummaryDto defaultReport(GrammarAnalysisResult grammar, int userSentenceCount) {
+    public EducationalSummaryDto defaultReport(
+            GrammarAnalysisResult grammar,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount) {
         int totalIssues = countIssues(grammar);
         if (totalIssues == 0) {
-            return buildReport(grammar, 0, userSentenceCount, "无", "本次扫描未发现句子级错误，表达与输入一致。");
+            return buildReport(grammar, 0, userSentenceCount, englishPracticeCount, chineseExpressionCount,
+                    "无", "本次扫描未发现句子级错误，表达与输入一致。");
         }
-        return buildReport(grammar, totalIssues, userSentenceCount, computeMainCategory(grammar),
-                "会话概要生成中断，请以句子级分析为准。");
+        return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount, chineseExpressionCount,
+                computeMainCategory(grammar), "会话概要生成中断，请以句子级分析为准。");
     }
 
     /**
@@ -105,7 +114,7 @@ public class EducationalSummaryParser {
             return summaryRoot;
         }
         PerformanceScoreResult scores = performanceScorer.score(
-                PerformanceScoringInput.fromAnalysisItems(items, totalSentences));
+                PerformanceScoringInput.fromAnalysisItems(items, resolveEnglishPracticeCount(stats, totalSentences)));
         EducationalSummaryStatsDto enrichedStats = mergeScores(
                 stats,
                 totalSentences,
@@ -115,7 +124,17 @@ public class EducationalSummaryParser {
                         .overallStats(enrichedStats)
                         .overallSummary(report.getOverallSummary())
                         .build())
+                .chineseExpressions(summaryRoot.getChineseExpressions())
                 .build();
+    }
+
+    private static int resolveEnglishPracticeCount(EducationalSummaryStatsDto stats, int fallbackTotalSentences) {
+        if (ObjectUtils.isEmpty(stats) || stats.getTotalSentences() == null) {
+            return Math.max(1, fallbackTotalSentences);
+        }
+        int total = stats.getTotalSentences();
+        int chinese = ObjectUtils.defaultIfNull(stats.getChineseExpressionCount(), 0);
+        return Math.max(1, total - chinese);
     }
 
     public String toJson(EducationalSummaryDto summaryRoot) {
@@ -140,14 +159,17 @@ public class EducationalSummaryParser {
     private EducationalSummaryDto buildReport(
             GrammarAnalysisResult grammar,
             int totalIssues,
-            int sentenceCount,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount,
             String mainCategory,
             String levelSummary) {
         PerformanceScoreResult scores = performanceScorer.score(
-                PerformanceScoringInput.fromGrammar(grammar, sentenceCount));
+                PerformanceScoringInput.fromGrammar(grammar, englishPracticeCount));
         EducationalSummaryStatsDto overallStats = EducationalSummaryStatsDto.builder()
                 .totalIssues(totalIssues)
-                .totalSentences(sentenceCount)
+                .totalSentences(userSentenceCount)
+                .chineseExpressionCount(chineseExpressionCount)
                 .mainCategory(mainCategory)
                 .performanceScore(scores.overall())
                 .dimensionScores(scores.toDimensionScoresDto())

@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * 教育总结根结构，与库表 {@code educational_summary} JSON 及分析流水线输出格式一致。
  *
@@ -18,4 +20,7 @@ public class EducationalSummaryDto {
 
     /** 诊断报告内容 */
     private EducationalSummaryReportDto report;
+
+    /** 含中文的用户句（表达缺口，不计入语法错误） */
+    private List<ChineseExpressionDto> chineseExpressions;
 }

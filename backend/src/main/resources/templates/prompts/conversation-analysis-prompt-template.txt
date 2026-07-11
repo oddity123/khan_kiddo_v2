@@ -27,7 +27,9 @@
 ### 4. 问题类型（每个错误只选最贴切的一个）
 - 语法：`Tense` 时态 / `Agreement` 主谓一致 / `Plural` 单复数 / `Article` 冠词 / `Preposition` 介词 / `Pronoun` 代词 / `Structure` 句式 / `Clause` 从句 / `Word Form` 词性 / `Comparison` 比较级
 - 表达：`Word Choice` 用词不当 / `Collocation` 搭配 / `Chinglish` 中式英语 / `Redundancy` 冗余 / `Tone` 语气 / `Unnatural` 生硬 / `Vocabulary` 词汇贫乏 / `Formal` 口语化不足
-- 其他：`Incomplete` 句子未完成（非 ASR 导致）/ `Chinese` 用中文表达
+- 其他：`Incomplete` 句子未完成（非 ASR 导致）
+
+**注意**：含中文的句子已由系统单独处理，本阶段输入中不会出现；请勿输出 `Chinese` 类型。中式英语请标为 `Chinglish`。
 
 ### 5. 句子粒度（重要）
 - **`originalSentence` 必须是单个句子**。若用户一段话包含多个句子（如「First… . Second… . Then… .」），必须**拆成多个 item** 分别分析，不要把一大段当成一句。

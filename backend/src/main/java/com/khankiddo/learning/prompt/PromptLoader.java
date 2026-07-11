@@ -39,6 +39,14 @@ public class PromptLoader {
         return readPrompt("educational-summary-prompt-template.txt");
     }
 
+    public String getSystemPromptChineseExpressionReview() {
+        return readPrompt("system-prompt-chinese-expression-review.txt");
+    }
+
+    public String getChineseExpressionReviewTemplate() {
+        return readPrompt("chinese-expression-review-prompt-template.txt");
+    }
+
     public String fillTemplate(String template, String placeholder, String value) {
         return template.replace("{" + placeholder + "}", value);
     }

@@ -20,7 +20,6 @@ app:
     default-type-weight: 1.0
 
     type-weights:
-      CHINESE: 4.0
       INCOMPLETE: 3.5
       CHINGLISH: 3.2
       COLLOCATION: 3.0
@@ -69,7 +68,6 @@ app:
         weight-in-overall: 0.20
         types:
           - INCOMPLETE
-          - CHINESE
           - REDUNDANCY
       lexical:
         weight-in-overall: 0.15
