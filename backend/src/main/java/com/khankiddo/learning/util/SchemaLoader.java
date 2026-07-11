@@ -16,9 +16,11 @@ public class SchemaLoader {
 
     private static final String CONVERSATION_ANALYSIS_SCHEMA_PATH = "schemas/conversation-analysis-schema.json";
     private static final String CONVERSATION_SEPARATION_SCHEMA_PATH = "schemas/conversation-separation-schema.json";
+    private static final String CHINESE_EXPRESSION_REVIEW_SCHEMA_PATH = "schemas/chinese-expression-review-schema.json";
 
     private volatile String conversationAnalysisSchema;
     private volatile String conversationSeparationSchema;
+    private volatile String chineseExpressionReviewSchema;
 
     public String getConversationAnalysisSchema() {
         if (conversationAnalysisSchema == null) {
@@ -32,6 +34,13 @@ public class SchemaLoader {
             conversationSeparationSchema = load(CONVERSATION_SEPARATION_SCHEMA_PATH);
         }
         return conversationSeparationSchema;
+    }
+
+    public String getChineseExpressionReviewSchema() {
+        if (chineseExpressionReviewSchema == null) {
+            chineseExpressionReviewSchema = load(CHINESE_EXPRESSION_REVIEW_SCHEMA_PATH);
+        }
+        return chineseExpressionReviewSchema;
     }
 
     private static String load(String path) {

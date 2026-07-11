@@ -23,9 +23,7 @@ import java.util.stream.Collectors;
 public class EducationalSummaryParser {
 
     private static final int MAIN_CATEGORY_MAX_LEN = 24;
-    private static final Pattern MARKDOWN_MAIN_SECTION = Pattern.compile(
-            "(?m)^#{2,3}\\s*主要挑战\\s*\\r?\\n([\\s\\S]*?)(?=^#{2,3}\\s*整体总结\\s*$|$)",
-            Pattern.MULTILINE);
+    private static final int MAIN_CATEGORY_TOP_N = 2;
     private static final Pattern MARKDOWN_SUMMARY_SECTION = Pattern.compile(
             "(?m)^#{2,3}\\s*整体总结\\s*\\r?\\n([\\s\\S]*)",
             Pattern.MULTILINE);
@@ -39,30 +37,38 @@ public class EducationalSummaryParser {
     }
 
     public EducationalSummaryDto parseMarkdownSummary(
-            String markdown, GrammarAnalysisResult grammar, int userSentenceCount) {
+            String markdown,
+            GrammarAnalysisResult grammar,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount) {
         int totalIssues = countIssues(grammar);
         if (!StringUtils.hasText(markdown)) {
-            return buildReport(grammar, totalIssues, userSentenceCount, "无", "本次扫描未发现句子级错误。");
+            return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount,
+                    chineseExpressionCount, "无", "本次扫描未发现句子级错误。");
         }
         String trimmed = markdown.trim();
-        String mainCategory = sanitizeMainCategory(extractSection(trimmed, MARKDOWN_MAIN_SECTION));
+        String mainCategory = computeMainCategory(grammar);
         String levelSummary = extractSection(trimmed, MARKDOWN_SUMMARY_SECTION);
-        if (!StringUtils.hasText(mainCategory)) {
-            mainCategory = computeMainCategory(grammar);
-        }
         if (!StringUtils.hasText(levelSummary)) {
             levelSummary = "请以句子级分析为准。";
         }
-        return buildReport(grammar, totalIssues, userSentenceCount, mainCategory, levelSummary.trim());
+        return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount,
+                chineseExpressionCount, mainCategory, levelSummary.trim());
     }
 
-    public EducationalSummaryDto defaultReport(GrammarAnalysisResult grammar, int userSentenceCount) {
+    public EducationalSummaryDto defaultReport(
+            GrammarAnalysisResult grammar,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount) {
         int totalIssues = countIssues(grammar);
         if (totalIssues == 0) {
-            return buildReport(grammar, 0, userSentenceCount, "无", "本次扫描未发现句子级错误，表达与输入一致。");
+            return buildReport(grammar, 0, userSentenceCount, englishPracticeCount, chineseExpressionCount,
+                    "无", "本次扫描未发现句子级错误，表达与输入一致。");
         }
-        return buildReport(grammar, totalIssues, userSentenceCount, computeMainCategory(grammar),
-                "会话概要生成中断，请以句子级分析为准。");
+        return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount, chineseExpressionCount,
+                computeMainCategory(grammar), "会话概要生成中断，请以句子级分析为准。");
     }
 
     /**
@@ -108,7 +114,7 @@ public class EducationalSummaryParser {
             return summaryRoot;
         }
         PerformanceScoreResult scores = performanceScorer.score(
-                PerformanceScoringInput.fromAnalysisItems(items, totalSentences));
+                PerformanceScoringInput.fromAnalysisItems(items, resolveEnglishPracticeCount(stats, totalSentences)));
         EducationalSummaryStatsDto enrichedStats = mergeScores(
                 stats,
                 totalSentences,
@@ -118,7 +124,17 @@ public class EducationalSummaryParser {
                         .overallStats(enrichedStats)
                         .overallSummary(report.getOverallSummary())
                         .build())
+                .chineseExpressions(summaryRoot.getChineseExpressions())
                 .build();
+    }
+
+    private static int resolveEnglishPracticeCount(EducationalSummaryStatsDto stats, int fallbackTotalSentences) {
+        if (ObjectUtils.isEmpty(stats) || stats.getTotalSentences() == null) {
+            return Math.max(1, fallbackTotalSentences);
+        }
+        int total = stats.getTotalSentences();
+        int chinese = ObjectUtils.defaultIfNull(stats.getChineseExpressionCount(), 0);
+        return Math.max(1, total - chinese);
     }
 
     public String toJson(EducationalSummaryDto summaryRoot) {
@@ -143,14 +159,17 @@ public class EducationalSummaryParser {
     private EducationalSummaryDto buildReport(
             GrammarAnalysisResult grammar,
             int totalIssues,
-            int sentenceCount,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount,
             String mainCategory,
             String levelSummary) {
         PerformanceScoreResult scores = performanceScorer.score(
-                PerformanceScoringInput.fromGrammar(grammar, sentenceCount));
+                PerformanceScoringInput.fromGrammar(grammar, englishPracticeCount));
         EducationalSummaryStatsDto overallStats = EducationalSummaryStatsDto.builder()
                 .totalIssues(totalIssues)
-                .totalSentences(sentenceCount)
+                .totalSentences(userSentenceCount)
+                .chineseExpressionCount(chineseExpressionCount)
                 .mainCategory(mainCategory)
                 .performanceScore(scores.overall())
                 .dimensionScores(scores.toDimensionScoresDto())
@@ -192,6 +211,10 @@ public class EducationalSummaryParser {
                 .sum();
     }
 
+    /**
+     * 由实际错误分布确定性地推导「主要挑战」：取出现频次最高的前 {@value #MAIN_CATEGORY_TOP_N}
+     * 类错误，按频次降序（同频按名称排序保证稳定），用「、」连接。保证与 errorTypeDistribution 一致。
+     */
     private String computeMainCategory(GrammarAnalysisResult grammar) {
         Map<String, Integer> counts = new HashMap<>();
         if (grammar == null || CollectionUtils.isEmpty(grammar.getItems())) {
@@ -209,10 +232,18 @@ public class EducationalSummaryParser {
                 counts.merge(label, 1, Integer::sum);
             }
         }
-        return counts.entrySet().stream()
-                .max(Comparator.comparingInt(Map.Entry::getValue))
+        String joined = counts.entrySet().stream()
+                .sorted((a, b) -> {
+                    int byCount = Integer.compare(b.getValue(), a.getValue());
+                    return byCount != 0 ? byCount : a.getKey().compareTo(b.getKey());
+                })
+                .limit(MAIN_CATEGORY_TOP_N)
                 .map(Map.Entry::getKey)
-                .orElse("未知");
+                .collect(Collectors.joining("、"));
+        if (!StringUtils.hasText(joined)) {
+            return "无";
+        }
+        return joined.length() > MAIN_CATEGORY_MAX_LEN ? joined.substring(0, MAIN_CATEGORY_MAX_LEN) : joined;
     }
 
     private static String extractSection(String text, Pattern pattern) {
@@ -222,17 +253,6 @@ public class EducationalSummaryParser {
         }
         String content = matcher.group(1);
         return StringUtils.hasText(content) ? content.trim() : null;
-    }
-
-    private static String sanitizeMainCategory(String raw) {
-        if (!StringUtils.hasText(raw)) {
-            return "未知";
-        }
-        String line = raw.lines().findFirst().orElse(raw).trim();
-        if (line.length() > MAIN_CATEGORY_MAX_LEN) {
-            return line.substring(0, MAIN_CATEGORY_MAX_LEN);
-        }
-        return line;
     }
 
     public String formatItemsForSummary(GrammarAnalysisResult grammar) {

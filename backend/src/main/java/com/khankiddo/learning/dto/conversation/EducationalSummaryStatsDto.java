@@ -20,6 +20,9 @@ public class EducationalSummaryStatsDto {
     /** 参与统计的用户发言句数 */
     private Integer totalSentences;
 
+    /** 含中文表达的用户句数（不计入语法错误） */
+    private Integer chineseExpressionCount;
+
     /** 主要挑战：出现频次最高的错误类型中文名（2–12 字短语） */
     private String mainCategory;
 

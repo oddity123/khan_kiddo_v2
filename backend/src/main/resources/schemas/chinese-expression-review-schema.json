@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "description": "与输入列表编号一致（从 1 开始）"
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "自然口语英文表达，或 How do you say ...? 式英文提问"
+          }
+        },
+        "required": ["index", "suggestion"],
+        "additionalProperties": false
+      },
+      "description": "与输入句一一对应的英文建议"
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+}

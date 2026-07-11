@@ -6,7 +6,7 @@ import type {
 } from '@/types/conversation'
 
 /** 与后端 performance-scoring 配置的分数上下限一致 */
-export const PERFORMANCE_SCORE_MIN = 60
+export const PERFORMANCE_SCORE_MIN = 45
 export const PERFORMANCE_SCORE_MAX = 98
 
 export interface PerformanceDimensionItem {

@@ -46,4 +46,13 @@ public class ConversationAnalysisProperties {
 
     /** 限流窗口长度（分钟） */
     private int analyzeRateLimitWindowMinutes = 1;
+
+    /** 是否启用语法分析结果的确定性校验层（span 校验 + 自我修正过滤） */
+    private boolean sanitizerEnabled = true;
+
+    /** 校验层：原文片段不在原句中时剔除该错误（治 suggestion/errors 脱节与假阳性） */
+    private boolean sanitizerDropUnmatchedSpan = true;
+
+    /** 校验层：口语「先说错、紧接着改对」的自我修正剔除（如 It have It has） */
+    private boolean sanitizerDropSelfCorrection = true;
 }

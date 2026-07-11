@@ -33,7 +33,7 @@ app:
         base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
         api-key: ${DOUBAO_API_KEY:}
         model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}
-        temperature: ${AI_TEMPERATURE:0.4}
+        temperature: ${AI_TEMPERATURE:0.2}
         max-tokens: ${AI_MAX_TOKENS:10240}
         enabled: true
       # 通义千问（DashScope 兼容模式）
@@ -43,7 +43,7 @@ app:
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
         model-name: ${QWEN_MODEL_NAME:qwen3.6-plus}
-        temperature: 0.7
+        temperature: 0.2
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
   auth:
@@ -95,7 +95,7 @@ langchain4j:
       api-key: ${DOUBAO_API_KEY:${AI_API_KEY:}}
       base-url: ${DOUBAO_BASE_URL:${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}}
       model-name: ${DOUBAO_MODEL_NAME:${AI_MODEL:doubao-seed-1-8-251228}}
-      temperature: ${AI_TEMPERATURE:0.4}
+      temperature: ${AI_TEMPERATURE:0.2}
       max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_TIMEOUT_MS:120s}
       max-retries: ${AI_MAX_RETRIES:3}

@@ -25,7 +25,9 @@ This is spoken English, not an essay. Apply a spoken-English bar, not a written-
 ## What TO flag
 - Real grammar errors: tense, subject-verb agreement, plurals, articles, prepositions, pronouns, sentence structure, clauses, word form, comparison.
 - Real expression problems: wrong word choice, wrong collocation, Chinglish, redundancy, wrong tone/register, stiff/unnatural phrasing.
-- Sentences left unfinished/broken (not by ASR), or spoken in Chinese instead of English.
+- Sentences left unfinished/broken (not by ASR).
+
+Sentences containing Chinese characters are handled separately and will not appear in your input. Do not output a Chinese error type. Flag Chinglish for awkward English influenced by Chinese.
 
 ## Discipline
 - Choose the single MOST specific error type for each issue; do not report the same issue under multiple types.

@@ -280,6 +280,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .educationalSummary(enrichedSummary)
                 .items(items)
                 .errorTypeDistribution(distribution)
+                .chineseExpressions(enrichedSummary.getChineseExpressions())
                 .build();
     }
 

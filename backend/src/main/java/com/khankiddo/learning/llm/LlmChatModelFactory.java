@@ -72,6 +72,22 @@ public class LlmChatModelFactory {
         return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
     }
 
+    /**
+     * 中文表达 Review：结构化 JSON 输出，单次非流式调用。
+     */
+    public ChatModel chatForChineseExpressionReview(ResolvedLlmModel model) {
+        ResponseFormat responseFormat = StructuredJsonResponseFormat.fromClasspathSchema(
+                StructuredJsonResponseFormat.CHINESE_EXPRESSION_REVIEW_SCHEMA_NAME,
+                schemaLoader.getChineseExpressionReviewSchema());
+        GrammarStreamingModelSpec spec = GrammarStreamingModelSpec.builder()
+                .responseFormat(responseFormat)
+                .strictJsonSchema(true)
+                .omitMaxTokens(false)
+                .build();
+        String cacheKey = cacheKey(model) + "|chinese-review|chat";
+        return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
+    }
+
     public StreamingChatModel streaming(ResolvedLlmModel model) {
         String cacheKey = cacheKey(model);
         return streamingCache.computeIfAbsent(

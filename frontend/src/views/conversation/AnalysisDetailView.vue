@@ -19,10 +19,11 @@ import {computed, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
+import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
-import type {ConversationAnalysisDetail} from '@/types/conversation'
+import type {ChineseExpressionItem, ConversationAnalysisDetail} from '@/types/conversation'
 import {formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
@@ -36,16 +37,37 @@ const pageReady = ref(false)
 const analysisId = computed(() => String(route.params.id ?? ''))
 const summaryReport = computed(() => detail.value?.educationalSummary?.report)
 
+const overallStats = computed(() => summaryReport.value?.overallStats)
+
 const sortedItems = computed(() => {
   const items = detail.value?.items ?? []
   return sortItemsByPriority(items)
 })
 
+const chineseExpressions = computed((): ChineseExpressionItem[] => {
+  const fromDetail = detail.value?.chineseExpressions
+  if (fromDetail?.length) {
+    return [...fromDetail].sort((a, b) => (a.originalIndex ?? 0) - (b.originalIndex ?? 0))
+  }
+  const fromSummary = detail.value?.educationalSummary?.chineseExpressions
+  if (fromSummary?.length) {
+    return [...fromSummary].sort((a, b) => (a.originalIndex ?? 0) - (b.originalIndex ?? 0))
+  }
+  return []
+})
+
+const chineseExpressionCount = computed(
+    () => overallStats.value?.chineseExpressionCount ?? chineseExpressions.value.length,
+)
+
+const englishPracticeCount = computed(() => {
+  const total = overallStats.value?.totalSentences ?? sortedItems.value.length + chineseExpressionCount.value
+  return Math.max(0, total - chineseExpressionCount.value)
+})
+
 const revisionCount = computed(() =>
     sortedItems.value.reduce((sum, item) => sum + (item.errors?.length ?? 0), 0),
 )
-
-const overallStats = computed(() => summaryReport.value?.overallStats)
 
 const performanceScore = computed(() => {
   const st = overallStats.value
@@ -138,6 +160,12 @@ watch(analysisId, loadDetail)
       />
       <div class="detail-grid">
         <main class="detail-main">
+          <ChineseExpressionFan
+              v-if="chineseExpressions.length"
+              layout="main"
+              :items="chineseExpressions"
+          />
+
           <section class="sentences-panel">
             <header class="sentences-head">
               <h2 class="section-title">
@@ -146,6 +174,9 @@ watch(analysisId, loadDetail)
                 </el-icon>
                 句子级检查
               </h2>
+              <p v-if="englishPracticeCount > 0" class="section-subtitle">
+                已分析 {{ englishPracticeCount }} 句纯英文表达
+              </p>
             </header>
 
             <el-empty
@@ -196,18 +227,37 @@ watch(analysisId, loadDetail)
                     <p class="summary-mini-card-text">{{ mainCategory || '—' }}</p>
                   </div>
                 </article>
-                <article class="summary-mini-card summary-mini-card--depth">
-                  <span class="summary-mini-card-icon" aria-hidden="true">
-                    <el-icon><DataAnalysis/></el-icon>
-                  </span>
-                  <div class="summary-mini-card-body">
-                    <p class="summary-mini-card-text summary-mini-card-text--inline">
-                      深度分析
-                      <strong>{{ overallStats?.totalSentences ?? sortedItems.length ?? '—' }}</strong>
-                      个句子
-                    </p>
-                  </div>
-                </article>
+                <div class="summary-mini-cards-row">
+                  <article class="summary-mini-card summary-mini-card--depth">
+                    <span class="summary-mini-card-icon" aria-hidden="true">
+                      <el-icon><DataAnalysis/></el-icon>
+                    </span>
+                    <div class="summary-mini-card-body">
+                      <span class="summary-mini-card-label">深度分析</span>
+                      <p class="summary-mini-card-text summary-mini-card-text--stat">
+                        <span class="summary-stat-line">
+                          <strong>{{ englishPracticeCount }}</strong>句英文
+                        </span>
+                      </p>
+                    </div>
+                  </article>
+                  <article
+                      v-if="chineseExpressionCount > 0"
+                      class="summary-mini-card summary-mini-card--cn"
+                  >
+                    <span class="summary-mini-card-icon summary-mini-card-icon--accent" aria-hidden="true">
+                      <el-icon><ChatDotRound/></el-icon>
+                    </span>
+                    <div class="summary-mini-card-body">
+                      <span class="summary-mini-card-label">中文表达</span>
+                      <p class="summary-mini-card-text summary-mini-card-text--stat">
+                        <span class="summary-stat-line">
+                          <strong>{{ chineseExpressionCount }}</strong>处
+                        </span>
+                      </p>
+                    </div>
+                  </article>
+                </div>
               </div>
             </div>
 
@@ -393,6 +443,141 @@ watch(analysisId, loadDetail)
   padding: 0 0.15rem;
 }
 
+.section-subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--kk-color-text-muted);
+}
+
+.summary-mini-cards {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.summary-mini-cards-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.summary-mini-cards-row:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+
+.summary-mini-card--depth,
+.summary-mini-card--cn {
+  padding: 0.38rem 0.4rem;
+  gap: 0.32rem;
+}
+
+.summary-mini-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.38rem 0.48rem;
+  min-height: 2.15rem;
+  border-radius: var(--kk-radius-md);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 10%, var(--kk-glass-inner-border));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.summary-mini-card--challenge {
+  align-items: center;
+}
+
+.summary-mini-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  margin-top: 0.08rem;
+  border-radius: var(--kk-radius-sm);
+  background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
+  color: var(--kk-color-primary-soft);
+  font-size: 0.85rem;
+}
+
+.summary-mini-card--challenge .summary-mini-card-icon {
+  margin-top: 0;
+}
+
+.summary-mini-card-icon--accent {
+  background: color-mix(in srgb, var(--kk-color-accent) 22%, white);
+  color: var(--kk-color-accent-text);
+  border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, transparent);
+}
+
+.summary-mini-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.summary-mini-card-label {
+  font-size: var(--summary-body);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--kk-color-accent-text);
+}
+
+.summary-mini-card-text {
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: var(--summary-body);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--kk-color-primary);
+  word-break: break-word;
+}
+
+.summary-mini-card-text--stat {
+  font-family: var(--kk-font-body);
+  font-weight: 500;
+  color: var(--kk-color-text-muted);
+  line-height: 1.3;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.summary-stat-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1rem;
+  white-space: nowrap;
+}
+
+.summary-stat-line strong {
+  font-family: var(--kk-font-display);
+  font-size: var(--summary-heading);
+  font-weight: 800;
+  color: var(--kk-color-primary);
+}
+
+.summary-mini-card--depth .summary-mini-card-label,
+.summary-mini-card--cn .summary-mini-card-label {
+  white-space: nowrap;
+}
+
+.cn-panel {
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 1023px) {
+  .summary-badge {
+    flex: 1;
+    min-width: 5.5rem;
+  }
+}
+
 .raw-fold summary {
   display: flex;
   align-items: center;
@@ -448,11 +633,14 @@ watch(analysisId, loadDetail)
 
 .summary-badge {
   flex: 0 0 auto;
+  align-self: stretch;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  padding: 0.45rem 0.55rem 0.45rem 0.45rem;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 5.6rem;
+  padding: 0.55rem 0.65rem;
   border-radius: var(--kk-radius-md);
   background: linear-gradient(
       145deg,
@@ -468,8 +656,8 @@ watch(analysisId, loadDetail)
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
+  width: 1.85rem;
+  height: 1.85rem;
   flex-shrink: 0;
   border-radius: 50%;
   background: linear-gradient(
@@ -482,19 +670,21 @@ watch(analysisId, loadDetail)
 }
 
 .summary-badge-icon {
-  font-size: 1.15rem;
+  font-size: 1rem;
 }
 
 .summary-badge-body {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.1rem;
   min-width: 0;
+  text-align: center;
 }
 
 .summary-badge-score {
   font-family: var(--kk-font-display);
-  font-size: 1.85rem;
+  font-size: 1.55rem;
   font-weight: 900;
   line-height: 1;
   color: var(--kk-color-primary);
@@ -502,87 +692,10 @@ watch(analysisId, loadDetail)
 }
 
 .summary-badge-caption {
-  font-size: var(--summary-body);
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--kk-color-accent-text);
   white-space: nowrap;
-}
-
-.summary-mini-cards {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  min-width: 0;
-}
-
-.summary-mini-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.4rem;
-  padding: 0.45rem 0.5rem;
-  border-radius: var(--kk-radius-md);
-  background: var(--kk-glass-inner-bg);
-  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 10%, var(--kk-glass-inner-border));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-}
-
-.summary-mini-card-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  flex-shrink: 0;
-  border-radius: var(--kk-radius-sm);
-  background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
-  color: var(--kk-color-primary-soft);
-  font-size: 0.85rem;
-}
-
-.summary-mini-card-icon--accent {
-  background: color-mix(in srgb, var(--kk-color-accent) 22%, white);
-  color: var(--kk-color-accent-text);
-  border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, transparent);
-}
-
-.summary-mini-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.summary-mini-card-label {
-  font-size: var(--summary-body);
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--kk-color-accent-text);
-}
-
-.summary-mini-card-text {
-  margin: 0;
-  font-family: var(--kk-font-display);
-  font-size: var(--summary-body);
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--kk-color-primary);
-  word-break: break-word;
-}
-
-.summary-mini-card-text--inline {
-  font-family: var(--kk-font-body);
-  font-weight: 500;
-  color: var(--kk-color-text-muted);
-}
-
-.summary-mini-card-text--inline strong {
-  font-family: var(--kk-font-display);
-  font-size: var(--summary-heading);
-  font-weight: 800;
-  color: var(--kk-color-primary);
-  margin: 0 0.15rem;
 }
 
 .summary-sections {

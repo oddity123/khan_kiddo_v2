@@ -17,14 +17,18 @@ import java.util.Map;
 public class PerformanceScoringProperties {
 
     private double baseScore = 98;
-    private int minScore = 60;
+    private int minScore = 45;
     private int maxScore = 98;
     private double densityDecay = 0.22;
     private double densityMultiplier = 34;
+    /**
+     * 密度与句子占比修正的分母平滑项：effectiveSentences = totalSentences + k，
+     * 避免极短对话（1–2 句）因单句错误被过度拉低。
+     */
+    private double densitySmoothingK = 2.0;
     private double maxWeightedPenaltyPerSentence = 6.0;
     private double severeSentencePenalty = 4.0;
     private double naturalnessSentencePenalty = 5.0;
-    private double severeWeightThreshold = 2.8;
     private double defaultTypeWeight = 1.0;
 
     /** ProblemType 枚举名 → 扣分权重 */
