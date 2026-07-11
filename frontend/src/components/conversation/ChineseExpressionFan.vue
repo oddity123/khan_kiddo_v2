@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
                       <section class="cn-pane cn-pane--center">
-                        <p class="pane-quote">{{ item.originalSentence }}</p>
+                        <p class="pane-quote" :title="item.originalSentence">{{ item.originalSentence }}</p>
                       </section>
                     </article>
                   </template>
@@ -339,11 +339,15 @@ onBeforeUnmount(() => {
                       <section class="cn-pane cn-pane--back">
                         <div class="cn-orig-block">
                           <span class="pane-tag">原句</span>
-                          <p class="pane-orig">{{ item.originalSentence }}</p>
+                          <p class="pane-orig" :title="item.originalSentence">{{ item.originalSentence }}</p>
                         </div>
                         <div class="cn-suggest-block">
                           <span class="pane-tag">英文建议</span>
-                          <p v-if="item.suggestion" class="pane-improved">{{ item.suggestion }}</p>
+                          <p
+                              v-if="item.suggestion"
+                              class="pane-improved"
+                              :title="item.suggestion"
+                          >{{ item.suggestion }}</p>
                           <p v-else class="cn-empty-hint">暂未生成英文建议</p>
                         </div>
                       </section>
@@ -453,8 +457,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .cn-fan {
-  padding: 0.85rem 1rem 1.1rem;
-  margin-bottom: 1.25rem;
+  padding: 0.7rem 0.9rem 0.95rem;
+  margin-bottom: 1.1rem;
   outline: none;
 }
 
@@ -501,10 +505,10 @@ onBeforeUnmount(() => {
 }
 
 .cn-fan-hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.74rem;
   color: var(--kk-color-text-subtle);
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
 .cn-fan-hint kbd {
@@ -520,7 +524,7 @@ onBeforeUnmount(() => {
 
 .cn-fan-stage {
   width: min(100%, 30rem);
-  margin: 0.85rem auto 0;
+  margin: 0.7rem auto 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -529,8 +533,8 @@ onBeforeUnmount(() => {
 .cn-fan-deck {
   position: relative;
   width: 100%;
-  min-height: calc(15.5rem + 3.5rem);
-  margin-bottom: 0.35rem;
+  min-height: calc(17.25rem + 3.25rem);
+  margin-bottom: 0.25rem;
   overflow: visible;
 }
 
@@ -540,7 +544,7 @@ onBeforeUnmount(() => {
 
 .cn-fan-deck :deep(.flashcards) {
   width: 100%;
-  padding-top: 3.25rem;
+  padding-top: 3rem;
   box-sizing: content-box;
 }
 
@@ -579,7 +583,7 @@ onBeforeUnmount(() => {
 .cn-fan-deck :deep(.flip-card),
 .cn-fan-deck :deep(.flip-card__inner) {
   width: 100%;
-  height: 15.5rem;
+  height: 17.25rem;
 }
 
 .cn-fan-deck :deep(.flip-card__front),
@@ -591,7 +595,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: 0.85rem 0.95rem;
+  padding: 0.65rem 0.8rem 0.7rem;
   border-radius: var(--kk-radius-md);
   border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, #d8c99a);
   background: linear-gradient(
@@ -622,16 +626,16 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.35rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   flex-shrink: 0;
 }
 
 .cn-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.12rem 0.5rem;
+  padding: 0.08rem 0.45rem;
   border-radius: var(--kk-radius-pill);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--kk-color-text-muted);
   background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
@@ -645,7 +649,7 @@ onBeforeUnmount(() => {
 
 .cn-card-index {
   font-family: var(--kk-font-mono);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-variant-numeric: tabular-nums;
   color: var(--kk-color-text-subtle);
 }
@@ -661,59 +665,65 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 0.35rem 0.15rem;
+  padding: 0.2rem 0.1rem;
 }
 
 .cn-pane--back {
-  gap: 0.55rem;
+  gap: 0.4rem;
 }
 
 .pane-tag {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--kk-color-text-subtle);
+  line-height: 1.2;
 }
 
 .pane-quote {
   margin: 0;
   max-width: 100%;
-  font-size: 0.98rem;
-  line-height: 1.55;
+  font-size: 0.92rem;
+  line-height: 1.45;
   color: var(--kk-color-text);
   word-break: break-word;
-  overflow: auto;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
 }
 
 .cn-orig-block {
-  flex: 1.35;
+  flex: 0 1 auto;
+  max-height: 38%;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
   overflow: hidden;
 }
 
 .pane-orig {
   margin: 0;
-  flex: 1;
-  min-height: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.8rem;
+  line-height: 1.4;
   color: var(--kk-color-text-muted);
   font-weight: 400;
   word-break: break-word;
-  overflow: auto;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .cn-suggest-block {
-  flex: 1.1;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding-top: 0.45rem;
+  gap: 0.15rem;
+  padding-top: 0.35rem;
   border-top: 1px dashed color-mix(in srgb, var(--kk-color-accent) 24%, transparent);
   overflow: hidden;
 }
@@ -723,17 +733,20 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   font-family: var(--kk-font-mono);
-  font-size: 0.9rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.4;
   color: var(--kk-color-primary);
   word-break: break-word;
-  overflow: auto;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
 }
 
 .cn-empty-hint {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: var(--kk-color-text-muted);
 }
 
@@ -742,10 +755,10 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   width: 100%;
-  min-height: 15.5rem;
-  padding: 1.5rem 1rem;
+  min-height: 17.25rem;
+  padding: 1.25rem 1rem;
   border-radius: var(--kk-radius-md);
   border: 1px dashed color-mix(in srgb, var(--kk-color-accent) 36%, transparent);
   background: color-mix(in srgb, var(--kk-color-accent) 6%, white);
@@ -792,9 +805,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.85rem;
-  margin-top: 1.35rem;
-  padding-top: 0.25rem;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+  padding-top: 0.15rem;
 }
 
 .cn-actions--done {
