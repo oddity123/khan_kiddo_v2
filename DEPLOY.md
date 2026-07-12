@@ -84,6 +84,25 @@ set -a && source .env && set +a
 
 ## 5. 构建与启动
 
+### 一键打包（推荐）
+
+```bash
+./package.sh                 # 并行打前后端；前端另产出 frontend/dist.zip
+./package.sh --frontend-only
+./package.sh --backend-only
+```
+
+### 一键上传到阿里云 ECS（宝塔）
+
+```bash
+cp deploy.env.example deploy.env   # 填写公网 IP、SSH 用户、远端目录
+ssh-copy-id root@你的公网IP
+./deploy.sh                        # 本地打包 + 上传；后端请在宝塔面板手动重启
+./deploy.sh --skip-build           # 只上传已有产物
+```
+
+配置见 `deploy.env.example`。脚本只负责上传/解压，**不自动重启** Java 进程。
+
 ### 后端
 
 ```bash
@@ -100,7 +119,7 @@ java -jar backend/target/khankiddo-v2-3.0.0-SNAPSHOT.jar
 ```bash
 cd frontend
 npm install
-npm run build    # 产物在 frontend/dist/
+npm run build    # 产物在 frontend/dist/；./package.sh 会额外生成 dist.zip
 ```
 
 生产构建时 API 与页面**同源**则 `VITE_API_BASE_URL` 留空；前后端分域则设为后端地址，例如 `https://api.example.com`。

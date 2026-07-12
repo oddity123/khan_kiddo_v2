@@ -4,6 +4,7 @@ backend/target/
 # 前端
 frontend/node_modules/
 frontend/dist/
+frontend/dist.zip
 frontend/.env.local
 
 # IDE
@@ -28,8 +29,10 @@ logs/
 .env
 .env.local
 .env.*.local
+deploy.env
 !.env.example
 !frontend/.env.example
+!deploy.env.example
 
 # Package / archives
 *.jar
