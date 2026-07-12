@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  ChatLineSquare,
-  Check,
-  CloseBold,
-  Refresh,
-  RefreshLeft,
-} from '@element-plus/icons-vue'
+import {ChatLineSquare, Check, CloseBold, Refresh, RefreshLeft,} from '@element-plus/icons-vue'
 import confetti from 'canvas-confetti'
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
@@ -24,6 +18,7 @@ interface FlashCardItem {
   id: string
   originalIndex?: number
   originalSentence: string
+  focusPhrase?: string
   suggestion?: string
   [key: string]: unknown
 }
@@ -59,11 +54,23 @@ const deckItems = computed((): FlashCardItem[] =>
       id: `cn-expr-${item.originalIndex ?? index}`,
       originalIndex: item.originalIndex,
       originalSentence: item.originalSentence,
+      focusPhrase: item.focusPhrase,
       suggestion: item.suggestion,
     })),
 )
 
 const count = computed(() => deckItems.value.length)
+
+function cardFrontText(item: FlashCardItem): string {
+  if (typeof item.focusPhrase === 'string' && item.focusPhrase.trim()) {
+    return item.focusPhrase.trim()
+  }
+  return item.originalSentence
+}
+
+function isVocabFocus(item: FlashCardItem): boolean {
+  return typeof item.focusPhrase === 'string' && item.focusPhrase.trim().length > 0
+}
 
 const isComplete = computed(() => count.value > 0 && reviewed.value >= count.value)
 
@@ -324,8 +331,28 @@ onBeforeUnmount(() => {
                         <span class="cn-badge">正面</span>
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
-                      <section class="cn-pane cn-pane--center">
-                        <p class="pane-quote" :title="item.originalSentence">{{ item.originalSentence }}</p>
+                      <section class="cn-pane cn-pane--back">
+                        <template v-if="isVocabFocus(item)">
+                          <div class="cn-suggest-block cn-suggest-block--solo">
+                            <span class="pane-tag">目标词</span>
+                            <p
+                                class="pane-improved pane-improved--center pane-improved--term"
+                                :title="cardFrontText(item)"
+                            >{{ cardFrontText(item) }}</p>
+                          </div>
+                          <p class="cn-orig-mini" :title="item.originalSentence">
+                            原句：{{ item.originalSentence }}
+                          </p>
+                        </template>
+                        <template v-else>
+                          <div class="cn-suggest-block cn-suggest-block--solo">
+                            <span class="pane-tag">原句</span>
+                            <p
+                                class="pane-improved pane-improved--center"
+                                :title="item.originalSentence"
+                            >{{ item.originalSentence }}</p>
+                          </div>
+                        </template>
                       </section>
                     </article>
                   </template>
@@ -337,19 +364,35 @@ onBeforeUnmount(() => {
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
                       <section class="cn-pane cn-pane--back">
-                        <div class="cn-orig-block">
-                          <span class="pane-tag">原句</span>
-                          <p class="pane-orig" :title="item.originalSentence">{{ item.originalSentence }}</p>
-                        </div>
-                        <div class="cn-suggest-block">
-                          <span class="pane-tag">英文建议</span>
-                          <p
-                              v-if="item.suggestion"
-                              class="pane-improved"
-                              :title="item.suggestion"
-                          >{{ item.suggestion }}</p>
-                          <p v-else class="cn-empty-hint">暂未生成英文建议</p>
-                        </div>
+                        <template v-if="isVocabFocus(item)">
+                          <div class="cn-suggest-block cn-suggest-block--solo">
+                            <span class="pane-tag">英文</span>
+                            <p
+                                v-if="item.suggestion"
+                                class="pane-improved pane-improved--center"
+                                :title="item.suggestion"
+                            >{{ item.suggestion }}</p>
+                            <p v-else class="cn-empty-hint">暂未生成英文对应</p>
+                          </div>
+                          <p class="cn-orig-mini" :title="item.originalSentence">
+                            原句：{{ item.originalSentence }}
+                          </p>
+                        </template>
+                        <template v-else>
+                          <div class="cn-orig-block">
+                            <span class="pane-tag">原句</span>
+                            <p class="pane-orig" :title="item.originalSentence">{{ item.originalSentence }}</p>
+                          </div>
+                          <div class="cn-suggest-block">
+                            <span class="pane-tag">英文建议</span>
+                            <p
+                                v-if="item.suggestion"
+                                class="pane-improved"
+                                :title="item.suggestion"
+                            >{{ item.suggestion }}</p>
+                            <p v-else class="cn-empty-hint">暂未生成英文建议</p>
+                          </div>
+                        </template>
                       </section>
                     </article>
                   </template>
@@ -661,13 +704,6 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-.cn-pane--center {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 0.2rem 0.1rem;
-}
-
 .cn-pane--back {
   gap: 0.4rem;
 }
@@ -679,19 +715,6 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   color: var(--kk-color-text-subtle);
   line-height: 1.2;
-}
-
-.pane-quote {
-  margin: 0;
-  max-width: 100%;
-  font-size: 0.92rem;
-  line-height: 1.45;
-  color: var(--kk-color-text);
-  word-break: break-word;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 7;
 }
 
 .cn-orig-block {
@@ -728,6 +751,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.cn-suggest-block--solo {
+  flex: 1;
+  justify-content: center;
+  padding-top: 0;
+  border-top: none;
+  text-align: center;
+}
+
 .pane-improved {
   margin: 0;
   flex: 1;
@@ -742,6 +773,34 @@ onBeforeUnmount(() => {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 6;
+}
+
+.pane-improved--center {
+  flex: 0 1 auto;
+  font-size: 1.05rem;
+  line-height: 1.45;
+  -webkit-line-clamp: 5;
+}
+
+.pane-improved--term {
+  font-family: var(--kk-font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.35;
+  -webkit-line-clamp: 4;
+}
+
+.cn-orig-mini {
+  margin: 0.35rem 0 0;
+  padding-top: 0.35rem;
+  border-top: 1px dashed color-mix(in srgb, var(--kk-color-accent) 24%, transparent);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--kk-color-text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cn-empty-hint {

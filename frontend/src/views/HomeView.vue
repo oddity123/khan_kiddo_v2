@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {DataAnalysis, MagicStick, Promotion, RefreshRight, TrendCharts,} from '@element-plus/icons-vue'
+import {ArrowRight, DataAnalysis, MagicStick, Promotion, Tickets,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
@@ -138,15 +138,19 @@ onMounted(loadHome)
       </article>
 
       <article class="pillar">
-        <span class="pillar-icon pillar-icon--olive"><el-icon><RefreshRight/></el-icon></span>
-        <h3 class="pillar-heading pillar-heading--green">闭环式学习体验</h3>
+        <span class="pillar-icon pillar-icon--olive"><el-icon><Tickets/></el-icon></span>
+        <h3 class="pillar-heading pillar-heading--green">自动生成知识卡片</h3>
         <p class="pillar-body">
-          分类复盘、AI 笔记与针对性建议，构建从「发现可优化点」到「肌肉记忆」的完整闭环。
+          分析结束后自动抽出可练表达，生成正反面知识卡片，复习时一翻即用。
         </p>
-        <div class="progress-track">
+        <div class="progress-meta">
+          <span class="progress-label">记忆程度</span>
+          <span class="progress-value">75%</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" aria-label="记忆程度">
           <div class="progress-fill"/>
         </div>
-        <p class="progress-caption">知识留存效率提升约 75%</p>
+        <p class="progress-caption">翻卡复习，记忆逐步加深</p>
       </article>
     </section>
 
@@ -156,49 +160,58 @@ onMounted(loadHome)
         style="--reveal-delay: 280ms"
     >
       <header class="dashboard-head">
-        <h2 class="dashboard-title">
-          <el-icon>
-            <TrendCharts/>
-          </el-icon>
-          内容分析概览
-        </h2>
+        <div class="dashboard-head-copy">
+          <h2 class="dashboard-title">学习诊断</h2>
+          <p class="dashboard-lead">把最近练习沉淀成可行动的复盘</p>
+        </div>
+        <button type="button" class="dashboard-link" @click="router.push('/conversation/analyze')">
+          去分析
+          <el-icon><ArrowRight/></el-icon>
+        </button>
       </header>
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <p class="stat-value">{{ home.analysisStats.seriousIssueCount }}</p>
-          <p class="stat-label">历史累计优化点</p>
+      <div class="stats-layout">
+        <div class="stat-hero">
+          <p class="stat-hero-value">{{ home.analysisStats.recent7DaysSentenceCount }}</p>
+          <p class="stat-hero-label">近 7 天分析句子</p>
+          <p class="stat-hero-hint">本周练习密度</p>
         </div>
-        <div class="stat-card">
-          <p class="stat-value stat-value--text">{{ home.analysisStats.mostCommonErrorType }}</p>
-          <p class="stat-label">最常见优化类型</p>
-        </div>
-        <div class="stat-card stat-card--accent">
-          <p class="stat-value">{{ home.analysisStats.recent7DaysSentenceCount }}</p>
-          <p class="stat-label">最近 7 天分析句子数</p>
+        <div class="stat-side">
+          <div class="stat-side-card">
+            <p class="stat-side-value">{{ home.analysisStats.seriousIssueCount }}</p>
+            <p class="stat-side-label">历史累计优化点</p>
+          </div>
+          <div class="stat-side-card">
+            <p class="stat-side-value stat-side-value--text">{{ home.analysisStats.mostCommonErrorType }}</p>
+            <p class="stat-side-label">最常见优化类型</p>
+          </div>
         </div>
       </div>
 
       <template v-if="recentSentences.length">
-        <h3 class="recent-head">最近 7 天分析句子</h3>
-        <article v-for="(item, idx) in recentSentences" :key="idx" class="recent-item">
-          <p class="recent-line">
-            <span class="recent-key">原句</span>
-            {{ item.originalSentence }}
-          </p>
-          <p v-if="item.suggestion" class="recent-line">
-            <span class="recent-key">AI 修改后</span>
-            <span class="recent-suggestion">{{ item.suggestion }}</span>
+        <h3 class="recent-head">最近复盘</h3>
+        <article
+            v-for="(item, idx) in recentSentences"
+            :key="idx"
+            class="recent-item"
+            :style="{ '--item-delay': `${idx * 60}ms` }"
+        >
+          <p class="recent-original">{{ item.originalSentence }}</p>
+          <p v-if="item.suggestion" class="recent-suggestion">
+            <span class="recent-arrow" aria-hidden="true">→</span>
+            {{ item.suggestion }}
           </p>
           <div v-if="item.problemTypeTags?.length" class="recent-tags">
             <span v-for="tag in item.problemTypeTags.slice(0, 3)" :key="tag">{{ tag }}</span>
           </div>
         </article>
       </template>
-      <p v-else class="dashboard-empty">
-        暂无最近 7 天分析句子，
-        <button type="button" class="link-btn" @click="router.push('/conversation/analyze')">开始分析</button>
-      </p>
+      <div v-else class="dashboard-empty">
+        <p class="dashboard-empty-text">近 7 天还没有分析记录</p>
+        <button type="button" class="btn-primary" @click="router.push('/conversation/analyze')">
+          开始分析
+        </button>
+      </div>
     </section>
   </div>
 </template>
@@ -689,8 +702,31 @@ onMounted(loadHome)
   color: #4a5068;
 }
 
-.progress-track {
+.progress-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   margin-top: 0.75rem;
+  gap: 0.5rem;
+}
+
+.progress-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #5a6178;
+}
+
+.progress-value {
+  font-family: var(--kk-font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #8a7200;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-track {
+  margin-top: 0.4rem;
   height: 5px;
   border-radius: 999px;
   background: #e0e2ea;
@@ -698,7 +734,7 @@ onMounted(loadHome)
 }
 
 .progress-fill {
-  width: 74%;
+  width: 75%;
   height: 100%;
   background: linear-gradient(90deg, #8a7200, #c9a227);
   border-radius: inherit;
@@ -710,143 +746,267 @@ onMounted(loadHome)
   color: #7a8094;
 }
 
-/* Dashboard */
+/* Dashboard — 编辑式诊断台 */
 .dashboard {
-  background: #fff;
+  position: relative;
+  background: var(--kk-color-surface-solid);
   border-radius: var(--kk-radius-lg);
-  padding: clamp(1.25rem, 2vw, 1.75rem);
-  border: 1px solid rgba(11, 26, 125, 0.06);
+  padding: clamp(1.35rem, 2.2vw, 1.9rem);
+  border: 1px solid var(--kk-color-border);
   box-shadow: var(--kk-shadow-card);
+  overflow: hidden;
+}
+
+.dashboard::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--kk-color-primary), var(--kk-color-accent));
+}
+
+.dashboard-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+.dashboard-head-copy {
+  min-width: 0;
 }
 
 .dashboard-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 1.25rem;
-  font-family: var(--kk-font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--kk-color-primary);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.stat-card {
-  text-align: center;
-  padding: 1.1rem 0.75rem;
-  border-radius: var(--kk-radius-md);
-  background: linear-gradient(160deg, #f5f6fa 0%, #eceef5 100%);
-  border: 1px solid rgba(11, 26, 125, 0.05);
-}
-
-.stat-card--accent {
-  background: linear-gradient(160deg, #edf7f0 0%, #dceee3 100%);
-}
-
-.stat-value {
   margin: 0;
   font-family: var(--kk-font-display);
-  font-size: 2rem;
-  font-weight: 800;
-  line-height: 1.1;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--kk-color-primary);
 }
 
-.stat-value--text {
-  font-size: 1.25rem;
-}
-
-.stat-card--accent .stat-value {
-  color: #2d6a4f;
-}
-
-.stat-label {
+.dashboard-lead {
   margin: 0.35rem 0 0;
-  font-size: 0.82rem;
-  color: #656b7e;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--kk-color-text-muted);
+}
+
+.dashboard-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  padding: 0.35rem 0.15rem;
+  border: none;
+  background: none;
+  color: var(--kk-color-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--kk-duration-normal) var(--kk-ease-out),
+  gap var(--kk-duration-normal) var(--kk-ease-out);
+}
+
+.dashboard-link:hover {
+  color: var(--kk-color-accent-text);
+  gap: 0.4rem;
+}
+
+.stats-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-hero {
+  position: relative;
+  padding: 1.35rem 1.25rem 1.2rem;
+  border-radius: var(--kk-radius-md);
+  background: linear-gradient(145deg, #101c6e 0%, var(--kk-color-primary) 55%, #223194 100%);
+  color: #f4f6ff;
+  overflow: hidden;
+  animation: stat-in 0.7s var(--kk-ease-out) both;
+}
+
+.stat-hero::after {
+  content: '';
+  position: absolute;
+  right: -12%;
+  top: -30%;
+  width: 55%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(184, 148, 31, 0.28) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.stat-hero-value {
+  position: relative;
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: clamp(2.6rem, 5vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-hero-label {
+  position: relative;
+  margin: 0.65rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(244, 246, 255, 0.92);
+}
+
+.stat-hero-hint {
+  position: relative;
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: rgba(244, 246, 255, 0.58);
+}
+
+.stat-side {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.stat-side-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.95rem 1.05rem;
+  border-radius: var(--kk-radius-md);
+  background: linear-gradient(160deg, #f5f6fa 0%, #eceef5 100%);
+  border: 1px solid var(--kk-color-border-subtle);
+  animation: stat-in 0.7s var(--kk-ease-out) both;
+}
+
+.stat-side-card:nth-child(1) {
+  animation-delay: 80ms;
+}
+
+.stat-side-card:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.stat-side-value {
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--kk-color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-side-value--text {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.stat-side-label {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--kk-color-text-muted);
+}
+
+@keyframes stat-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .recent-head {
-  margin: 0 0 0.75rem;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #656b7e;
-  letter-spacing: 0.02em;
+  margin: 0 0 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kk-color-text-subtle);
 }
 
 .recent-item {
-  padding: 1rem 1.1rem;
-  margin-bottom: 0.65rem;
-  border-radius: var(--kk-radius-md);
-  background: #f7f8fc;
-  border-left: 3px solid var(--kk-color-primary);
+  padding: 1rem 0 1.05rem;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--kk-color-border);
+  background: transparent;
+  border-left: none;
+  border-radius: 0;
+  animation: stat-in 0.55s var(--kk-ease-out) both;
+  animation-delay: var(--item-delay, 0ms);
 }
 
-.recent-line {
-  margin: 0 0 0.35rem;
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: #3d4460;
+.recent-item:last-of-type {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.recent-key {
-  display: inline-block;
-  min-width: 4.5rem;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #7a8094;
-  margin-right: 0.5rem;
+.recent-original {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--kk-color-text-subtle);
+  text-decoration: line-through;
+  text-decoration-color: rgba(122, 128, 148, 0.45);
 }
 
 .recent-suggestion {
-  color: #1f4da9;
+  display: flex;
+  gap: 0.45rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
   font-weight: 600;
+  color: var(--kk-color-link);
+}
+
+.recent-arrow {
+  flex-shrink: 0;
+  color: var(--kk-color-accent);
+  font-weight: 700;
 }
 
 .recent-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
 }
 
 .recent-tags span {
-  padding: 0.18rem 0.55rem;
-  border-radius: 999px;
-  background: #fff3bf;
-  color: #6a5700;
-  font-size: 0.72rem;
-  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--kk-radius-sm);
+  background: var(--kk-color-accent-bg);
+  color: var(--kk-color-accent-text);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.5rem 0 0.15rem;
+}
+
+.dashboard-empty-text {
   margin: 0;
-  color: #656b7e;
+  color: var(--kk-color-text-muted);
   font-size: 0.92rem;
-}
-
-.link-btn {
-  border: none;
-  background: none;
-  color: var(--kk-color-primary);
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.link-btn:hover {
-  color: var(--kk-color-accent);
 }
 
 @media (max-width: 992px) {
@@ -887,7 +1047,23 @@ onMounted(loadHome)
     grid-template-columns: 1fr;
   }
 
-  .stats-grid {
+  .stats-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-side {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stat-side {
     grid-template-columns: 1fr;
   }
 }

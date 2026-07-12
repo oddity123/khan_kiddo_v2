@@ -26,9 +26,9 @@ defineProps<{
         <span class="pane-head-icon" aria-hidden="true">
           <el-icon><ChatLineSquare/></el-icon>
         </span>
-        <span class="pane-tag">原句</span>
+        <span class="pane-tag">{{ item.focusPhrase ? '目标词' : '原句' }}</span>
       </header>
-      <p class="pane-quote">{{ item.originalSentence }}</p>
+      <p class="pane-quote">{{ item.focusPhrase || item.originalSentence }}</p>
     </section>
 
     <section v-if="item.suggestion" class="cn-pane cn-pane--suggest">
@@ -36,12 +36,13 @@ defineProps<{
         <span class="pane-head-icon pane-head-icon--ai" aria-hidden="true">
           <el-icon><MagicStick/></el-icon>
         </span>
-        <span class="pane-tag pane-tag--ai">英文建议</span>
+        <span class="pane-tag pane-tag--ai">{{ item.focusPhrase ? '英文' : '英文建议' }}</span>
       </header>
       <p class="pane-improved">{{ item.suggestion }}</p>
     </section>
 
-    <p v-else class="cn-empty-hint">暂未生成英文建议，可稍后重试分析。</p>
+    <p v-if="item.focusPhrase" class="cn-empty-hint">原句：{{ item.originalSentence }}</p>
+    <p v-else-if="!item.suggestion" class="cn-empty-hint">暂未生成英文建议，可稍后重试分析。</p>
   </article>
 </template>
 
