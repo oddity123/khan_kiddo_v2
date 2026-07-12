@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {Cpu, Document, RefreshRight, Upload} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
-import {computed, onMounted, ref} from 'vue'
+import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 
 import {analyzeConversationStream, listConversationLlmModels} from '@/api/conversationAnalysis'
@@ -36,6 +36,26 @@ const streamingLive = ref({
   errorsHint: '',
 })
 let lastStreamingCommitKey = ''
+
+const progressListRef = ref<HTMLElement | null>(null)
+const streamingScrollRef = ref<HTMLElement | null>(null)
+
+function scrollPaneToBottom(el: HTMLElement | null) {
+  if (!el) {
+    return
+  }
+  el.scrollTop = el.scrollHeight
+}
+
+async function scrollProgressToLatest() {
+  await nextTick()
+  scrollPaneToBottom(progressListRef.value)
+}
+
+async function scrollStreamingToLatest() {
+  await nextTick()
+  scrollPaneToBottom(streamingScrollRef.value)
+}
 
 const charCount = computed(() => content.value.length)
 
@@ -146,6 +166,14 @@ const showStreamingPanel = computed(() => {
       !!live.errorsHint
   )
 })
+
+watch(progressLog, () => {
+  void scrollProgressToLatest()
+}, {deep: true})
+
+watch([streamingCommitted, streamingLive, showStreamingPanel], () => {
+  void scrollStreamingToLatest()
+}, {deep: true})
 
 const isStreamingPlaceholder = computed(() => {
   const orig = streamingLive.value.original.trim()
@@ -285,64 +313,75 @@ async function onAnalyze() {
           本次使用：{{ selectedModelLabel }}
         </p>
 
-        <div v-if="progressLog.length" class="progress-list">
-          <div v-for="(step, idx) in progressLog" :key="idx" class="progress-item">
-            <span class="progress-emoji">{{ statusLabels[step.status]?.emoji ?? '⏳' }}</span>
-            <div>
-              <p class="progress-title">{{ statusLabels[step.status]?.title ?? '处理中' }}</p>
-              <p v-if="step.message" class="progress-msg">{{ step.message }}</p>
-              <p v-if="step.errorMessage" class="progress-msg progress-msg--error">{{ step.errorMessage }}</p>
-              <p
-                  v-if="step.messageStats"
-                  class="progress-msg"
-              >
-                共 {{ step.messageStats.totalMessages }} 条消息（用户 {{ step.messageStats.userMessages }} /
-                AI {{ step.messageStats.aiMessages }}）
-              </p>
+        <div class="result-panel-body">
+          <div
+              v-if="progressLog.length"
+              ref="progressListRef"
+              class="progress-list"
+          >
+            <div v-for="(step, idx) in progressLog" :key="idx" class="progress-item">
+              <span class="progress-emoji">{{ statusLabels[step.status]?.emoji ?? '⏳' }}</span>
+              <div>
+                <p class="progress-title">{{ statusLabels[step.status]?.title ?? '处理中' }}</p>
+                <p v-if="step.message" class="progress-msg">{{ step.message }}</p>
+                <p v-if="step.errorMessage" class="progress-msg progress-msg--error">{{ step.errorMessage }}</p>
+                <p
+                    v-if="step.messageStats"
+                    class="progress-msg"
+                >
+                  共 {{ step.messageStats.totalMessages }} 条消息（用户 {{ step.messageStats.userMessages }} /
+                  AI {{ step.messageStats.aiMessages }}）
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <section v-if="showStreamingPanel" class="streaming-panel" aria-label="实时句子预览">
-          <h3 class="streaming-panel-title">实时分析</h3>
-          <p v-if="streamingLive.errorsHint" class="streaming-errors-hint">
-            {{ streamingLive.errorsHint }}
-          </p>
-          <div
-              v-for="(row, idx) in streamingCommitted"
-              :key="`commit-${idx}`"
-              class="stream-card stream-card--done"
+          <section
+              v-if="showStreamingPanel"
+              ref="streamingScrollRef"
+              class="streaming-panel"
+              aria-label="实时句子预览"
           >
-            <p v-if="row.original" class="stream-line">
-              <span class="stream-label">原句</span>{{ row.original }}
+            <span class="streaming-float-btn" role="status">实时分析</span>
+            <p v-if="streamingLive.errorsHint" class="streaming-errors-hint">
+              {{ streamingLive.errorsHint }}
             </p>
-            <p class="stream-line">
-              <span class="stream-label">建议</span>
-              <span v-if="row.suggestion" class="stream-suggestion">{{ row.suggestion }}</span>
-              <span v-else class="stream-muted">—</span>
-            </p>
-          </div>
-          <div v-if="streamingLive.original || streamingLive.suggestion" class="stream-card stream-card--live">
-            <p v-if="isStreamingPlaceholder" class="stream-placeholder">
-              正在接收分析结果…
-            </p>
-            <template v-else>
-              <p v-if="streamingLive.original" class="stream-line">
-                <span class="stream-label">原句</span>{{ streamingLive.original }}
+            <div
+                v-for="(row, idx) in streamingCommitted"
+                :key="`commit-${idx}`"
+                class="stream-card stream-card--done"
+            >
+              <p v-if="row.original" class="stream-line">
+                <span class="stream-label">原句</span>{{ row.original }}
               </p>
               <p class="stream-line">
                 <span class="stream-label">建议</span>
-                <span v-if="streamingLive.suggestion" class="stream-suggestion">{{
-                    streamingLive.suggestion
-                  }}</span>
+                <span v-if="row.suggestion" class="stream-suggestion">{{ row.suggestion }}</span>
                 <span v-else class="stream-muted">—</span>
               </p>
-            </template>
-          </div>
-        </section>
+            </div>
+            <div v-if="streamingLive.original || streamingLive.suggestion" class="stream-card stream-card--live">
+              <p v-if="isStreamingPlaceholder" class="stream-placeholder">
+                正在接收分析结果…
+              </p>
+              <template v-else>
+                <p v-if="streamingLive.original" class="stream-line">
+                  <span class="stream-label">原句</span>{{ streamingLive.original }}
+                </p>
+                <p class="stream-line">
+                  <span class="stream-label">建议</span>
+                  <span v-if="streamingLive.suggestion" class="stream-suggestion">{{
+                      streamingLive.suggestion
+                    }}</span>
+                  <span v-else class="stream-muted">—</span>
+                </p>
+              </template>
+            </div>
+          </section>
 
-        <div v-else-if="analyzing" class="result-loading">
-          <el-skeleton :rows="4" animated/>
+          <div v-else-if="analyzing" class="result-loading">
+            <el-skeleton :rows="4" animated/>
+          </div>
         </div>
       </section>
     </div>
@@ -386,6 +425,29 @@ async function onAnalyze() {
   padding: 1.25rem 1.35rem;
 }
 
+.result-panel {
+  height: 36rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.result-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.progress-model-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--kk-color-text-muted);
+  flex-shrink: 0;
+}
+
 .panel-label {
   display: flex;
   align-items: center;
@@ -394,6 +456,7 @@ async function onAnalyze() {
   font-weight: 700;
   color: var(--kk-color-primary);
   font-size: 0.92rem;
+  flex-shrink: 0;
 }
 
 .input-meta {
@@ -445,13 +508,6 @@ async function onAnalyze() {
   color: var(--kk-color-text-subtle);
 }
 
-.progress-model-hint {
-  margin: 0 0 0.75rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--kk-color-text-muted);
-}
-
 .input-actions {
   display: flex;
   flex-wrap: wrap;
@@ -472,12 +528,20 @@ async function onAnalyze() {
 }
 
 .progress-list {
+  flex: 0 1 auto;
+  max-height: 40%;
+  min-height: 5.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  margin-bottom: 1rem;
-  max-height: 20rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.15rem;
+}
+
+.result-panel-body:not(:has(.streaming-panel)) .progress-list {
+  flex: 1 1 auto;
+  max-height: none;
 }
 
 .progress-item {
@@ -487,6 +551,7 @@ async function onAnalyze() {
   border-radius: var(--kk-radius-md);
   background: var(--kk-glass-inner-bg);
   border: 1px solid var(--kk-glass-inner-border);
+  flex-shrink: 0;
 }
 
 .progress-emoji {
@@ -512,16 +577,47 @@ async function onAnalyze() {
 }
 
 .streaming-panel {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  padding-top: 0.35rem;
   border-top: 1px solid var(--kk-glass-inner-border);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.15rem;
 }
 
-.streaming-panel-title {
-  margin: 0 0 0.55rem;
-  font-size: 0.82rem;
-  font-weight: 700;
+.streaming-float-btn {
+  position: sticky;
+  top: 0.35rem;
+  float: right;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0.1rem 0.55rem 0.75rem;
+  padding: 0.28rem 0.72rem;
+  border-radius: var(--kk-radius-pill);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 16%, transparent);
+  background: #fff;
   color: var(--kk-color-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  box-shadow: 0 4px 12px rgba(36, 39, 64, 0.1);
+  transition:
+      transform 0.16s ease,
+      box-shadow 0.16s ease,
+      background 0.16s ease,
+      border-color 0.16s ease;
+}
+
+.streaming-float-btn:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
+  border-color: color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
+  box-shadow: 0 8px 18px rgba(36, 39, 64, 0.14);
 }
 
 .streaming-errors-hint {
@@ -585,6 +681,10 @@ async function onAnalyze() {
 @media (max-width: 992px) {
   .analyze-grid {
     grid-template-columns: 1fr;
+  }
+
+  .result-panel {
+    height: 32rem;
   }
 }
 </style>
