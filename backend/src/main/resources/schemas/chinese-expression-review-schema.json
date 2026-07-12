@@ -10,15 +10,23 @@
             "type": "integer",
             "description": "与输入列表编号一致（从 1 开始）"
           },
+          "focusPhrase": {
+            "type": "string",
+            "description": "词汇求助时抽出的中文目标词/短语；内容表达场景填空字符串"
+          },
           "suggestion": {
             "type": "string",
-            "description": "自然口语英文表达，或 How do you say ...? 式英文提问"
+            "description": "词汇求助：目标词的简洁英文对应；内容表达：整句口语英文改写"
           }
         },
-        "required": ["index", "suggestion"],
+        "required": [
+          "index",
+          "focusPhrase",
+          "suggestion"
+        ],
         "additionalProperties": false
       },
-      "description": "与输入句一一对应的英文建议"
+      "description": "与输入句一一对应的知识卡片内容"
     }
   },
   "required": ["items"],

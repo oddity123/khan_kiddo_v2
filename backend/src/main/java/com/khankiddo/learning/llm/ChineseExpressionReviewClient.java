@@ -17,13 +17,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
- * 对含中文的用户句批量生成英文建议（单次非流式 LLM 调用）。
+ * 对含中文的用户句批量生成知识卡片内容（focusPhrase + suggestion，单次非流式 LLM 调用）。
  */
 @Slf4j
 @Component
@@ -51,7 +48,7 @@ public class ChineseExpressionReviewClient {
             ChatResponse response = chatModel.chat(request);
             String json = response.aiMessage().text();
             ChineseExpressionReviewResult parsed = objectMapper.readValue(json, ChineseExpressionReviewResult.class);
-            return mergeSuggestions(chineseSentences, parsed);
+            return dedupeByFocusPhrase(mergeSuggestions(chineseSentences, parsed));
         } catch (Exception ex) {
             log.warn("中文表达建议生成失败，保留原句: {}", ex.getMessage(), ex);
             return fallbackWithoutSuggestions(chineseSentences);
@@ -75,11 +72,11 @@ public class ChineseExpressionReviewClient {
     private static List<ChineseExpressionDto> mergeSuggestions(
             List<UtteranceRouter.RoutedChineseSentence> chineseSentences,
             ChineseExpressionReviewResult parsed) {
-        Map<Integer, String> suggestionByIndex = new HashMap<>();
+        Map<Integer, ChineseExpressionReviewItemDto> itemByIndex = new HashMap<>();
         if (parsed != null && !CollectionUtils.isEmpty(parsed.getItems())) {
             for (ChineseExpressionReviewItemDto item : parsed.getItems()) {
-                if (item.getIndex() >= 1 && StringUtils.hasText(item.getSuggestion())) {
-                    suggestionByIndex.put(item.getIndex(), item.getSuggestion().trim());
+                if (item.getIndex() >= 1) {
+                    itemByIndex.put(item.getIndex(), item);
                 }
             }
         }
@@ -87,13 +84,50 @@ public class ChineseExpressionReviewClient {
         for (int i = 0; i < chineseSentences.size(); i++) {
             UtteranceRouter.RoutedChineseSentence routed = chineseSentences.get(i);
             int promptIndex = i + 1;
+            ChineseExpressionReviewItemDto item = itemByIndex.get(promptIndex);
+            String suggestion = "";
+            String focusPhrase = "";
+            if (item != null) {
+                if (StringUtils.hasText(item.getSuggestion())) {
+                    suggestion = item.getSuggestion().trim();
+                }
+                if (StringUtils.hasText(item.getFocusPhrase())) {
+                    focusPhrase = item.getFocusPhrase().trim();
+                }
+            }
             result.add(ChineseExpressionDto.builder()
                     .originalIndex(routed.originalIndex())
                     .originalSentence(routed.sentence())
-                    .suggestion(suggestionByIndex.getOrDefault(promptIndex, ""))
+                    .focusPhrase(focusPhrase)
+                    .suggestion(suggestion)
                     .build());
         }
         return result;
+    }
+
+    /**
+     * 同一 {@code focusPhrase}（去空白后）只保留首次出现；无 focusPhrase 的内容表达项不去重。
+     */
+    static List<ChineseExpressionDto> dedupeByFocusPhrase(List<ChineseExpressionDto> items) {
+        if (CollectionUtils.isEmpty(items)) {
+            return items;
+        }
+        Set<String> seenFocus = new HashSet<>();
+        List<ChineseExpressionDto> result = new ArrayList<>();
+        for (ChineseExpressionDto item : items) {
+            if (StringUtils.hasText(item.getFocusPhrase())) {
+                String key = normalizeFocusPhrase(item.getFocusPhrase());
+                if (!seenFocus.add(key)) {
+                    continue;
+                }
+            }
+            result.add(item);
+        }
+        return result;
+    }
+
+    private static String normalizeFocusPhrase(String focusPhrase) {
+        return focusPhrase.replaceAll("\\s+", "");
     }
 
     private static List<ChineseExpressionDto> fallbackWithoutSuggestions(
@@ -103,6 +137,7 @@ public class ChineseExpressionReviewClient {
             result.add(ChineseExpressionDto.builder()
                     .originalIndex(routed.originalIndex())
                     .originalSentence(routed.sentence())
+                    .focusPhrase("")
                     .suggestion("")
                     .build());
         }

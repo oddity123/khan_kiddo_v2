@@ -60,6 +60,8 @@ export interface AnalysisResultsPayload {
 export interface ChineseExpressionItem {
   originalIndex?: number
   originalSentence: string
+    /** 词汇求助时抽出的中文目标词；有则作为知识卡片正面 */
+    focusPhrase?: string
   suggestion?: string
 }
 
