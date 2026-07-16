@@ -24,6 +24,13 @@ public interface ConversationAnalysisMapper {
 
     long countByUserId(@Param("userId") Long userId);
 
+    /**
+     * 统计用户分析次数；{@code days} 为空或 ≤0 表示不限时间。
+     */
+    long countByUserIdAndStatusAndDays(@Param("userId") Long userId,
+                                       @Param("status") String status,
+                                       @Param("days") Integer days);
+
     List<ConversationAnalysis> findByConditions(@Param("userId") Long userId,
                                                 @Param("status") String status,
                                                 @Param("startTime") LocalDateTime startTime,

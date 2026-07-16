@@ -12,8 +12,6 @@ public class GrammarErrorRagProperties {
     private boolean enabled = true;
     private Qdrant qdrant = new Qdrant();
     private int retrievalMaxResults = 8;
-    private int retrievalCandidatePoolSize = 40;
-    private int retrievalMaxSecondaryResults = 3;
     private double retrievalMinScore = 0.55;
 
     @Data

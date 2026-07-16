@@ -119,6 +119,71 @@
             LIMIT 20
     </select>
 
+    <select id="countProblemTypesByUserIdAndDays" resultType="com.khankiddo.learning.model.ProblemTypeCount">
+        SELECT cai.problem_types AS problemType, COUNT(*) AS count
+        FROM conversation_analysis_item cai
+        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+        AND ca.status = 'success'
+        <if test="days != null and days > 0">
+            AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        </if>
+        GROUP BY cai.problem_types
+        ORDER BY count DESC
+        LIMIT 20
+    </select>
+
+    <select id="findErrorExamplesByUserId" resultMap="ConversationAnalysisItemResultMap">
+        SELECT cai.id,
+        cai.analysis_id,
+        cai.sentence_id,
+        cai.original_sentence,
+        cai.problem_types,
+        cai.error_point,
+        cai.suggestion,
+        cai.created_at
+        FROM conversation_analysis_item cai
+        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+        AND ca.status = 'success'
+        <if test="problemTypes != null and problemTypes.size() > 0">
+            AND cai.problem_types IN
+            <foreach collection="problemTypes" item="pt" open="(" separator="," close=")">
+                #{pt}
+            </foreach>
+        </if>
+        <if test="days != null and days > 0">
+            AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        </if>
+        ORDER BY cai.created_at DESC, cai.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countDistinctErrorSentencesByUserIdAndDays" resultType="long">
+        SELECT COUNT(DISTINCT cai.analysis_id, cai.sentence_id)
+        FROM conversation_analysis_item cai
+        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+        AND ca.status = 'success'
+        <if test="days != null and days > 0">
+            AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        </if>
+    </select>
+
+    <select id="getMostCommonProblemTypeByUserIdAndDays" resultType="map">
+        SELECT cai.problem_types AS problemType, COUNT(*) AS count
+        FROM conversation_analysis_item cai
+        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+        AND ca.status = 'success'
+        <if test="days != null and days > 0">
+            AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        </if>
+        GROUP BY cai.problem_types
+        ORDER BY count DESC
+        LIMIT 1
+    </select>
+
     <insert id="batchInsert">
         INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, error_point,
         suggestion, created_at)

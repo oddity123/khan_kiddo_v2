@@ -126,6 +126,12 @@
             <classifier>osx-aarch_64</classifier>
         </dependency>
 
+        <!-- 进程内缓存（语法助手 ChatMemory 按用户淘汰） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- LangChain4j：OpenAI 兼容协议（火山方舟 / 豆包） -->
         <dependency>
             <groupId>dev.langchain4j</groupId>

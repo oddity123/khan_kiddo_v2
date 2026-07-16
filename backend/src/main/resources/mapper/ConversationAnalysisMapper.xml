@@ -71,6 +71,18 @@
         WHERE user_id = #{userId}
     </select>
 
+    <select id="countByUserIdAndStatusAndDays" resultType="long">
+        SELECT COUNT(*)
+        FROM conversation_analysis
+        WHERE user_id = #{userId}
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        <if test="days != null and days > 0">
+            AND created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
+        </if>
+    </select>
+
     <select id="findByConditions" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
         educational_summary, llm_model_id, llm_model_name, llm_provider, created_at, updated_at

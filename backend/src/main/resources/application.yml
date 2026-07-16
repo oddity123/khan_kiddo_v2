@@ -78,9 +78,24 @@ app:
       collection-name: ${QDRANT_GRAMMAR_COLLECTION:grammar_errors}
       use-tls: ${QDRANT_USE_TLS:false}
     retrieval-max-results: 8
-    retrieval-candidate-pool-size: 40
-    retrieval-max-secondary-results: 3
     retrieval-min-score: 0.55
+  # 语法学习助手（DB Tools + ChatMemory）
+  grammar-stats:
+    db:
+      # 错误类型统计 TopN
+      stats-top-n: 8
+      # 错句样例默认条数 / 单次上限
+      default-example-limit: 5
+      max-example-limit: 10
+      # days 参数上限（天）
+      max-days: 365
+    chat-memory:
+      # 单用户消息窗口
+      max-messages: 20
+      # 进程内活跃用户上限（LRU）
+      max-users: 1000
+      # 闲置淘汰（小时）
+      expire-after-access-hours: 2
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
@@ -105,6 +120,17 @@ langchain4j:
       custom-parameters:
         thinking:
           type: disabled
-    # 仅 timeout 被 ConversationAnalysisStreamingHelper 引用；模型实例由 app.llm + LlmChatModelFactory 创建
+    # starter 自动装配 openAiStreamingChatModel（GrammarStatsAssistant 流式）；timeout 另被 ConversationAnalysisStreamingHelper 引用
     streaming-chat-model:
+      api-key: ${DOUBAO_API_KEY:${AI_API_KEY:}}
+      base-url: ${DOUBAO_BASE_URL:${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}}
+      model-name: ${DOUBAO_MODEL_NAME:${AI_MODEL:doubao-seed-1-8-251228}}
+      temperature: ${AI_TEMPERATURE:0.2}
+      max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_TIMEOUT_MS:120s}
+      log-requests: true
+      log-responses: true
+      return-thinking: false
+      custom-parameters:
+        thinking:
+          type: disabled

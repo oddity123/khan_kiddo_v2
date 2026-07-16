@@ -39,10 +39,6 @@ public class PromptLoader {
         return readPrompt("educational-summary-prompt-template.txt");
     }
 
-    public String getGrammarRagSystemPrompt() {
-        return readPrompt("grammar-rag-system.txt");
-    }
-
     public String getSystemPromptChineseExpressionReview() {
         return readPrompt("system-prompt-chinese-expression-review.txt");
     }

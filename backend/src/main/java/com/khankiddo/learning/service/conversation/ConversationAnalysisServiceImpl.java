@@ -5,7 +5,6 @@ import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
-import com.khankiddo.learning.exception.UnauthorizedException;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
@@ -59,7 +58,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     @Override
     @Transactional
     public void saveFailed(String analysisId, String conversationContent, String errorMessage, long processingTimeMs) {
-        Long userId = requireUserId();
+        Long userId = SecurityUtils.requireUserId();
         String trimmedContent = StringUtils.hasText(conversationContent) ? conversationContent.trim() : "";
         String trimmedError = StringUtils.hasText(errorMessage) ? errorMessage.trim() : "分析失败";
         if (trimmedError.length() > 2000) {
@@ -97,7 +96,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
     private ConversationAnalysisResultDto persistAnalysis(String conversationContent,
                                                           ConversationAnalysisResultDto result) {
-        Long userId = requireUserId();
+        Long userId = SecurityUtils.requireUserId();
         String analysisId = StringUtils.hasText(result.getAnalysisId())
                 ? result.getAnalysisId().trim()
                 : UUID.randomUUID().toString();
@@ -226,7 +225,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
     @Override
     public ConversationAnalysisDetailDto getDetail(String analysisId) {
-        Long userId = requireUserId();
+        Long userId = SecurityUtils.requireUserId();
         ConversationAnalysis analysis = analysisMapper.findByAnalysisIdAndUserId(analysisId, userId)
                 .orElseThrow(() -> new BadRequestException("分析记录不存在"));
 
@@ -298,7 +297,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
     @Override
     public ConversationAnalysisListResponse list(int page, int size, String keyword) {
-        Long userId = requireUserId();
+        Long userId = SecurityUtils.requireUserId();
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 50);
         int offset = (safePage - 1) * safeSize;
@@ -339,7 +338,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     @Override
     @Transactional
     public void delete(String analysisId) {
-        Long userId = requireUserId();
+        Long userId = SecurityUtils.requireUserId();
         List<ConversationAnalysisItem> items = itemMapper.findByAnalysisId(analysisId);
         List<Long> sentenceIds = items.stream()
                 .map(ConversationAnalysisItem::getSentenceId)
@@ -353,14 +352,6 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         if (!CollectionUtils.isEmpty(sentenceIds)) {
             eventPublisher.publishEvent(new GrammarErrorDeletedEvent(userId, analysisId, sentenceIds));
         }
-    }
-
-    private Long requireUserId() {
-        Long userId = SecurityUtils.getCurrentUserId();
-        if (ObjectUtils.isEmpty(userId)) {
-            throw new UnauthorizedException("未登录");
-        }
-        return userId;
     }
 
     private String toEnglishProblemType(String type) {
