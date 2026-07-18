@@ -46,6 +46,15 @@ app:
         temperature: 0.2
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
+      - id: glm-5.2
+        display-name: glm-5.2
+        provider: qwen
+        base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+        api-key: ${QWEN_API_KEY:}
+        model-name: glm-5.2
+        temperature: 0.2
+        max-tokens: ${AI_MAX_TOKENS:20480}
+        enabled: true
   auth:
     # 生产环境务必通过环境变量 JWT_SECRET 覆盖（至少 32 字符）
     jwt-secret: ${JWT_SECRET:khankiddo-v2-dev-jwt-secret-change-me-in-production}
