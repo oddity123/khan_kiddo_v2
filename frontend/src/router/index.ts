@@ -51,7 +51,7 @@ const router = createRouter({
           path: '/conversation/grammar-rag',
           name: 'conversation-grammar-rag',
           component: () => import('@/views/conversation/GrammarRagView.vue'),
-          meta: {title: '语法复盘', requiresAuth: true, immersive: true},
+          meta: {title: '复盘助手', requiresAuth: true, immersive: true},
       },
   ],
 })

@@ -102,7 +102,7 @@ async function onLogout() {
                 </el-dropdown-item>
                 <el-dropdown-item command="grammar-rag">
                   <el-icon><Collection /></el-icon>
-                  语法复盘
+                  复盘助手
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>

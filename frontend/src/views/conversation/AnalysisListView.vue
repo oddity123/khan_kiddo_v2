@@ -126,7 +126,7 @@ onMounted(loadList)
       </div>
       <div class="page-actions">
         <router-link to="/conversation/grammar-rag">
-          <el-button>语法复盘</el-button>
+          <el-button>复盘助手</el-button>
         </router-link>
         <router-link to="/conversation/analyze">
           <el-button type="primary">开始分析</el-button>

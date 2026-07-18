@@ -102,7 +102,7 @@ function onChatKeydown(event: KeyboardEvent) {
     <header class="page-head">
       <div class="head-copy">
         <p class="page-eyebrow">Grammar Review</p>
-        <h1 class="page-title">语法复盘</h1>
+        <h1 class="page-title">复盘助手</h1>
         <p class="page-desc">基于历史语法错误，AI 帮你归纳薄弱点与改进方向。</p>
       </div>
       <div class="head-badge">
@@ -130,7 +130,7 @@ function onChatKeydown(event: KeyboardEvent) {
 
       <div class="chat-body">
         <div v-if="!hasMessages" class="chat-empty">
-          <p class="empty-title">开始你的语法复盘</p>
+          <p class="empty-title">开始你的复盘</p>
           <p class="empty-desc">
             完成对话分析后，可在此询问常见错误类型、典型例句与改进建议。AI 回答支持 Markdown 排版。
           </p>

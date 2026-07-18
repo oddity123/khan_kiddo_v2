@@ -400,21 +400,21 @@ onBeforeUnmount(() => {
 
                 <div
                     v-if="showProgFeedback(item.id, 'right')"
-                    class="cn-prog-indicator"
+                    class="cn-prog-indicator cn-prog-indicator--yes"
                     aria-hidden="true"
                 >
                   <svg width="80" height="80" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M6.65263 14.0304C6.29251 13.6703 6.29251 13.0864 6.65263 12.7263C7.01276 12.3662 7.59663 12.3662 7.95676 12.7263L11.6602 16.4297L19.438 8.65183C19.7981 8.29171 20.382 8.29171 20.7421 8.65183C21.1023 9.01195 21.1023 9.59583 20.7421 9.95596L12.3667 18.3314C11.9762 18.7219 11.343 18.7219 10.9525 18.3314L6.65263 14.0304Z" fill="green"/>
-                    <path clip-rule="evenodd" d="M14 1C6.8203 1 1 6.8203 1 14C1 21.1797 6.8203 27 14 27C21.1797 27 27 21.1797 27 14C27 6.8203 21.1797 1 14 1ZM3 14C3 7.92487 7.92487 3 14 3C20.0751 3 25 7.92487 25 14C25 20.0751 20.0751 25 14 25C7.92487 25 3 20.0751 3 14Z" fill="green" fill-rule="evenodd"/>
+                    <path d="M6.65263 14.0304C6.29251 13.6703 6.29251 13.0864 6.65263 12.7263C7.01276 12.3662 7.59663 12.3662 7.95676 12.7263L11.6602 16.4297L19.438 8.65183C19.7981 8.29171 20.382 8.29171 20.7421 8.65183C21.1023 9.01195 21.1023 9.59583 20.7421 9.95596L12.3667 18.3314C11.9762 18.7219 11.343 18.7219 10.9525 18.3314L6.65263 14.0304Z" fill="currentColor"/>
+                    <path clip-rule="evenodd" d="M14 1C6.8203 1 1 6.8203 1 14C1 21.1797 6.8203 27 14 27C21.1797 27 27 21.1797 27 14C27 6.8203 21.1797 1 14 1ZM3 14C3 7.92487 7.92487 3 14 3C20.0751 3 25 7.92487 25 14C25 20.0751 20.0751 25 14 25C7.92487 25 3 20.0751 3 14Z" fill="currentColor" fill-rule="evenodd"/>
                   </svg>
                 </div>
                 <div
                     v-else-if="showProgFeedback(item.id, 'left')"
-                    class="cn-prog-indicator"
+                    class="cn-prog-indicator cn-prog-indicator--no"
                     aria-hidden="true"
                 >
                   <svg width="80" height="80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M32.266,7.951c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-15.616,11.465c-2.759,3.433 -4.411,7.792 -4.411,12.535c0,11.053 8.974,20.027 20.027,20.027c4.743,0 9.102,-1.652 12.534,-4.411l-28.15,-28.151Zm31.048,25.295c2.87,-3.466 4.596,-7.913 4.596,-12.76c0,-11.054 -8.974,-20.028 -20.028,-20.028c-4.847,0 -9.294,1.726 -12.76,4.596l28.192,28.192Z" fill="red"/>
+                    <path d="M32.266,7.951c13.246,0 24,10.754 24,24c0,13.246 -10.754,24 -24,24c-13.246,0 -24,-10.754 -24,-24c0,-13.246 10.754,-24 24,-24Zm-15.616,11.465c-2.759,3.433 -4.411,7.792 -4.411,12.535c0,11.053 8.974,20.027 20.027,20.027c4.743,0 9.102,-1.652 12.534,-4.411l-28.15,-28.151Zm31.048,25.295c2.87,-3.466 4.596,-7.913 4.596,-12.76c0,-11.054 -8.974,-20.028 -20.028,-20.028c-4.847,0 -9.294,1.726 -12.76,4.596l28.192,28.192Z" fill="currentColor"/>
                   </svg>
                 </div>
               </div>
@@ -612,6 +612,14 @@ onBeforeUnmount(() => {
   animation: cn-prog-in 0.14s ease-out;
 }
 
+.cn-prog-indicator--yes {
+  color: var(--kk-color-primary);
+}
+
+.cn-prog-indicator--no {
+  color: var(--kk-color-danger);
+}
+
 @keyframes cn-prog-in {
   from {
     opacity: 0;
@@ -640,14 +648,9 @@ onBeforeUnmount(() => {
   height: 100%;
   padding: 0.65rem 0.8rem 0.7rem;
   border-radius: var(--kk-radius-md);
-  border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, #d8c99a);
-  background: linear-gradient(
-      160deg,
-      #f7f0dc 0%,
-      #fffdf8 55%,
-      #ffffff 100%
-  );
-  box-shadow: 0 10px 24px rgba(36, 39, 64, 0.12);
+  border: 1px solid var(--kk-color-border);
+  background: var(--kk-color-surface-solid);
+  box-shadow: var(--kk-shadow-card);
   cursor: pointer;
   user-select: none;
   display: flex;
@@ -655,13 +658,10 @@ onBeforeUnmount(() => {
 }
 
 .cn-card--back {
-  background: linear-gradient(
-      160deg,
-      #eef1fb 0%,
-      #fff8e8 48%,
-      #ffffff 100%
-  );
-  border-color: color-mix(in srgb, var(--kk-color-accent) 40%, var(--kk-color-primary));
+  border-color: color-mix(in srgb, var(--kk-color-accent) 36%, var(--kk-color-border));
+  box-shadow:
+      var(--kk-shadow-card),
+      inset 0 0 0 1px color-mix(in srgb, var(--kk-color-accent) 12%, transparent);
 }
 
 .cn-card-head {
@@ -681,13 +681,14 @@ onBeforeUnmount(() => {
   font-size: 0.68rem;
   font-weight: 600;
   color: var(--kk-color-text-muted);
-  background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
-  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 10%, transparent);
+  background: var(--kk-color-surface-muted);
+  border: 1px solid var(--kk-color-border-subtle);
 }
 
 .cn-badge--back {
-  color: var(--kk-color-primary);
-  background: color-mix(in srgb, var(--kk-color-primary) 8%, white);
+  color: var(--kk-color-accent-text);
+  background: var(--kk-color-accent-bg);
+  border-color: color-mix(in srgb, var(--kk-color-accent) 28%, transparent);
 }
 
 .cn-card-index {
@@ -819,8 +820,8 @@ onBeforeUnmount(() => {
   min-height: 17.25rem;
   padding: 1.25rem 1rem;
   border-radius: var(--kk-radius-md);
-  border: 1px dashed color-mix(in srgb, var(--kk-color-accent) 36%, transparent);
-  background: color-mix(in srgb, var(--kk-color-accent) 6%, white);
+  border: 1px dashed color-mix(in srgb, var(--kk-color-primary) 22%, transparent);
+  background: var(--kk-glass-inner-bg-muted);
   text-align: center;
 }
 
@@ -843,7 +844,7 @@ onBeforeUnmount(() => {
   padding: 0.4rem 1rem;
   border-radius: var(--kk-radius-pill);
   border: 1px solid color-mix(in srgb, var(--kk-color-primary) 18%, transparent);
-  background: #fff;
+  background: var(--kk-glass-inner-bg);
   color: var(--kk-color-primary);
   font-size: 0.82rem;
   font-weight: 600;
@@ -855,7 +856,7 @@ onBeforeUnmount(() => {
 
 .cn-done-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(36, 39, 64, 0.1);
+  box-shadow: var(--kk-shadow-card);
 }
 
 .cn-actions {
