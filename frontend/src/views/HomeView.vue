@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import {ArrowRight, ChatDotRound, DataAnalysis, MagicStick, Promotion, Tickets,} from '@element-plus/icons-vue'
+import {ArrowRight, MagicStick, Promotion,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
+import PillarMark from '@/components/home/PillarMark.vue'
 import {fetchHomePage} from '@/api/home'
 import type {HomePageResponse} from '@/types/home'
 import {getErrorMessage} from '@/utils/error'
@@ -41,7 +42,7 @@ const DEMO_CARDS = [
   },
   {
     id: 'demo-5',
-    zh: "别担心，我会处理的",
+    zh: '别担心，我会处理的',
     en: "I've got it covered",
     example: "Don't worry — I've got it covered.",
   },
@@ -89,7 +90,7 @@ const dimStates = ref(
 )
 
 const RAG_ANSWER =
-    '近 30 天共记录 47 处优化点。出现最多的是冠词（18），其次是时态（12）和主谓一致（9）。冠词问题多半出在可数名词前漏加 a / an，下次开口前可以先自查一遍。'
+    '近 30 天共记录 47 处优化点。出现最多的是冠词（18），其次是时态（12）和主谓一致（9）。冠词问题多半出在可数名词前漏加 a / an，下次开口前可以先自查一遍。主谓一致则多在 everyone / each 后误用 are。'
 const ragStreamed = ref('')
 const ragStreaming = ref(false)
 
@@ -417,152 +418,168 @@ onUnmounted(() => {
     </section>
 
     <section class="pillars reveal" style="--reveal-delay: 200ms">
-      <article class="pillar">
-        <span class="pillar-icon pillar-icon--blue"><el-icon><DataAnalysis/></el-icon></span>
-        <h3 class="pillar-heading">智能 AI 语境助手</h3>
-        <p class="pillar-body">
-          逐句分析对话字幕，定位语法与表达可优化点，给出可直接复用的改写建议。
-        </p>
-        <div class="score-showcase" aria-label="表现评分示意">
-          <div class="score-showcase-head">
-            <div class="score-showcase-overall">
-              <span class="score-showcase-num">{{ displayOverall }}</span>
-            </div>
-            <div class="score-showcase-meta">
-              <span class="score-showcase-lbl">综合自然度</span>
-              <span class="score-showcase-hint">四维诊断 · 即时可见</span>
-            </div>
-          </div>
-          <ul class="score-showcase-dims">
-            <li
-                v-for="(dim, index) in dimStates"
-                :key="dim.label"
-                class="score-dim"
-                :class="{
+      <div class="pillars-panel">
+        <article class="pillar">
+          <header class="pillar-head">
+            <PillarMark kind="analyze"/>
+            <h3 class="pillar-heading">智能 AI 语境助手</h3>
+          </header>
+          <p class="pillar-body">
+            逐句分析对话字幕，定位语法与表达可优化点，给出可直接复用的改写建议。
+          </p>
+          <div class="pillar-foot">
+            <div class="score-showcase" aria-label="表现评分示意">
+              <div class="score-showcase-head">
+                <div class="score-showcase-overall">
+                  <span class="score-showcase-num">{{ displayOverall }}</span>
+                </div>
+                <div class="score-showcase-meta">
+                  <span class="score-showcase-lbl">综合自然度</span>
+                  <span class="score-showcase-hint">四维诊断 · 即时可见</span>
+                </div>
+              </div>
+              <ul class="score-showcase-dims">
+                <li
+                    v-for="(dim, index) in dimStates"
+                    :key="dim.label"
+                    class="score-dim"
+                    :class="{
                   'score-dim--accent': dim.accent,
                   'score-dim--shown': dim.shown,
                 }"
-                :style="{ '--dim-delay': `${index * 80}ms` }"
-            >
-              <span class="score-dim-label">{{ dim.label }}</span>
-              <span class="score-dim-track" aria-hidden="true">
+                    :style="{ '--dim-delay': `${index * 80}ms` }"
+                >
+                  <span class="score-dim-label">{{ dim.label }}</span>
+                  <span class="score-dim-track" aria-hidden="true">
                 <span class="score-dim-fill" :style="{ width: `${dim.fill}%` }"/>
               </span>
-              <span class="score-dim-value">{{ dim.display }}</span>
-            </li>
-          </ul>
-        </div>
-      </article>
-
-      <article class="pillar">
-        <span class="pillar-icon pillar-icon--blue"><el-icon><Tickets/></el-icon></span>
-        <h3 class="pillar-heading">自动生成知识卡片</h3>
-        <p class="pillar-body">
-          分析结束后自动抽出可练表达，生成正反面知识卡片；先看中文场景，再翻出地道英文。
-        </p>
-        <div
-            ref="deckRootRef"
-            class="flashcard-deck"
-            aria-label="知识卡片演示"
-            @pointerdown="pauseFlashcardAuto"
-        >
-          <FlashCards
-              ref="deckRef"
-              class="flashcard-cards"
-              :items="[...DEMO_CARDS]"
-              item-key="id"
-              :loop="false"
-              :stack="2"
-              stack-direction="top"
-              :stack-offset="10"
-              :stack-scale="0.02"
-              swipe-direction="horizontal"
-              :wait-animation-end="true"
-              @swipe-left="onDemoSwipe"
-              @swipe-right="onDemoSwipe"
-          >
-            <template #default="{ item: rawItem }">
-              <template v-for="item in [asDemoCard(rawItem)]" :key="item.id">
-                <FlipCard class="flashcard-flip" flip-axis="y">
-                  <template #front>
-                    <article class="flashcard-face flashcard-face--front">
-                      <header class="flashcard-head">
-                        <span class="flashcard-badge">正面</span>
-                        <span class="flashcard-index">{{ demoCardOrdinal(item) }}/{{ flashcardCount }}</span>
-                      </header>
-                      <section class="flashcard-pane">
-                        <div class="flashcard-block flashcard-block--solo">
-                          <span class="flashcard-tag">目标词</span>
-                          <p class="flashcard-main">{{ item.zh }}</p>
-                        </div>
-                      </section>
-                    </article>
-                  </template>
-                  <template #back>
-                    <article class="flashcard-face flashcard-face--back">
-                      <header class="flashcard-head">
-                        <span class="flashcard-badge flashcard-badge--back">反面</span>
-                        <span class="flashcard-index">{{ demoCardOrdinal(item) }}/{{ flashcardCount }}</span>
-                      </header>
-                      <section class="flashcard-pane">
-                        <div class="flashcard-block flashcard-block--solo">
-                          <span class="flashcard-tag">英文</span>
-                          <p class="flashcard-main flashcard-main--en">{{ item.en }}</p>
-                        </div>
-                        <p class="flashcard-mini">例句：{{ item.example }}</p>
-                      </section>
-                    </article>
-                  </template>
-                </FlipCard>
-              </template>
-            </template>
-          </FlashCards>
-        </div>
-      </article>
-
-      <article class="pillar">
-        <span class="pillar-icon pillar-icon--teal"><el-icon><ChatDotRound/></el-icon></span>
-        <h3 class="pillar-heading pillar-heading--teal">复盘助手</h3>
-        <p class="pillar-body">
-          用自然语言追问你的历史分析：常见错误、典型例句与改进方向。把零散纠正收成清晰重点，下次开口知道先练什么、怎么改。
-        </p>
-        <div class="rag-snippet" aria-label="复盘问答示意">
-          <p class="rag-q">我最近常犯哪些语法错误？</p>
-          <div class="rag-a">
-            <p class="rag-a-stream">
-              {{ ragStreamed }}<span
-                v-if="ragStreaming"
-                class="rag-cursor"
-                aria-hidden="true"
-            />
-            </p>
+                  <span class="score-dim-value">{{ dim.display }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-      </article>
+        </article>
 
-      <article class="pillar pillar--learners">
-        <span class="pillar-icon pillar-icon--photo">
-          <img
-              src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=96&h=96&fit=crop&crop=face"
-              alt=""
-              loading="lazy"
-          />
-        </span>
-        <h3 class="pillar-heading pillar-heading--gold">致力于深度进阶的学习者</h3>
-        <p class="pillar-body">
-          适合已有基础、希望说得更准更自然的学习者：备考、面试或跨国协作，都能通过复盘转化表达优势。
-        </p>
-        <TransitionGroup name="quote" tag="div" class="quote-list">
-          <p
-              v-for="quote in visibleQuotes"
-              :key="quote.cite"
-              class="quote-line"
-          >
-            「{{ quote.text }}」
-            <span class="quote-cite">—— {{ quote.cite }}</span>
+        <article class="pillar">
+          <header class="pillar-head">
+            <PillarMark kind="cards"/>
+            <h3 class="pillar-heading">自动生成知识卡片</h3>
+          </header>
+          <p class="pillar-body">
+            分析结束后自动抽出可练表达，生成正反面知识卡片；先看中文场景，再翻出地道英文。
           </p>
-        </TransitionGroup>
-      </article>
+          <div class="pillar-foot">
+            <div
+                ref="deckRootRef"
+                class="flashcard-deck"
+                aria-label="知识卡片演示"
+                @pointerdown="pauseFlashcardAuto"
+            >
+              <FlashCards
+                  ref="deckRef"
+                  class="flashcard-cards"
+                  :items="[...DEMO_CARDS]"
+                  item-key="id"
+                  :loop="false"
+                  :stack="2"
+                  stack-direction="top"
+                  :stack-offset="14"
+                  :stack-scale="0.02"
+                  swipe-direction="horizontal"
+                  :wait-animation-end="true"
+                  :a11y="{ enabled: true, keyboard: false, manageFocus: false }"
+                  @swipe-left="onDemoSwipe"
+                  @swipe-right="onDemoSwipe"
+              >
+                <template #default="{ item: rawItem }">
+                  <template v-for="item in [asDemoCard(rawItem)]" :key="item.id">
+                    <FlipCard class="flashcard-flip" flip-axis="y">
+                      <template #front>
+                        <article class="flashcard-face flashcard-face--front">
+                          <header class="flashcard-head">
+                            <span class="flashcard-badge">正面</span>
+                            <span class="flashcard-index">{{ demoCardOrdinal(item) }}/{{ flashcardCount }}</span>
+                          </header>
+                          <section class="flashcard-pane">
+                            <div class="flashcard-block flashcard-block--solo">
+                              <span class="flashcard-tag">目标词</span>
+                              <p class="flashcard-main">{{ item.zh }}</p>
+                            </div>
+                          </section>
+                        </article>
+                      </template>
+                      <template #back>
+                        <article class="flashcard-face flashcard-face--back">
+                          <header class="flashcard-head">
+                            <span class="flashcard-badge flashcard-badge--back">反面</span>
+                            <span class="flashcard-index">{{ demoCardOrdinal(item) }}/{{ flashcardCount }}</span>
+                          </header>
+                          <section class="flashcard-pane">
+                            <div class="flashcard-block flashcard-block--solo">
+                              <span class="flashcard-tag">英文</span>
+                              <p class="flashcard-main flashcard-main--en">{{ item.en }}</p>
+                            </div>
+                            <p class="flashcard-mini">例句：{{ item.example }}</p>
+                          </section>
+                        </article>
+                      </template>
+                    </FlipCard>
+                  </template>
+                </template>
+                <template #empty>
+                  <div class="flashcard-empty" aria-hidden="true"/>
+                </template>
+              </FlashCards>
+            </div>
+          </div>
+        </article>
+
+        <article class="pillar">
+          <header class="pillar-head">
+            <PillarMark kind="review"/>
+            <h3 class="pillar-heading pillar-heading--teal">复盘助手</h3>
+          </header>
+          <p class="pillar-body">
+            用自然语言追问你的历史分析：常见错误、典型例句与改进方向。把零散纠正收成清晰重点，下次开口知道先练什么、怎么改。
+          </p>
+          <div class="pillar-foot">
+            <div class="rag-snippet" aria-label="复盘问答示意">
+              <p class="rag-q">我最近常犯哪些语法错误？</p>
+              <div class="rag-a">
+                <p class="rag-a-stream">
+                  {{ ragStreamed }}<span
+                    v-if="ragStreaming"
+                    class="rag-cursor"
+                    aria-hidden="true"
+                />
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="pillar pillar--learners">
+          <header class="pillar-head">
+            <PillarMark kind="learners"/>
+            <h3 class="pillar-heading pillar-heading--gold">致力于深度进阶的学习</h3>
+          </header>
+          <p class="pillar-body">
+            适合已有基础、希望说得更准更自然的学习者：备考、面试或跨国协作，都能通过复盘转化表达优势。
+          </p>
+          <div class="pillar-foot">
+            <TransitionGroup name="quote" tag="div" class="quote-list">
+              <p
+                  v-for="quote in visibleQuotes"
+                  :key="quote.cite"
+                  class="quote-line"
+              >
+                「{{ quote.text }}」
+                <span class="quote-cite">—— {{ quote.cite }}</span>
+              </p>
+            </TransitionGroup>
+          </div>
+        </article>
+      </div>
     </section>
 
     <section
@@ -971,65 +988,75 @@ onUnmounted(() => {
 
 /* Pillars */
 .pillars {
+  position: relative;
+  margin: 0 0 1.5rem;
+}
+
+.pillars-panel {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  gap: clamp(0.9rem, 1.35vw, 1.15rem);
+  align-items: stretch;
+  padding: clamp(0.8rem, 1.25vw, 1.1rem);
+  border-radius: calc(var(--kk-radius-lg) + 8px);
+  background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(247, 248, 252, 0.84)),
+      radial-gradient(circle at 0% 0%, rgba(11, 26, 125, 0.05), transparent 38%),
+      radial-gradient(circle at 100% 100%, rgba(184, 148, 31, 0.07), transparent 34%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+      0 18px 52px rgba(11, 26, 125, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .pillar {
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: var(--kk-radius-lg);
-  padding: 1.25rem 1.2rem 1.15rem;
-  border: 1px solid rgba(11, 26, 125, 0.06);
-  box-shadow: var(--kk-shadow-card);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  gap: 0.8rem;
+  height: 100%;
+  min-height: 0;
+  background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.94));
+  border-radius: calc(var(--kk-radius-lg) - 2px);
+  padding: clamp(1rem, 1.35vw, 1.25rem);
+  border: 1px solid rgba(11, 26, 125, 0.07);
+  box-shadow:
+      0 12px 28px rgba(11, 26, 125, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  overflow: hidden;
+  transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
 }
 
 .pillar:hover {
   transform: translateY(-3px);
-  box-shadow: var(--kk-shadow-card-hover);
+  border-color: rgba(11, 26, 125, 0.12);
+  box-shadow:
+      0 18px 34px rgba(11, 26, 125, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
-.pillar-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: inline-flex;
+.pillar-head {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 0.75rem;
-  color: #fff;
-  font-size: 1.05rem;
-  overflow: hidden;
+  gap: 0.7rem;
+  min-width: 0;
 }
 
-.pillar-icon--blue {
-  background: linear-gradient(145deg, var(--kk-color-primary-soft), var(--kk-color-primary));
-}
-
-.pillar-icon--teal {
-  background: linear-gradient(145deg, #1a6b6b, #0f4a4a);
-}
-
-.pillar-icon--photo {
-  border: 2px solid color-mix(in srgb, var(--kk-color-accent) 35%, transparent);
-  padding: 0;
-}
-
-.pillar-icon--photo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.pillar-head :deep(.pillar-mark) {
+  flex-shrink: 0;
+  margin-bottom: 0;
 }
 
 .pillar-heading {
-  margin: 0 0 0.5rem;
+  margin: 0;
   font-family: var(--kk-font-display);
-  font-size: 1.15rem;
+  font-size: clamp(1rem, 1.15vw, 1.14rem);
   font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: 0;
   color: var(--kk-color-primary);
 }
 
@@ -1043,29 +1070,47 @@ onUnmounted(() => {
 
 .pillar-body {
   margin: 0;
+  min-height: 0;
   font-size: 0.88rem;
   line-height: 1.55;
   color: var(--kk-color-text-muted);
 }
 
-.score-showcase {
+/* 底部演示区：固定节奏，避免动态内容改变卡片高度 */
+.pillar-foot {
   margin-top: auto;
-  padding-top: 0.85rem;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  min-height: 11.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(11, 26, 125, 0.06);
+}
+
+.score-showcase {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
 }
 
 .score-showcase-head {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-  margin-bottom: 0.7rem;
+  gap: 0.85rem;
+  margin-bottom: 0.8rem;
 }
 
 .score-showcase-overall {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 3.1rem;
-  height: 3.1rem;
+  width: 3.75rem;
+  height: 3.75rem;
   flex-shrink: 0;
   border-radius: 50%;
   background: linear-gradient(145deg, #101c6e 0%, var(--kk-color-primary) 55%, #223194 100%);
@@ -1074,7 +1119,7 @@ onUnmounted(() => {
 
 .score-showcase-num {
   font-family: var(--kk-font-display);
-  font-size: 1.25rem;
+  font-size: 1.55rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.03em;
@@ -1091,13 +1136,13 @@ onUnmounted(() => {
 
 .score-showcase-lbl {
   font-family: var(--kk-font-display);
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--kk-color-primary);
 }
 
 .score-showcase-hint {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--kk-color-accent-text);
 }
@@ -1105,10 +1150,10 @@ onUnmounted(() => {
 .score-showcase-dims {
   list-style: none;
   margin: 0;
-  padding: 0.65rem 0.7rem;
+  padding: 0.72rem 0.78rem;
   display: flex;
   flex-direction: column;
-  gap: 0.38rem;
+  gap: 0.44rem;
   border-radius: var(--kk-radius-md);
   background: linear-gradient(160deg, #f5f6fa 0%, #eceef5 100%);
   border: 1px solid var(--kk-color-border-subtle);
@@ -1116,9 +1161,9 @@ onUnmounted(() => {
 
 .score-dim {
   display: grid;
-  grid-template-columns: 3.4rem 1fr 1.5rem;
+  grid-template-columns: 3.7rem minmax(3rem, 1fr) 1.65rem;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.42rem;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 0.385s var(--kk-ease-out),
@@ -1131,7 +1176,7 @@ onUnmounted(() => {
 }
 
 .score-dim-label {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--kk-color-text-muted);
   white-space: nowrap;
@@ -1143,7 +1188,7 @@ onUnmounted(() => {
 }
 
 .score-dim-track {
-  height: 4px;
+  height: 4.5px;
   border-radius: 999px;
   background: #e0e2ea;
   overflow: hidden;
@@ -1168,7 +1213,7 @@ onUnmounted(() => {
 
 .score-dim-value {
   font-family: var(--kk-font-display);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-align: right;
   color: var(--kk-color-primary);
@@ -1177,26 +1222,32 @@ onUnmounted(() => {
 
 /* 学习者评价：灰色纯文字，逐条出现 */
 .quote-list {
-  margin-top: auto;
-  padding-top: 0.85rem;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.55rem;
-  border-top: 1px solid rgba(11, 26, 125, 0.06);
+  gap: 0.62rem;
+  min-height: 100%;
 }
 
 .quote-line {
   margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.6;
+  padding: 0.58rem 0;
+  border-top: 1px solid rgba(11, 26, 125, 0.06);
+  font-size: 0.82rem;
+  line-height: 1.62;
   color: var(--kk-color-text-subtle);
+}
+
+.quote-line:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .quote-cite {
   display: inline;
   margin-left: 0.25rem;
-  font-size: 0.72rem;
+  font-size: 0.76rem;
   font-weight: 500;
   color: #9aa0b0;
 }
@@ -1219,11 +1270,14 @@ onUnmounted(() => {
 /* 知识卡片：三层叠卡 + 末张重置归位 */
 .flashcard-deck {
   position: relative;
-  margin-top: auto;
-  padding-top: 0.85rem;
-  min-height: calc(9.6rem + 1.35rem);
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
   overflow: visible;
   outline: none;
+  overflow-anchor: none;
 }
 
 .flashcard-deck :deep(.flashcards),
@@ -1236,15 +1290,28 @@ onUnmounted(() => {
 
 .flashcard-deck :deep(.flashcards) {
   width: 100%;
-  /* stack=2 → 可见 3 层；留白 = 2 × offset */
-  padding-top: 1.25rem;
+  /* stack=2 → 可见 3 层；padding ≈ 2 × stack-offset(14px) */
+  padding-top: 1.75rem;
   box-sizing: content-box;
+  overflow-anchor: none;
+}
+
+.flashcard-deck :deep(.flashcards__card-wrapper),
+.flashcard-deck :deep(.flash-card) {
+  overflow-anchor: none;
+}
+
+/* 隐藏叠层外的透明卡，避免边框叠成多道细线 */
+.flashcard-deck :deep(.flashcards__card-wrapper[style*='opacity: 0']),
+.flashcard-deck :deep(.flashcards__card-wrapper[style*='opacity:0']) {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .flashcard-deck :deep(.flip-card),
 .flashcard-deck :deep(.flip-card__inner) {
   width: 100%;
-  height: 9.6rem;
+  height: 9.8rem;
 }
 
 .flashcard-deck :deep(.flip-card__front),
@@ -1256,17 +1323,22 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.flashcard-empty {
+  width: 100%;
+  height: 9.8rem;
+}
+
 .flashcard-face {
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0.55rem 0.7rem 0.6rem;
+  padding: 0.6rem 0.72rem 0.65rem;
   border-radius: var(--kk-radius-md);
   border: 1px solid var(--kk-color-border);
   background: var(--kk-color-surface-solid);
-  box-shadow: var(--kk-shadow-card);
+  box-shadow: 0 6px 14px rgba(11, 26, 125, 0.07);
   cursor: pointer;
   user-select: none;
 }
@@ -1344,7 +1416,7 @@ onUnmounted(() => {
 .flashcard-main {
   margin: 0;
   font-family: var(--kk-font-display);
-  font-size: 0.98rem;
+  font-size: clamp(0.9rem, 1.05vw, 1.02rem);
   font-weight: 700;
   line-height: 1.4;
   color: var(--kk-color-primary);
@@ -1360,26 +1432,25 @@ onUnmounted(() => {
   margin: 0;
   padding-top: 0.35rem;
   border-top: 1px dashed color-mix(in srgb, var(--kk-color-accent) 24%, transparent);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   line-height: 1.35;
   color: var(--kk-color-text-muted);
 }
 
 /* 复盘助手：流式输出 */
 .rag-snippet {
-  margin-top: auto;
-  padding-top: 0.85rem;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.55rem;
-  border-top: 1px solid rgba(11, 26, 125, 0.06);
+  gap: 0.7rem;
+  min-height: 100%;
 }
 
 .rag-q {
   margin: 0;
-  font-size: 0.74rem;
-  line-height: 1.5;
+  font-size: 0.8rem;
+  line-height: 1.58;
   font-style: italic;
   color: var(--kk-color-text-subtle);
 }
@@ -1392,15 +1463,16 @@ onUnmounted(() => {
 }
 
 .rag-a {
+  flex: 1 1 auto;
   min-height: 4.6rem;
-  padding-left: 0.7rem;
-  border-left: 2px solid rgba(26, 92, 92, 0.35);
+  padding-left: 0.82rem;
+  border-left: 2px solid rgba(26, 92, 92, 0.32);
 }
 
 .rag-a-stream {
   margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.65;
+  font-size: 0.82rem;
+  line-height: 1.72;
   color: var(--kk-color-text-secondary);
   white-space: pre-wrap;
 }
@@ -1706,7 +1778,7 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1200px) {
-  .pillars {
+  .pillars-panel {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1761,8 +1833,19 @@ onUnmounted(() => {
     align-items: stretch;
   }
 
-  .pillars {
+  .pillars-panel {
     grid-template-columns: 1fr;
+    padding: 0.65rem;
+    border-radius: var(--kk-radius-lg);
+  }
+
+  .pillar {
+    min-height: 0;
+  }
+
+  .pillar-body,
+  .pillar-foot {
+    min-height: 0;
   }
 
   .stat-side {
