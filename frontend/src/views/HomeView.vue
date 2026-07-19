@@ -564,7 +564,7 @@ onUnmounted(() => {
             <h3 class="pillar-heading pillar-heading--gold">致力于深度进阶的学习</h3>
           </header>
           <p class="pillar-body">
-            适合已有基础、希望说得更准更自然的学习者：备考、面试或跨国协作，都能通过复盘转化表达优势。
+            适合已有基础、希望说得更准更自然的学习者： 备考、面试或跨国协作，都能通过复盘转化表达优势。
           </p>
           <div class="pillar-foot">
             <TransitionGroup name="quote" tag="div" class="quote-list">
