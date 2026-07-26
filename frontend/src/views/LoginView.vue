@@ -7,6 +7,7 @@ import {useRoute, useRouter} from 'vue-router'
 
 import {useAuthStore} from '@/stores/auth'
 import {getErrorMessage} from '@/utils/error'
+import {signalPrerenderReady} from '@/utils/prerender'
 import SiteBeian from '@/components/SiteBeian.vue'
 
 const router = useRouter()
@@ -28,6 +29,7 @@ onMounted(() => {
   if (route.query.registered === '1') {
     ElMessage.success('注册成功，请登录')
   }
+  signalPrerenderReady()
 })
 
 async function onSubmit() {

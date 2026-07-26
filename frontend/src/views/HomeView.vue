@@ -9,6 +9,7 @@ import PillarMark from '@/components/home/PillarMark.vue'
 import {fetchHomePage} from '@/api/home'
 import type {HomePageResponse} from '@/types/home'
 import {getErrorMessage} from '@/utils/error'
+import {signalPrerenderReady} from '@/utils/prerender'
 
 const router = useRouter()
 const loading = ref(true)
@@ -337,6 +338,7 @@ async function loadHome() {
     loading.value = false
     requestAnimationFrame(() => {
       revealed.value = true
+      signalPrerenderReady()
     })
   }
 }

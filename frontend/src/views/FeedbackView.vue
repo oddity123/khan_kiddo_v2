@@ -10,6 +10,7 @@ import {storeToRefs} from 'pinia'
 import {submitFeedback} from '@/api/feedback'
 import {useAuthStore} from '@/stores/auth'
 import {getErrorMessage} from '@/utils/error'
+import {signalPrerenderReady} from '@/utils/prerender'
 
 const auth = useAuthStore()
 const {isAuthenticated, user} = storeToRefs(auth)
@@ -65,6 +66,7 @@ onMounted(async () => {
   if (isAuthenticated.value && user.value?.email) {
     form.email = user.value.email
   }
+  signalPrerenderReady()
 })
 
 watch(

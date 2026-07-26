@@ -2,11 +2,12 @@
 import { Lock, Message, User } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { register as registerApi } from '@/api/auth'
 import { getErrorMessage } from '@/utils/error'
+import { signalPrerenderReady } from '@/utils/prerender'
 import SiteBeian from '@/components/SiteBeian.vue'
 
 const router = useRouter()
@@ -44,6 +45,10 @@ const rules: FormRules = {
   ],
   email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }],
 }
+
+onMounted(() => {
+  signalPrerenderReady()
+})
 
 async function onSubmit() {
   if (!formRef.value) {
