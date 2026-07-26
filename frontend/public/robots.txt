@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /feedback
+Disallow: /conversation/
+
+Sitemap: https://khankiddo.top/sitemap.xml
