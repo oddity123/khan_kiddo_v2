@@ -124,6 +124,17 @@ npm run build    # 产物在 frontend/dist/；./package.sh 会额外生成 dist.
 
 生产构建时 API 与页面**同源**则 `VITE_API_BASE_URL` 留空；前后端分域则设为后端地址，例如 `https://api.example.com`。
 
+### 浏览器扩展（ChatGPT 分享导入）
+
+```bash
+cd extension
+npm install
+npm run build                 # 正式版 → https://khankiddo.top（用户不可改站点）
+npm run build -- --mode development   # 本地调试版 → localhost，可改站点
+```
+
+Chrome 加载已解压扩展，目录选 `extension/dist`。用法见 `extension/README.md`。
+
 ---
 
 ## 6. Nginx 推荐配置（同源反代）

@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Khan Kiddo",
+  "description": "从 ChatGPT 公开分享页导入对话字幕到 Khan Kiddo 分析页。",
+  "version": "0.1.0",
+  "permissions": ["storage", "tabs", "scripting"],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "http://localhost:5173/*",
+    "http://127.0.0.1:5173/*"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Khan Kiddo",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/share/*",
+        "https://chat.openai.com/share/*"
+      ],
+      "js": ["chatgpt-share.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Khan Kiddo v2
 
-前后端分离项目：`backend/`（Java 21 + Spring Boot 3 + MyBatis-Plus + MySQL + JWT + LangChain4j），`frontend/`（Vue 3 + Vite + TypeScript）。
+前后端分离项目：`backend/`（Java 21 + Spring Boot 3 + MyBatis-Plus + MySQL + JWT + LangChain4j），`frontend/`（Vue 3 + Vite + TypeScript），`extension/`（Chrome MV3，ChatGPT 分享页导入字幕）。
 标准命令与部署说明见 `DEPLOY.md`、`.env.example`，以及 `.cursor/rules/` 下的构建/前端规则，本文件不重复。
 
 ## Cursor Cloud specific instructions
@@ -20,6 +20,7 @@
   `java -jar backend/target/khankiddo-v2-3.0.0-SNAPSHOT.jar`。
 - dev profile 会自动创建管理员账号 **`admin` / `admin123`**（`DefaultUserInitializer`，`test`/`prod` 下禁用）。
 - 前端开发：`cd frontend && npm run dev`；类型检查+构建：`npm run build`（`vue-tsc -b && vite build`）。前端无 ESLint。
+- 浏览器扩展：`cd extension && npm run build`，Chrome 加载 `extension/dist`（见 `extension/README.md`）。
 
 AI 相关（非显而易见）：
 - 登录/注册、留言反馈、查看历史等**无需 AI Key** 即可跑通（仅需 MySQL）。

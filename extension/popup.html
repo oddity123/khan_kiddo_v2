@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Khan Kiddo</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+    }
+    body {
+      margin: 0;
+      width: 320px;
+      padding: 14px 14px 16px;
+      background: #f4f7fb;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    p {
+      margin: 0 0 12px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #64748b;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 12px;
+      background: #fff;
+    }
+    textarea {
+      min-height: 64px;
+      resize: vertical;
+    }
+    .row {
+      margin-bottom: 10px;
+    }
+    .row.hidden {
+      display: none;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #0b1a7d;
+      color: #fff;
+    }
+    button.secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    button:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+    button.hidden {
+      display: none;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #334155;
+      min-height: 1.2em;
+    }
+    .status.error { color: #9f1239; }
+    .status.ok { color: #166534; }
+  </style>
+</head>
+<body>
+  <h1>Khan Kiddo</h1>
+  <p>从 ChatGPT 公开分享链接导入字幕到分析页。</p>
+
+  <div id="originRow" class="row hidden">
+    <label for="webOrigin">站点地址（仅本地调试）</label>
+    <input id="webOrigin" type="url" placeholder="http://localhost:5173" spellcheck="false"/>
+  </div>
+
+  <div class="row">
+    <label for="shareUrl">分享链接（可选）</label>
+    <textarea id="shareUrl" placeholder="https://chatgpt.com/share/..."></textarea>
+  </div>
+
+  <div class="actions">
+    <button id="saveBtn" class="secondary hidden" type="button">保存设置</button>
+    <button id="importBtn" class="primary" type="button">导入并打开</button>
+  </div>
+  <div id="status" class="status"></div>
+
+  <script type="module" src="/src/popup/main.ts"></script>
+</body>
+</html>

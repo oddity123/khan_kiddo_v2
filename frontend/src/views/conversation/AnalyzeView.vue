@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {Cpu, Document, RefreshRight, Upload} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
-import {computed, nextTick, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 
 import {analyzeConversationStream, listConversationLlmModels} from '@/api/conversationAnalysis'
@@ -12,9 +12,12 @@ import {getErrorMessage} from '@/utils/error'
 const router = useRouter()
 
 const MODEL_STORAGE_KEY = 'kk.conversation.analysis.modelId'
+/** Keep in sync with extension/src/shared/constants.ts */
+const EXTENSION_IMPORT_SESSION_KEY = 'kk.extension.import.conversation'
 
 const MIN_LENGTH = 10
 const content = ref('')
+const extensionImportHint = ref('')
 const modelOptions = ref<LlmModelOption[]>([])
 const selectedModelId = ref('')
 const modelsLoading = ref(false)
@@ -84,8 +87,53 @@ async function loadModelOptions() {
   }
 }
 
-onMounted(loadModelOptions)
+function consumeExtensionImport(): boolean {
+  try {
+    const raw = sessionStorage.getItem(EXTENSION_IMPORT_SESSION_KEY)
+    if (!raw) {
+      return false
+    }
+    sessionStorage.removeItem(EXTENSION_IMPORT_SESSION_KEY)
+    const parsed = JSON.parse(raw) as {
+      conversationContent?: string
+      title?: string | null
+      messageCount?: number
+      source?: string
+    }
+    const imported = (parsed.conversationContent ?? '').trim()
+    if (!imported) {
+      return false
+    }
+    content.value = imported
+    const title = parsed.title?.trim()
+    const count = parsed.messageCount
+    extensionImportHint.value = title
+        ? `已从浏览器扩展导入「${title}」${typeof count === 'number' ? `（${count} 条）` : ''}`
+        : `已从浏览器扩展导入对话字幕${typeof count === 'number' ? `（${count} 条）` : ''}`
+    ElMessage.success(extensionImportHint.value)
+    if (typeof window !== 'undefined' && window.history.replaceState) {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('kkExtImport')) {
+        url.searchParams.delete('kkExtImport')
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+      }
+    }
+    return true
+  } catch {
+    sessionStorage.removeItem(EXTENSION_IMPORT_SESSION_KEY)
+    return false
+  }
+}
 
+onMounted(() => {
+  void loadModelOptions()
+  consumeExtensionImport()
+  window.addEventListener('kk-extension-import', consumeExtensionImport)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('kk-extension-import', consumeExtensionImport)
+})
 const statusLabels: Record<string, { emoji: string; title: string }> = {
   [PROGRESS_STATUS.START]: {emoji: '🚀', title: '开始分析'},
   [PROGRESS_STATUS.VALIDATING]: {emoji: '🔍', title: '验证请求'},
@@ -244,7 +292,8 @@ async function onAnalyze() {
   <div class="analyze-page">
     <header class="page-head">
       <h1 class="page-title">对话分析</h1>
-      <p class="page-desc">粘贴你与 AI 的英文对话字幕，系统将逐句标出可优化表达并给出改写建议。</p>
+      <p class="page-desc">粘贴你与 AI 的英文对话字幕，系统将逐句标出可优化表达并给出改写建议。也可通过浏览器扩展从 ChatGPT 分享页一键导入。</p>
+      <p v-if="extensionImportHint" class="import-hint">{{ extensionImportHint }}</p>
     </header>
 
     <div class="analyze-grid">
@@ -411,6 +460,13 @@ async function onAnalyze() {
   color: var(--kk-color-text-muted);
   line-height: 1.6;
   max-width: 40rem;
+}
+
+.import-hint {
+  margin: 0.5rem 0 0;
+  color: var(--kk-color-accent, #0b1a7d);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .analyze-grid {

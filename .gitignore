@@ -7,6 +7,10 @@ frontend/dist/
 frontend/dist.zip
 frontend/.env.local
 
+# 浏览器扩展
+extension/node_modules/
+extension/dist/
+
 # IDE
 .idea/
 *.iws
