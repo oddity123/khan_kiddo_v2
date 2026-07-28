@@ -151,9 +151,10 @@ server {
         proxy_read_timeout 600s;
     }
 
-    # Vue Router history 模式
+    # Vue Router history + 预渲染目录页（login/index.html 等）
+    # 不要用 `$uri/`：会把 /login 301 到 /login/，触发 GSC「重定向错误」
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri $uri/index.html /index.html;
     }
 }
 ```
