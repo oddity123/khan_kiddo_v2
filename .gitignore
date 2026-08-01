@@ -49,3 +49,6 @@ hs_err_pid*
 # Spring Boot
 spring.log
 /.superpowers/brainstorm/
+
+# 离线挖掘产出（含口语纠错语料，勿提交）
+scripts/out/

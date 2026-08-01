@@ -1,0 +1,581 @@
+{
+  "version": "v1-draft-2026-08-01-r2",
+  "source": "2791 merged errors (local+online), 35 mining batches, human-curated after review",
+  "designNotes": [
+    "排序看家族；卡片正面用叶子规则",
+    "channel=rule 才参与规则卡排序；fluency / lexical / chinese 走独立通道",
+    "cardPolicy=rare：可进 enum 做分类，但默认不进 Top3（打分器必须遵守）",
+    "fixability 0–1：背一条规则能管多久；搭配类故意压低",
+    "estimatedCount 只看量级，不是精确 KPI",
+    "每个家族有 *_OTHER 兜底（families[].otherPointId）",
+    "Stage2 只输出 pointId；family / problemType / errorLevel / channel 全部查表"
+  ],
+  "discriminators": [
+    {
+      "id": "ARTICLE_VS_PLURAL",
+      "rule": "单复数本身错 → PLURAL_COUNTABLE / UNCOUNTABLE_NO_PLURAL；单复数正确、只是多了或少了冠词 → 冠词叶子"
+    },
+    {
+      "id": "TENSE_VS_VERB_PATTERN",
+      "rule": "选错时间（该过去却用现在等）→ FAM_TENSE；助动词/情态已经出现、后面动词形态错（did went / must to use）→ FAM_VERB_PATTERN"
+    },
+    {
+      "id": "WORD_FORM_PRIORITY",
+      "rule": "能命中 FEEL_ED_ADJ / GERUND_AS_SUBJECT / GERUND_AFTER_PREP 时优先细叶子；WORD_FORM_POS 仅用于其它词性错"
+    },
+    {
+      "id": "STRUCTURE_OVERFLOW",
+      "rule": "整句重写但说不清规则、或主要是卡壳/重复 → 不要硬打 STRUCTURE_*，改打 FLUENCY_* / LEXICAL_GAP / CHINESE_CODE_SWITCH"
+    },
+    {
+      "id": "COLLOCATION_VS_PREP_VS_LEXICAL",
+      "rule": "动词/名词固定短语（spoken English, do a role-play, look forward to）→ COLLOCATION；单纯 in/on/at 误用 → PREP_FIXED；一次性换词且无固定搭配 → LEXICAL_GAP"
+    }
+  ],
+  "families": [
+    {
+      "familyId": "FAM_ARTICLE",
+      "titleZh": "冠词",
+      "fixability": 0.6,
+      "otherPointId": "ARTICLE_OTHER",
+      "channel": "rule"
+    },
+    {
+      "familyId": "FAM_NOUN_NUMBER",
+      "titleZh": "单复数与可数性",
+      "fixability": 0.75,
+      "otherPointId": "NOUN_NUMBER_OTHER",
+      "channel": "rule"
+    },
+    {
+      "familyId": "FAM_AGREEMENT",
+      "titleZh": "主谓一致",
+      "fixability": 0.85,
+      "otherPointId": "AGREEMENT_OTHER",
+      "channel": "rule"
+    },
+    {
+      "familyId": "FAM_TENSE",
+      "titleZh": "时态",
+      "fixability": 0.85,
+      "otherPointId": "TENSE_OTHER",
+      "channel": "rule",
+      "note": "只管『选哪个时间』；助动词后形态归 FAM_VERB_PATTERN"
+    },
+    {
+      "familyId": "FAM_VERB_PATTERN",
+      "titleZh": "动词句型",
+      "fixability": 0.9,
+      "otherPointId": "VERB_PATTERN_OTHER",
+      "channel": "rule",
+      "note": "did/will/modal 后接原形、there be 等封闭句型"
+    },
+    {
+      "familyId": "FAM_PREPOSITION",
+      "titleZh": "介词与搭配",
+      "fixability": 0.3,
+      "otherPointId": "PREPOSITION_OTHER",
+      "channel": "rule",
+      "note": "频次高、可固化低；叶子多为 cardPolicy=rare"
+    },
+    {
+      "familyId": "FAM_WORD_FORM",
+      "titleZh": "词形与词类",
+      "fixability": 0.85,
+      "otherPointId": "WORD_FORM_OTHER",
+      "channel": "rule"
+    },
+    {
+      "familyId": "FAM_STRUCTURE",
+      "titleZh": "句式结构",
+      "fixability": 0.65,
+      "otherPointId": "STRUCTURE_OTHER",
+      "channel": "rule",
+      "note": "只收能说出规则的结构问题；说不清的别往这里塞"
+    },
+    {
+      "familyId": "FAM_PRONOUN",
+      "titleZh": "代词与指代",
+      "fixability": 0.7,
+      "otherPointId": "PRONOUN_OTHER",
+      "channel": "rule"
+    },
+    {
+      "familyId": "FAM_FLUENCY",
+      "titleZh": "口语流利度",
+      "fixability": null,
+      "otherPointId": "FLUENCY_OTHER",
+      "channel": "fluency"
+    },
+    {
+      "familyId": "FAM_LEXICAL",
+      "titleZh": "词汇缺口",
+      "fixability": null,
+      "otherPointId": "LEXICAL_GAP",
+      "channel": "lexical"
+    },
+    {
+      "familyId": "FAM_CHINESE",
+      "titleZh": "中文夹杂",
+      "fixability": null,
+      "otherPointId": "CHINESE_CODE_SWITCH",
+      "channel": "chinese",
+      "note": "与现有中文表达知识卡片对接；不出规则卡"
+    }
+  ],
+  "points": [
+    {
+      "pointId": "ARTICLE_GENERIC_ZERO",
+      "familyId": "FAM_ARTICLE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 96,
+      "errorLevel": "BASIC",
+      "problemType": "Article",
+      "titleZh": "泛指一类人或事物时，不用 the",
+      "whyZh": "中文没有冠词；英文泛指用零冠词（常配复数）：users，不是 the users。若名词单复数本身也错，优先打 PLURAL_COUNTABLE。",
+      "fixability": 0.6
+    },
+    {
+      "pointId": "ARTICLE_FIRST_MENTION",
+      "familyId": "FAM_ARTICLE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 17,
+      "errorLevel": "BASIC",
+      "problemType": "Article",
+      "titleZh": "第一次提到的单数可数名词，用 a / an",
+      "whyZh": "中文「我买了手机」不加标记；英文首次提及用 a phone，再次提及才用 the phone。",
+      "fixability": 0.65
+    },
+    {
+      "pointId": "ARTICLE_A_AN",
+      "familyId": "FAM_ARTICLE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 9,
+      "errorLevel": "BASIC",
+      "problemType": "Article",
+      "titleZh": "a / an 看后面单词的读音，不看字母",
+      "whyZh": "元音音素开头用 an（an hour），辅音音素开头用 a（a university）。",
+      "fixability": 0.9
+    },
+    {
+      "pointId": "PLURAL_COUNTABLE",
+      "familyId": "FAM_NOUN_NUMBER",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 78,
+      "errorLevel": "BASIC",
+      "problemType": "Plural",
+      "titleZh": "可数名词表示「多个/一类」时要用复数",
+      "whyZh": "中文名词无复数形态；英文 some users / different ideas 必须加 s。",
+      "fixability": 0.75
+    },
+    {
+      "pointId": "UNCOUNTABLE_NO_PLURAL",
+      "familyId": "FAM_NOUN_NUMBER",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 15,
+      "errorLevel": "BASIC",
+      "problemType": "Plural",
+      "titleZh": "不可数名词没有复数，也不能用 a / these",
+      "whyZh": "advice / knowledge / information / stuff 不可数。中文「建议、知识」看起来像可数，最容易加 s。",
+      "fixability": 0.8
+    },
+    {
+      "pointId": "SVA_THIRD_PERSON",
+      "familyId": "FAM_AGREEMENT",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 18,
+      "errorLevel": "FATAL",
+      "problemType": "Agreement",
+      "titleZh": "一般现在时：第三人称单数动词要加 s",
+      "whyZh": "he / she / it / 单数名词后，一般现在时用 wants / has / goes。",
+      "fixability": 0.9
+    },
+    {
+      "pointId": "SVA_RELATIVE_CLAUSE",
+      "familyId": "FAM_AGREEMENT",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 11,
+      "errorLevel": "FATAL",
+      "problemType": "Agreement",
+      "titleZh": "定语从句的谓语跟着先行词变，不看 who",
+      "whyZh": "users who want（不是 wants）。",
+      "fixability": 0.85
+    },
+    {
+      "pointId": "PAST_SIMPLE_DONE",
+      "familyId": "FAM_TENSE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 30,
+      "errorLevel": "FATAL",
+      "problemType": "Tense",
+      "titleZh": "已经发生的事，用一般过去时",
+      "whyZh": "yesterday / last week / two days ago 出现时，动词用过去式。若已有 did 却写成 did went，改打 AUX_DID_BASE。",
+      "fixability": 0.9
+    },
+    {
+      "pointId": "PRESENT_PERFECT_FORM",
+      "familyId": "FAM_TENSE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 11,
+      "errorLevel": "FATAL",
+      "problemType": "Tense",
+      "titleZh": "现在完成时：have / has + 过去分词",
+      "whyZh": "have done，不是 have did / have do。管形式；『该不该用完成时』见完全体 PAST_VS_PERFECT。",
+      "fixability": 0.8
+    },
+    {
+      "pointId": "PRESENT_CONTINUOUS",
+      "familyId": "FAM_TENSE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 10,
+      "errorLevel": "BASIC",
+      "problemType": "Tense",
+      "titleZh": "正在做的动作：be + doing",
+      "whyZh": "此刻/临时进行的事用 am/is/are + doing，不能漏 be。",
+      "fixability": 0.85
+    },
+    {
+      "pointId": "AUX_DID_BASE",
+      "familyId": "FAM_VERB_PATTERN",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 6,
+      "errorLevel": "FATAL",
+      "problemType": "Tense",
+      "titleZh": "did 后面必须接动词原形",
+      "whyZh": "过去时已由 did 承担：did go，不是 did went。",
+      "fixability": 0.95
+    },
+    {
+      "pointId": "AUX_MODAL_BASE",
+      "familyId": "FAM_VERB_PATTERN",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 11,
+      "errorLevel": "FATAL",
+      "problemType": "Structure",
+      "titleZh": "will / can / must / should 后面直接接原形，不加 to",
+      "whyZh": "must use，不是 must to use；will finish，不是 will finished。",
+      "fixability": 0.95
+    },
+    {
+      "pointId": "THERE_BE",
+      "familyId": "FAM_VERB_PATTERN",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 8,
+      "errorLevel": "FATAL",
+      "problemType": "Structure",
+      "titleZh": "表示『有…』用 there is / there are，注意随后面名词单复数",
+      "whyZh": "中文『有很多用户』常直译成 have many users；英文存在句用 there are many users。",
+      "fixability": 0.85
+    },
+    {
+      "pointId": "MISSING_SUBJECT_BE",
+      "familyId": "FAM_STRUCTURE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 12,
+      "errorLevel": "FATAL",
+      "problemType": "Structure",
+      "titleZh": "英文句子要有主语；形容词/名词谓语前常需要 be",
+      "whyZh": "中文可省略主语或系词（『很好』『是学生』）；英文需要 It is good / I am a student。",
+      "fixability": 0.8
+    },
+    {
+      "pointId": "PREP_FIXED",
+      "familyId": "FAM_PREPOSITION",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "rare",
+      "estimatedCount": 65,
+      "errorLevel": "BASIC",
+      "problemType": "Preposition",
+      "titleZh": "介词多半是固定搭配，要一个个攒",
+      "whyZh": "on the website / in this situation / pay for。分类用，默认不占 Top3。",
+      "fixability": 0.3
+    },
+    {
+      "pointId": "COLLOCATION",
+      "familyId": "FAM_PREPOSITION",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "rare",
+      "estimatedCount": 104,
+      "errorLevel": "NATURAL",
+      "problemType": "Collocation",
+      "titleZh": "动词/名词有固定搭配，不能按中文直译拼",
+      "whyZh": "spoken English（不是 speaking English）、do a role-play、look forward to doing。与单纯 in/on/at 误用区分开。",
+      "fixability": 0.35
+    },
+    {
+      "pointId": "FEEL_ED_ADJ",
+      "familyId": "FAM_WORD_FORM",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 3,
+      "errorLevel": "NATURAL",
+      "problemType": "Word Form",
+      "titleZh": "说『我感到…』要用 -ed，不用动词原形或 -ing",
+      "whyZh": "excited 是人的感受，exciting 是事物性质。优先于 WORD_FORM_POS。",
+      "fixability": 0.9
+    },
+    {
+      "pointId": "GERUND_AS_SUBJECT",
+      "familyId": "FAM_WORD_FORM",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 3,
+      "errorLevel": "BASIC",
+      "problemType": "Word Form",
+      "titleZh": "动词做主语时要变成 -ing",
+      "whyZh": "Interrupting is bad，不是 Interrupt is bad。优先于 WORD_FORM_POS。",
+      "fixability": 0.9
+    },
+    {
+      "pointId": "GERUND_AFTER_PREP",
+      "familyId": "FAM_WORD_FORM",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 5,
+      "errorLevel": "BASIC",
+      "problemType": "Word Form",
+      "titleZh": "介词后面的动词要用 -ing",
+      "whyZh": "look forward to doing / about improving；to 若是介词不是不定式。优先于 WORD_FORM_POS。",
+      "fixability": 0.9
+    },
+    {
+      "pointId": "WORD_FORM_POS",
+      "familyId": "FAM_WORD_FORM",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 24,
+      "errorLevel": "BASIC",
+      "problemType": "Word Form",
+      "titleZh": "其它词性错：名词位放名词，形容词位放形容词",
+      "whyZh": "细叶子（FEEL_ED_ADJ / GERUND_*）吃不下时才用本项。例如 the confident → the confidence。",
+      "fixability": 0.85,
+      "note": "语义上接近家族兜底，但仍单独枚举以便统计；勿优先于细叶子"
+    },
+    {
+      "pointId": "NOUN_CLAUSE_ORDER",
+      "familyId": "FAM_STRUCTURE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 13,
+      "errorLevel": "FATAL",
+      "problemType": "Clause",
+      "titleZh": "宾语从句用陈述语序，不要用疑问语序",
+      "whyZh": "I wonder who he is，不是 who is he。",
+      "fixability": 0.75
+    },
+    {
+      "pointId": "QUESTION_STRUCTURE",
+      "familyId": "FAM_STRUCTURE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 9,
+      "errorLevel": "BASIC",
+      "problemType": "Structure",
+      "titleZh": "特殊疑问句要有助动词，别直译中文语序",
+      "whyZh": "What does it mean? 不是 What it means?",
+      "fixability": 0.75
+    },
+    {
+      "pointId": "SENTENCE_LOOSE_AND",
+      "familyId": "FAM_STRUCTURE",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "rare",
+      "estimatedCount": 16,
+      "errorLevel": "STYLE",
+      "problemType": "Structure",
+      "titleZh": "少用一串 and 把句子粘成一长条",
+      "whyZh": "口语『然后然后然后』；更接近组织习惯，默认可分类但不占 Top3。",
+      "fixability": 0.45
+    },
+    {
+      "pointId": "PRONOUN_NUMBER",
+      "familyId": "FAM_PRONOUN",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 12,
+      "errorLevel": "BASIC",
+      "problemType": "Pronoun",
+      "titleZh": "代词的单复数要跟它指的东西一致",
+      "whyZh": "users → they/them/their；不可数 → it。",
+      "fixability": 0.75
+    },
+    {
+      "pointId": "RELATIVE_NO_RESUMPTIVE",
+      "familyId": "FAM_PRONOUN",
+      "channel": "rule",
+      "v1Keep": true,
+      "cardPolicy": "normal",
+      "estimatedCount": 6,
+      "errorLevel": "BASIC",
+      "problemType": "Pronoun",
+      "titleZh": "定语从句里 which/that 已经代替先行词，不要再加 it",
+      "whyZh": "the app which I use，不是 which I use it。",
+      "fixability": 0.8
+    },
+    {
+      "pointId": "FLUENCY_INCOMPLETE",
+      "familyId": "FAM_FLUENCY",
+      "channel": "fluency",
+      "v1Keep": true,
+      "cardPolicy": "channel",
+      "estimatedCount": 172,
+      "errorLevel": "BASIC",
+      "problemType": "Incomplete",
+      "titleZh": "句子说到一半就断了",
+      "whyZh": "不出规则卡；提示『说完一句再开口下一句』。",
+      "fixability": null
+    },
+    {
+      "pointId": "FLUENCY_REDUNDANCY",
+      "familyId": "FAM_FLUENCY",
+      "channel": "fluency",
+      "v1Keep": true,
+      "cardPolicy": "channel",
+      "estimatedCount": 281,
+      "errorLevel": "STYLE",
+      "problemType": "Redundancy",
+      "titleZh": "口头重复 / 语义叠词",
+      "whyZh": "improve your improve your、helpful and useful。不出规则卡。",
+      "fixability": null
+    },
+    {
+      "pointId": "LEXICAL_GAP",
+      "familyId": "FAM_LEXICAL",
+      "channel": "lexical",
+      "v1Keep": true,
+      "cardPolicy": "channel",
+      "estimatedCount": 555,
+      "errorLevel": "NATURAL",
+      "problemType": "Word Choice",
+      "titleZh": "一次性词汇缺口（想不起词 / 说错词 / 转写噪音）",
+      "whyZh": "含多数 Unnatural / Chinglish 里『换一个词就好』的情况；一词一张词汇卡。固定搭配走 COLLOCATION。",
+      "fixability": null
+    },
+    {
+      "pointId": "CHINESE_CODE_SWITCH",
+      "familyId": "FAM_CHINESE",
+      "channel": "chinese",
+      "v1Keep": true,
+      "cardPolicy": "channel",
+      "estimatedCount": 83,
+      "errorLevel": "STYLE",
+      "problemType": "Chinese",
+      "titleZh": "说着说着插入中文 / 用中文提问词汇",
+      "whyZh": "对接现有中文表达知识卡片；不出规则卡。",
+      "fixability": null
+    },
+    {
+      "pointId": "PAST_VS_PERFECT",
+      "familyId": "FAM_TENSE",
+      "channel": "rule",
+      "v1Keep": false,
+      "cardPolicy": "normal",
+      "estimatedCount": 0,
+      "errorLevel": "FATAL",
+      "problemType": "Tense",
+      "titleZh": "有具体过去时间用一般过去时；强调对现在的影响用现在完成时",
+      "whyZh": "完全体候补。I finished it yesterday vs I have finished it。",
+      "fixability": 0.7
+    },
+    {
+      "pointId": "COMPARISON_FORM",
+      "familyId": "FAM_WORD_FORM",
+      "channel": "rule",
+      "v1Keep": false,
+      "cardPolicy": "normal",
+      "estimatedCount": 6,
+      "errorLevel": "BASIC",
+      "problemType": "Comparison",
+      "titleZh": "比较级/最高级形态：better 不再加 more，单音节加 -er/-est",
+      "whyZh": "完全体候补。more better → better。",
+      "fixability": 0.85
+    },
+    {
+      "pointId": "REFLEXIVE_PLURAL",
+      "familyId": "FAM_PRONOUN",
+      "channel": "rule",
+      "v1Keep": false,
+      "cardPolicy": "normal",
+      "estimatedCount": 3,
+      "errorLevel": "BASIC",
+      "problemType": "Pronoun",
+      "titleZh": "we 的反身代词是 ourselves，不是 ourself",
+      "whyZh": "完全体候补。",
+      "fixability": 0.95
+    },
+    {
+      "pointId": "VERB_TAKE_TIME",
+      "familyId": "FAM_PREPOSITION",
+      "channel": "rule",
+      "v1Keep": false,
+      "cardPolicy": "rare",
+      "estimatedCount": 6,
+      "errorLevel": "NATURAL",
+      "problemType": "Collocation",
+      "titleZh": "『花时间』用 take，不用 cost",
+      "whyZh": "完全体候补；也可并入 COLLOCATION。",
+      "fixability": 0.5
+    }
+  ],
+  "stage2Enum": {
+    "description": "实际写入 JSON Schema 的枚举 = v1Keep 叶子 + 各家族 otherPointId（去重）",
+    "v1KeepCount": 28,
+    "otherPointIds": [
+      "ARTICLE_OTHER",
+      "NOUN_NUMBER_OTHER",
+      "AGREEMENT_OTHER",
+      "TENSE_OTHER",
+      "VERB_PATTERN_OTHER",
+      "PREPOSITION_OTHER",
+      "WORD_FORM_OTHER",
+      "STRUCTURE_OTHER",
+      "PRONOUN_OTHER",
+      "FLUENCY_OTHER"
+    ],
+    "note": "LEXICAL_GAP / CHINESE_CODE_SWITCH 已是通道叶子，不再另加 OTHER；Tone/Formal 等低频风格打 STRUCTURE_OTHER 或 LEXICAL_GAP"
+  },
+  "scoringNotes": [
+    "Top 卡片只从 channel=rule 且 cardPolicy=normal 的叶子所属家族中排序",
+    "cardPolicy=rare 的家族分可累计用于诊断，但不进入 Top3 焦点位",
+    "channel=fluency/lexical/chinese 只进各自 UI 通道",
+    "卡片分 ≈ Σ严重度 × fixability × 复发放大（v1 复发=1）"
+  ]
+}
