@@ -268,20 +268,6 @@ export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' ../.env | grep -v '&' | xargs)
 
 报告输出到 `backend/target/drift-report/drift-<时间戳>.md`。语料放在 `backend/src/test/resources/eval/drift/conversations/*.txt`，详见该目录的 [README](backend/src/test/resources/eval/drift/README.md)。
 
-## 部署
-
-一键打包与上传：
-
-```bash
-./package.sh                 # 并行打前后端，前端另产出 frontend/dist.zip
-./deploy.sh                  # 打包 + 上传到 ECS/宝塔（配置见 deploy.env.example）
-```
-
-完整部署流程、Nginx 配置、上线检查清单见 **[DEPLOY.md](DEPLOY.md)**。
-
-## 与 v1 的关系
-
-v1（`khan_kiddo`）是 Java 8 + Thymeleaf 单体，v2 重写为 Java 21 + SPA + JWT，可同机共存。v2 **尚未迁移**：文章生成、用户词库（`user_vocabulary`）、有道查词（`stardict`）。差异对照表见 DEPLOY.md。
 
 ## 相关文档
 
