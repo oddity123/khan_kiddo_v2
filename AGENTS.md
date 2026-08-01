@@ -1,7 +1,7 @@
 # Khan Kiddo v2
 
 前后端分离项目：`backend/`（Java 21 + Spring Boot 3 + MyBatis-Plus + MySQL + JWT + LangChain4j），`frontend/`（Vue 3 + Vite + TypeScript），`extension/`（Chrome MV3，ChatGPT 分享页导入字幕）。
-标准命令与部署说明见 `DEPLOY.md`、`.env.example`，以及 `.cursor/rules/` 下的构建/前端规则，本文件不重复。
+标准命令与部署说明见 `README.md`、`.env.example`，以及 `.cursor/rules/` 下的构建/前端规则，本文件不重复。
 
 ## Cursor Cloud specific instructions
 
