@@ -8,6 +8,9 @@
 
 技术栈：**Java 21 + Spring Boot 3.5 + LangChain4j + MyBatis-Plus + MySQL 8 + Qdrant** ｜ **Vue 3 + Vite + TypeScript** ｜ **Chrome MV3 扩展**
 
+<img width="1024" height="1536" alt="khan-kiddo-product-infographic-fog-desk-v5" src="https://github.com/user-attachments/assets/b7f0bc09-838b-46e8-8fc9-877df9bd8ed6" />
+
+
 ---
 
 ## 核心亮点
