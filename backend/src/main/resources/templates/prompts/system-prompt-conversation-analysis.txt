@@ -64,7 +64,7 @@ Each error must carry a `pointId` — the specific knowledge-point ID from the d
   - FEEL_ED_ADJ：说『我感到…』要用 -ed，不用动词原形或 -ing
   - GERUND_AS_SUBJECT：动词做主语时要变成 -ing
   - GERUND_AFTER_PREP：介词后面的动词要用 -ing
-  - WORD_FORM_POS：其它词性错：名词位放名词，形容词位放形容词
+  - WORD_FORM_POS：名词、形容词、动词放错句法位置（同一槽位的词性错；不是整词换成另一个词）
   - WORD_FORM_OTHER：词形与词类（其它）
 - FAM_STRUCTURE（句式结构，channel=rule）
   - MISSING_SUBJECT_BE：英文句子要有主语；形容词/名词谓语前常需要 be
@@ -85,17 +85,23 @@ Each error must carry a `pointId` — the specific knowledge-point ID from the d
   - CHINESE_CODE_SWITCH：说着说着插入中文 / 用中文提问词汇（仅当英文句子里混入个别中文词时使用）
 
 ### Discriminators（相近点位如何区分，判断有冲突时优先遵循）
-1. 单复数 vs 冠词：单复数本身错 → `PLURAL_COUNTABLE` / `UNCOUNTABLE_NO_PLURAL`；单复数正确、只是冠词多了或少了 → 冠词类叶子。
-2. 时态 vs 动词句型：选错了时间点（该过去却用现在等）→ `FAM_TENSE` 下的叶子；助动词/情态已经出现、后面动词形态错（did went / must to use）→ `FAM_VERB_PATTERN` 下的叶子。
-3. 词形细叶子优先：能命中 `FEEL_ED_ADJ` / `GERUND_AS_SUBJECT` / `GERUND_AFTER_PREP` 时优先用这些细叶子；`WORD_FORM_POS` 仅用于其它词性错误。
-4. 避免滥用 STRUCTURE：整句重写但说不清具体规则、或主要是卡壳/重复 → 不要硬套 `STRUCTURE_*`，改用 `FLUENCY_*` / `LEXICAL_GAP` / `CHINESE_CODE_SWITCH`。
-5. 搭配 vs 介词 vs 词汇：动词/名词固定短语（spoken English, do a role-play, look forward to）→ `COLLOCATION`；单纯 in/on/at 误用 → `PREP_FIXED`；一次性换词且无固定搭配 → `LEXICAL_GAP`。
+1. 单复数 vs 冠词：词本身该加/去 s → `PLURAL_COUNTABLE` / `UNCOUNTABLE_NO_PLURAL`；词的单复数已经对、只是多了或少了 the/a → 冠词类。典型：`the users → users`（users 已是复数）→ `ARTICLE_GENERIC_ZERO`，**不要**打成 `PLURAL_COUNTABLE`。并列修饰共用冠词（`a fixed and a structured` → `a fixed and structured`）→ `ARTICLE_OTHER`，不要打成 `ARTICLE_GENERIC_ZERO`。
+2. 时态 vs 动词句型：选错了时间点（该过去却用现在等）→ `FAM_TENSE`；助动词/情态**已经出现**、后面动词形态错（did went / must to use）→ `FAM_VERB_PATTERN`。`how I use → how to use`（know + 疑问词 + to do）**不是** `AUX_MODAL_BASE`。
+3. 词形细叶子优先：能命中 `FEEL_ED_ADJ` / `GERUND_AS_SUBJECT` / `GERUND_AFTER_PREP` 时必须用细叶子。`WORD_FORM_POS` **仅**用于同一槽位的词性错位（如 exciting→excited 已有细叶子；the difficult→the difficult part；形容词误当动词用）。整词换成另一个词（wish→suggest、constitution→conversation、accurate→check）→ `LEXICAL_GAP`，**禁止**塞进 `WORD_FORM_POS`。
+4. 避免滥用 STRUCTURE：整句重写但说不清具体规则、或主要是卡壳/重复 → 不要硬套 `STRUCTURE_*`，改用 `FLUENCY_*` / `LEXICAL_GAP`。动词前多了 the（`the interpret → interpret`）偏冠词/词形，**不是** `MISSING_SUBJECT_BE`（缺主语或形容词前缺 be）。
+5. 搭配 vs 介词 vs 词汇：`COLLOCATION` **只**用于学习者按中文硬拼、且有公认固定说法的短语（spoken English、look forward to doing、do a role-play）。单纯 in/on/at → `PREP_FIXED`；一次性换词且无固定搭配 → `LEXICAL_GAP`。近义润色、可接受变体**不要**标 `COLLOCATION`。
+
+### Do NOT flag（口语合法 / 风格偏好 — 标了就是误报）
+- `help sb (to) do`：`help me to clean` 与 `help me clean` 都合法 → 不标。
+- 自然口语评价词：`the internet is awful / terrible / bad` → 不标 awful→bad。
+- 独立话语标记且语义完整：`or something`、`you know`、`I mean`（单独出现或句尾缓冲）→ 不要标成 `FLUENCY_INCOMPLETE`。
+- 拿不准是不是错 → 不标（重申克制）。
 
 ### When to use fluency / lexical / chinese channels
-- **fluency**（`FLUENCY_INCOMPLETE` / `FLUENCY_REDUNDANCY`）：说话方式的问题（断句、重复），不是语法规则错误，不需要给出规则性纠正，只需指出问题。
-- **lexical**（`LEXICAL_GAP`）：用户明显想不起某个词或用词不准确，换一个词就能解决，且不属于固定搭配范畴。
-- **chinese**（`CHINESE_CODE_SWITCH`）：句子整体是英文，但夹杂了个别中文词。整句都是中文的情况不会出现在你的输入里，无需处理。
-- 找不到合适的细分点位时，使用对应 family 的 `*_OTHER` 兜底 ID（如 `STRUCTURE_OTHER`），禁止编造字典外的 ID。
+- **fluency**（`FLUENCY_INCOMPLETE` / `FLUENCY_REDUNDANCY`）：真的说到一半断开、或语义/词语无意义叠床架屋；不是「可以更完整一点」的润色。
+- **lexical**（`LEXICAL_GAP`）：想不起词、用错词、整词替换即愈，且不是上表那种固定搭配。
+- **chinese**（`CHINESE_CODE_SWITCH`）：英文句里夹个别中文词；整句中文不会出现在输入里。
+- 找不到细分点位时用对应 family 的 `*_OTHER`，禁止编造字典外 ID。
 
 ## Discipline
 - Choose the single MOST specific `pointId` for each issue; do not report the same issue under multiple points.

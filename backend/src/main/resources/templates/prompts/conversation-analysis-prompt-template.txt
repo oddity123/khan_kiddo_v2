@@ -26,9 +26,9 @@
 
 ### 4. 知识点 ID（pointId，每个错误只选最贴切的一个）
 - 每个 error 必须给出知识点字典中的具体 `pointId`，**不要**输出问题类型的英文名称（如 `Agreement`、`Article` 等已不是有效字段）。
-- 知识点字典全量列表（按 family 分组、含判别规则 discriminators）见 system prompt；本文件不重复罗列，请以 system prompt 为准选点。
+- 知识点字典全量列表、discriminators、以及「Do NOT flag」清单见 system prompt；选点时必须遵守。
 - 找不到合适的细分点位时，使用对应 family 的 `*_OTHER` 兜底 ID（如 `STRUCTURE_OTHER`），**禁止编造字典外的 ID**。
-- 相近点位如何区分（例如单复数本身错 vs 只是冠词多/少、时态 vs 动词句型等），严格按 system prompt 中的 discriminators 判断。
+- 提醒（与 system 一致）：`the users → users` 走冠词不是复数；整词替换走 `LEXICAL_GAP` 不是 `WORD_FORM_POS`；`help me to do` / `awful` 等合法口语气不要标。
 
 **注意**：含中文的句子已由系统单独处理，本阶段输入中不会出现完整中文句；仅当英文句子里混入个别中文词时才使用 `CHINESE_CODE_SWITCH`，其它情况不要涉及该通道。
 
@@ -74,28 +74,39 @@
 }
 ```
 
-### 示例 B（表达 / 中式英语）
+### 示例 B（冠词 / 一致 / 真搭配 — 注意 the users 不是复数点）
 输入：
-"This feature is very helpful for the beginner who want to improve oral English."
+"For the users who wants to improve speaking English"
 输出：
 ```json
 {
   "items": [
     {
-      "originalSentence": "This feature is very helpful for the beginner who want to improve oral English.",
-      "suggestion": "This feature is really helpful for beginners who want to improve their spoken English.",
+      "originalSentence": "For the users who wants to improve speaking English",
+      "suggestion": "For users who want to improve their spoken English.",
       "errors": [
-        { "pointId": "PLURAL_COUNTABLE", "point": "the beginner → beginners（泛指一类人，可数名词用复数，不加 the）" },
-        { "pointId": "COLLOCATION", "point": "oral English → spoken English（口语更地道的搭配）" }
+        { "pointId": "ARTICLE_GENERIC_ZERO", "point": "the users → users（泛指一类用户，复数前不用 the）" },
+        { "pointId": "SVA_RELATIVE_CLAUSE", "point": "who wants → who want（先行词 users 为复数）" },
+        { "pointId": "COLLOCATION", "point": "speaking English → spoken English（固定搭配）" }
       ]
     }
   ]
 }
 ```
 
-### 示例 C（基本正确 → 不输出，教克制）
+### 示例 C（基本正确 → 不输出）
 输入：
 "I'm doing well, thanks. I've been pretty busy with work lately."
+输出：
+```json
+{
+  "items": []
+}
+```
+
+### 示例 D（合法口语 → 不输出，禁止过纠）
+输入：
+"I just use the Agent to help me to clean the JSON. The internet in Shanghai is awful."
 输出：
 ```json
 {
