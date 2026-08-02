@@ -5,11 +5,14 @@ import com.khankiddo.learning.ai.conversation.model.*;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.llm.ChineseExpressionReviewClient;
 import com.khankiddo.learning.llm.EducationalSummaryClient;
 import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
+import com.khankiddo.learning.model.enums.ErrorLevel;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +47,7 @@ public class ConversationAnalysisPipeline {
     private final GrammarAnalysisSanitizer grammarAnalysisSanitizer;
     private final UtteranceRouter utteranceRouter;
     private final ChineseExpressionReviewClient chineseExpressionReviewClient;
+    private final PointDictionary pointDictionary;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -283,15 +287,7 @@ public class ConversationAnalysisPipeline {
             List<AnalysisErrorDto> errors = new ArrayList<>();
             if (!CollectionUtils.isEmpty(raw.getErrors())) {
                 for (GrammarErrorDto error : raw.getErrors()) {
-                    String englishType = StringUtils.hasText(error.getType()) ? error.getType().trim() : "Other";
-                    ProblemType problemType = ProblemType.fromEnglishName(englishType);
-                    String displayType = problemType != null ? problemType.getChineseName() : englishType;
-                    String level = problemType != null ? problemType.getErrorLevel().name() : "STYLE";
-                    errors.add(AnalysisErrorDto.builder()
-                            .type(displayType)
-                            .point(error.getPoint())
-                            .errorLevel(level)
-                            .build());
+                    errors.add(toAnalysisErrorDto(error));
                 }
             }
             items.add(AnalysisItemDto.builder()
@@ -304,6 +300,30 @@ public class ConversationAnalysisPipeline {
         return items;
     }
 
+    private AnalysisErrorDto toAnalysisErrorDto(GrammarErrorDto error) {
+        PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+        ErrorLevel level = resolveErrorLevel(definition.errorLevel());
+        return AnalysisErrorDto.builder()
+                .pointId(definition.pointId())
+                .type(ProblemType.translate(definition.problemType()))
+                .point(error.getPoint())
+                .errorLevel(level.name())
+                .familyId(definition.familyId())
+                .channel(definition.channel().getJsonValue())
+                .build();
+    }
+
+    private static ErrorLevel resolveErrorLevel(String rawLevel) {
+        if (!StringUtils.hasText(rawLevel)) {
+            return ErrorLevel.STYLE;
+        }
+        try {
+            return ErrorLevel.valueOf(rawLevel.trim());
+        } catch (IllegalArgumentException ex) {
+            return ErrorLevel.STYLE;
+        }
+    }
+
     private List<ErrorTypeDistributionDto> buildDistribution(GrammarAnalysisResult grammar) {
         Map<String, Integer> counts = new HashMap<>();
         if (grammar != null && !CollectionUtils.isEmpty(grammar.getItems())) {
@@ -312,10 +332,8 @@ public class ConversationAnalysisPipeline {
                     continue;
                 }
                 for (GrammarErrorDto error : item.getErrors()) {
-                    if (!StringUtils.hasText(error.getType())) {
-                        continue;
-                    }
-                    String label = ProblemType.translate(error.getType());
+                    PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+                    String label = ProblemType.translate(definition.problemType());
                     counts.merge(label, 1, Integer::sum);
                 }
             }

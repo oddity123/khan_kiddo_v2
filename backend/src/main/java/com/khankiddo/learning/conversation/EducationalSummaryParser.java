@@ -8,6 +8,8 @@ import com.khankiddo.learning.conversation.scoring.PerformanceScoreResult;
 import com.khankiddo.learning.conversation.scoring.PerformanceScorer;
 import com.khankiddo.learning.conversation.scoring.PerformanceScoringInput;
 import com.khankiddo.learning.dto.conversation.*;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.model.enums.ProblemType;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
@@ -30,10 +32,13 @@ public class EducationalSummaryParser {
 
     private final ObjectMapper objectMapper;
     private final PerformanceScorer performanceScorer;
+    private final PointDictionary pointDictionary;
 
-    public EducationalSummaryParser(ObjectMapper objectMapper, PerformanceScorer performanceScorer) {
+    public EducationalSummaryParser(
+            ObjectMapper objectMapper, PerformanceScorer performanceScorer, PointDictionary pointDictionary) {
         this.objectMapper = objectMapper;
         this.performanceScorer = performanceScorer;
+        this.pointDictionary = pointDictionary;
     }
 
     public EducationalSummaryDto parseMarkdownSummary(
@@ -114,7 +119,8 @@ public class EducationalSummaryParser {
             return summaryRoot;
         }
         PerformanceScoreResult scores = performanceScorer.score(
-                PerformanceScoringInput.fromAnalysisItems(items, resolveEnglishPracticeCount(stats, totalSentences)));
+                PerformanceScoringInput.fromAnalysisItems(
+                        items, resolveEnglishPracticeCount(stats, totalSentences), pointDictionary));
         EducationalSummaryStatsDto enrichedStats = mergeScores(
                 stats,
                 totalSentences,
@@ -165,7 +171,7 @@ public class EducationalSummaryParser {
             String mainCategory,
             String levelSummary) {
         PerformanceScoreResult scores = performanceScorer.score(
-                PerformanceScoringInput.fromGrammar(grammar, englishPracticeCount));
+                PerformanceScoringInput.fromGrammar(grammar, englishPracticeCount, pointDictionary));
         EducationalSummaryStatsDto overallStats = EducationalSummaryStatsDto.builder()
                 .totalIssues(totalIssues)
                 .totalSentences(userSentenceCount)
@@ -225,10 +231,8 @@ public class EducationalSummaryParser {
                 continue;
             }
             for (GrammarErrorDto error : item.getErrors()) {
-                if (!StringUtils.hasText(error.getType())) {
-                    continue;
-                }
-                String label = ProblemType.translate(error.getType());
+                PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+                String label = ProblemType.translate(definition.problemType());
                 counts.merge(label, 1, Integer::sum);
             }
         }
@@ -266,8 +270,7 @@ public class EducationalSummaryParser {
                 continue;
             }
             String types = item.getErrors().stream()
-                    .filter(error -> StringUtils.hasText(error.getType()))
-                    .map(error -> ProblemType.translate(error.getType()))
+                    .map(error -> ProblemType.translate(pointDictionary.resolveOrFallback(error.getPointId()).problemType()))
                     .collect(Collectors.joining("、"));
             if (StringUtils.hasText(types)) {
                 lines.add(index++ + ". " + types);
