@@ -158,6 +158,8 @@ export interface AnalysisSummaryRow {
   dimensionScores?: PerformanceDimensionScores
 }
 
+import type {GrowthCard} from '@/types/growthCard'
+
 export interface ConversationAnalysisDetail {
   analysisId: string
   conversationContent?: string
@@ -178,6 +180,10 @@ export interface ConversationAnalysisDetail {
     actionCards?: ActionCard[]
     /** 语法家族分布（饼图用），旧数据回退 errorTypeDistribution */
     familyDistribution?: FamilyDistributionItem[]
+    /** 习惯成长卡铸卡状态 */
+    habitGrowthMintStatus?: 'pending' | 'ready' | 'failed' | 'none'
+    /** 已铸成的习惯成长卡，ready 时有值 */
+    habitGrowthCard?: GrowthCard
 }
 
 /** 与后端 knowledge.PointChannel 一致，JSON 小写 */

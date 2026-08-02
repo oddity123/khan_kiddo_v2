@@ -16,10 +16,11 @@ import {
   TrendCharts,
 } from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, nextTick, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
+import {retryMintGrowthCards} from '@/api/growthCard'
 import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
@@ -34,6 +35,7 @@ import type {
   ConversationAnalysisDetail,
   ErrorTypeDistribution,
 } from '@/types/conversation'
+import type {GrowthCard} from '@/types/growthCard'
 import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
@@ -55,6 +57,77 @@ const sortedItems = computed(() => {
 })
 
 const topHabit = computed(() => detail.value?.topHabit)
+
+const habitGrowthMintStatus = computed(() => detail.value?.habitGrowthMintStatus ?? 'none')
+const habitGrowthCard = computed((): GrowthCard | undefined => detail.value?.habitGrowthCard)
+const showMintBlock = computed(() => habitGrowthMintStatus.value !== 'none')
+
+const MINT_POLL_INTERVAL_MS = 1500
+const MINT_POLL_MAX = 10
+let mintPollTimer: ReturnType<typeof setTimeout> | null = null
+let mintPollCount = 0
+const retryingMint = ref(false)
+
+function clearMintPoll() {
+  if (mintPollTimer) {
+    clearTimeout(mintPollTimer)
+    mintPollTimer = null
+  }
+  mintPollCount = 0
+}
+
+async function refreshDetailSilent() {
+  if (!analysisId.value) {
+    return undefined
+  }
+  try {
+    const {data} = await getConversationAnalysisDetail(analysisId.value)
+    detail.value = data
+    return data
+  } catch {
+    return undefined
+  }
+}
+
+function scheduleMintPoll() {
+  clearMintPoll()
+  if (habitGrowthMintStatus.value !== 'pending') {
+    return
+  }
+  const poll = async () => {
+    mintPollCount += 1
+    const data = await refreshDetailSilent()
+    if (data?.habitGrowthMintStatus !== 'pending' || mintPollCount >= MINT_POLL_MAX) {
+      clearMintPoll()
+      return
+    }
+    mintPollTimer = setTimeout(poll, MINT_POLL_INTERVAL_MS)
+  }
+  mintPollTimer = setTimeout(poll, MINT_POLL_INTERVAL_MS)
+}
+
+async function onRetryMint() {
+  if (!analysisId.value || retryingMint.value) {
+    return
+  }
+  retryingMint.value = true
+  try {
+    await retryMintGrowthCards(analysisId.value)
+    if (detail.value) {
+      detail.value = {
+        ...detail.value,
+        habitGrowthMintStatus: 'pending',
+        habitGrowthCard: undefined,
+      }
+    }
+    scheduleMintPoll()
+    ElMessage.success('已开始重新生成成长卡')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '重新生成失败'))
+  } finally {
+    retryingMint.value = false
+  }
+}
 
 // rank 1 已由 topHabit 独占展示为 Hero，面板只需 rank>1，避免重复
 const actionCards = computed(() => (detail.value?.actionCards ?? []).filter((card) => card.rank > 1))
@@ -176,12 +249,16 @@ async function loadDetail() {
   }
   loading.value = true
   pageReady.value = false
+  clearMintPoll()
   try {
     const {data} = await getConversationAnalysisDetail(analysisId.value)
     detail.value = data
     requestAnimationFrame(() => {
       pageReady.value = true
     })
+    if (data.habitGrowthMintStatus === 'pending') {
+      scheduleMintPoll()
+    }
   } catch (error) {
     detail.value = null
     ElMessage.error(getErrorMessage(error, '加载详情失败'))
@@ -214,6 +291,7 @@ async function onDelete() {
 
 onMounted(loadDetail)
 watch(analysisId, loadDetail)
+onBeforeUnmount(clearMintPoll)
 </script>
 
 <template>
@@ -261,6 +339,38 @@ watch(analysisId, loadDetail)
                 @locate="locate"
             />
 
+            <div
+                v-if="showMintBlock"
+                class="habit-mint-block"
+                :class="`habit-mint-block--${habitGrowthMintStatus}`"
+            >
+              <template v-if="habitGrowthMintStatus === 'pending'">
+                <p class="habit-mint-label">成长卡生成中…</p>
+              </template>
+              <template v-else-if="habitGrowthMintStatus === 'ready' && habitGrowthCard">
+                <p class="habit-mint-label">已生成成长卡</p>
+                <div class="habit-mint-preview">
+                  <p class="habit-mint-front">{{ habitGrowthCard.front }}</p>
+                  <p class="habit-mint-back">{{ habitGrowthCard.back }}</p>
+                </div>
+                <router-link to="/" class="habit-mint-link">
+                  可在首页今日成长卡复习
+                </router-link>
+              </template>
+              <template v-else-if="habitGrowthMintStatus === 'failed'">
+                <p class="habit-mint-label habit-mint-label--warn">成长卡生成失败</p>
+                <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    :loading="retryingMint"
+                    @click="onRetryMint"
+                >
+                  重新生成成长卡
+                </el-button>
+              </template>
+            </div>
+
             <ActionCardsPanel :cards="actionCards" @locate="locate" @practice="onPractice"/>
           </section>
 
@@ -268,6 +378,7 @@ watch(analysisId, loadDetail)
               v-if="chineseExpressions.length"
               layout="main"
               :items="chineseExpressions"
+              :analysis-id="analysisId"
           />
 
           <details ref="sentencesFoldRef" class="sentences-fold raw-fold kk-glass kk-glass--panel">
@@ -313,6 +424,7 @@ watch(analysisId, loadDetail)
                   :key="item.sentenceId ?? item.originalSentence"
                   :item="item"
                   :index="idx"
+                  :analysis-id="analysisId"
               />
             </div>
           </details>
@@ -575,6 +687,73 @@ watch(analysisId, loadDetail)
 
 .habit-ladder :deep(.ac-panel) {
   margin-top: 0.75rem;
+}
+
+.habit-mint-block {
+  margin: 0.85rem 0 0.25rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--kk-radius-md);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid var(--kk-glass-inner-border);
+}
+
+.habit-mint-block--pending {
+  border-left: 3px solid var(--kk-color-accent);
+}
+
+.habit-mint-block--ready {
+  border-left: 3px solid var(--kk-color-success);
+}
+
+.habit-mint-block--failed {
+  border-left: 3px solid var(--kk-color-danger);
+}
+
+.habit-mint-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--kk-color-text-muted);
+}
+
+.habit-mint-label--warn {
+  color: var(--kk-color-danger);
+}
+
+.habit-mint-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.habit-mint-front,
+.habit-mint-back {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.habit-mint-front {
+  font-weight: 700;
+  color: var(--kk-color-primary);
+}
+
+.habit-mint-back {
+  color: var(--kk-color-text-muted);
+}
+
+.habit-mint-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--kk-color-primary);
+  text-decoration: none;
+}
+
+.habit-mint-link:hover {
+  color: var(--kk-color-accent-text);
+  text-decoration: underline;
 }
 
 .detail-aside {

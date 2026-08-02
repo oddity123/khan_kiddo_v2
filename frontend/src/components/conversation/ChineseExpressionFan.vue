@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import {ChatLineSquare, Check, CloseBold, Refresh, RefreshLeft,} from '@element-plus/icons-vue'
 import confetti from 'canvas-confetti'
+import {ElMessage} from 'element-plus'
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
+import {collectGrowthCard} from '@/api/growthCard'
 import type {ChineseExpressionItem} from '@/types/conversation'
+import {getErrorMessage} from '@/utils/error'
 
 const props = withDefaults(
     defineProps<{
       items: ChineseExpressionItem[]
       layout?: 'main' | 'aside'
+      analysisId?: string
     }>(),
     {layout: 'main'},
 )
@@ -48,6 +52,7 @@ const feedbackCardId = ref<string | null>(null)
 const hotkeysArmed = ref(false)
 /** 驱动 canRestore / isStart 在脚本侧刷新 */
 const uiTick = ref(0)
+const collecting = ref(false)
 
 const deckItems = computed((): FlashCardItem[] =>
     props.items.map((item, index) => ({
@@ -240,6 +245,41 @@ function armHotkeys() {
 
 function disarmHotkeys() {
   hotkeysArmed.value = false
+}
+
+const currentCard = computed(() => deckItems.value[reviewed.value] ?? null)
+
+const canCollectCurrent = computed(() =>
+    Boolean(
+        props.analysisId
+        && currentCard.value
+        && currentCard.value.suggestion?.trim(),
+    ),
+)
+
+async function collectCurrent() {
+  const card = currentCard.value
+  if (!canCollectCurrent.value || !props.analysisId || !card || collecting.value) {
+    return
+  }
+  const front = cardFrontText(card)
+  const back = card.suggestion!.trim()
+  const idx = card.originalIndex ?? deckItems.value.findIndex((c) => c.id === card.id)
+  collecting.value = true
+  try {
+    await collectGrowthCard({
+      analysisId: props.analysisId,
+      type: 'vocab',
+      front,
+      back,
+      sourceRef: `vocab:${idx}`,
+    })
+    ElMessage.success('已收入卡包')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '收藏失败'))
+  } finally {
+    collecting.value = false
+  }
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -438,6 +478,17 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="cn-actions" v-if="!isComplete">
+        <el-button
+            v-if="analysisId"
+            size="small"
+            plain
+            class="cn-collect-btn"
+            :loading="collecting"
+            :disabled="!canCollectCurrent || resetting || swiping"
+            @click="collectCurrent"
+        >
+          收入卡包
+        </el-button>
         <button
             type="button"
             class="cn-action-btn"
@@ -865,9 +916,15 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.1rem;
   padding-top: 0.15rem;
+}
+
+.cn-collect-btn {
+  flex: 0 0 100%;
+  margin-bottom: 0.15rem;
 }
 
 .cn-actions--done {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type {Component} from 'vue'
-import {computed} from 'vue'
+import {computed, ref} from 'vue'
 import {
   ArrowRight,
   ChatLineSquare,
@@ -15,19 +15,57 @@ import {
   Rank,
   Reading,
 } from '@element-plus/icons-vue'
+import {ElMessage} from 'element-plus'
 
+import {collectGrowthCard} from '@/api/growthCard'
 import type {AnalysisItem} from '@/types/conversation'
 import {displayTypeLabel, errorPointText, sortErrors} from '@/utils/analysisDisplay'
+import {getErrorMessage} from '@/utils/error'
 
 const props = defineProps<{
   item: AnalysisItem
   index?: number
+  analysisId?: string
 }>()
+
+const collecting = ref(false)
 
 const sortedErrors = computed(() => sortErrors(props.item.errors ?? []))
 const errorCount = computed(() => sortedErrors.value.length)
 const visibleChips = computed(() => sortedErrors.value.slice(0, 3))
 const hiddenChipCount = computed(() => Math.max(0, errorCount.value - 3))
+const primaryError = computed(() => sortedErrors.value[0] ?? null)
+const canCollect = computed(() =>
+    Boolean(props.analysisId && errorCount.value && props.item.suggestion?.trim()),
+)
+
+async function onCollect() {
+  if (!canCollect.value || !props.analysisId || collecting.value) {
+    return
+  }
+  const err = primaryError.value
+  if (!err) {
+    return
+  }
+  const front = errorPointText(err)
+  const back = props.item.suggestion!.trim()
+  const pointKey = err.pointId || front
+  collecting.value = true
+  try {
+    await collectGrowthCard({
+      analysisId: props.analysisId,
+      type: 'habit',
+      front,
+      back,
+      sourceRef: `item:${props.item.sentenceId}:${pointKey}`,
+    })
+    ElMessage.success('已收入成长卡')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '收藏失败'))
+  } finally {
+    collecting.value = false
+  }
+}
 
 function errorBadgeClass(level?: string) {
   if (level === 'FATAL' || level === 'BASIC') {
@@ -139,6 +177,12 @@ function chipIcon(type?: string): Component {
         </div>
       </div>
     </details>
+
+    <div v-if="canCollect" class="collect-row">
+      <el-button size="small" plain :loading="collecting" @click="onCollect">
+        收成成长卡
+      </el-button>
+    </div>
   </article>
 </template>
 
@@ -416,6 +460,14 @@ function chipIcon(type?: string): Component {
   font-size: 0.82rem;
   line-height: 1.55;
   color: var(--kk-color-text-muted);
+}
+
+.collect-row {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--kk-glass-inner-border);
 }
 
 @media (prefers-reduced-motion: reduce) {

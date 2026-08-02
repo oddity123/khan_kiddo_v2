@@ -11,3 +11,11 @@ export interface GrowthCard {
   back: string
   sourceAnalysisId?: string | null
 }
+
+export interface CollectGrowthCardRequest {
+  analysisId: string
+  type?: GrowthCardType
+  front: string
+  back: string
+  sourceRef: string
+}
