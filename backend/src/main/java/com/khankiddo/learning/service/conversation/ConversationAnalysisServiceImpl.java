@@ -5,6 +5,8 @@ import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.knowledge.HabitCardScorer;
+import com.khankiddo.learning.knowledge.HabitScoreInput;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
@@ -42,6 +44,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final PointDictionary pointDictionary;
+    private final HabitCardScorer habitCardScorer;
 
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
@@ -281,6 +284,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 : summaryParser.enrichReportWithScores(
                         summaryRoot, items, resolveTotalSentences(summaryRoot, items.size()));
 
+        HabitCardScorer.HabitScoreResult habitScoreResult =
+                buildHabitScoreResult(rows, enrichedSummary.getChineseExpressions());
+
         return ConversationAnalysisDetailDto.builder()
                 .analysisId(analysis.getAnalysisId())
                 .conversationContent(analysis.getConversationContent())
@@ -295,7 +301,40 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .items(items)
                 .errorTypeDistribution(distribution)
                 .chineseExpressions(enrichedSummary.getChineseExpressions())
+                .topHabit(habitScoreResult.topHabit())
+                .actionCards(habitScoreResult.actionCards())
+                .familyDistribution(habitScoreResult.familyDistribution())
                 .build();
+    }
+
+    /**
+     * 由持久化的错误行（含 {@code pointId}）+ 中文表达组装打分器输入。旧数据（无 {@code pointId}）
+     * 整体跳过打分：{@code actionCards} 为空、{@code topHabit} 为 {@code null}，饼图交由调用方回退
+     * {@code errorTypeDistribution}。
+     */
+    HabitCardScorer.HabitScoreResult buildHabitScoreResult(
+            List<ConversationAnalysisItem> rows, List<ChineseExpressionDto> chineseExpressions) {
+        boolean hasPointId = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
+        if (!hasPointId) {
+            return new HabitCardScorer.HabitScoreResult(null, List.of(), List.of());
+        }
+
+        List<HabitScoreInput.ErrorHit> errorHits = rows.stream()
+                .map(row -> new HabitScoreInput.ErrorHit(
+                        row.getPointId(),
+                        row.getSentenceId() != null ? String.valueOf(row.getSentenceId()) : null,
+                        row.getOriginalSentence(),
+                        row.getErrorPoint(),
+                        row.getSuggestion(),
+                        resolveErrorLevel(row.getProblemTypes())))
+                .toList();
+
+        return habitCardScorer.score(new HabitScoreInput(errorHits, chineseExpressions));
+    }
+
+    private String resolveErrorLevel(String problemTypesEnglish) {
+        ProblemType problemType = ProblemType.fromEnglishName(problemTypesEnglish);
+        return problemType != null ? problemType.getErrorLevel().name() : null;
     }
 
     private int resolveTotalSentences(EducationalSummaryDto summaryRoot, int fallbackFromItems) {

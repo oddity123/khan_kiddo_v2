@@ -12,4 +12,9 @@ public class PointDictionaryConfig {
     PointDictionary pointDictionary() {
         return PointDictionary.loadFromClasspath(DICTIONARY_CLASSPATH);
     }
+
+    @Bean
+    HabitCardScorer habitCardScorer(PointDictionary pointDictionary) {
+        return new HabitCardScorer(pointDictionary);
+    }
 }
