@@ -74,3 +74,24 @@ CREATE TABLE IF NOT EXISTS `user_feedback`
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_created_at` (`created_at`)
 ) ENGINE = InnoDB COMMENT = '用户反馈/留言表';
+
+-- 成长卡
+CREATE TABLE IF NOT EXISTS `growth_card`
+(
+    `id`                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `card_id`             VARCHAR(64)  NOT NULL,
+    `user_id`             BIGINT       NOT NULL,
+    `type`                VARCHAR(16)  NOT NULL COMMENT 'habit|vocab',
+    `status`              VARCHAR(16)  NOT NULL COMMENT 'unfamiliar|fuzzy|mastered',
+    `next_due_at`         DATE                  DEFAULT NULL,
+    `front`               TEXT         NOT NULL,
+    `back`                TEXT         NOT NULL,
+    `source_analysis_id`  VARCHAR(64)           DEFAULT NULL,
+    `source_ref`          VARCHAR(128) NOT NULL,
+    `evidence_json`       TEXT                  DEFAULT NULL,
+    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_card_id` (`card_id`),
+    UNIQUE KEY `uk_user_source` (`user_id`, `source_analysis_id`, `type`, `source_ref`),
+    INDEX `idx_user_due` (`user_id`, `status`, `next_due_at`)
+) ENGINE = InnoDB COMMENT ='成长卡';

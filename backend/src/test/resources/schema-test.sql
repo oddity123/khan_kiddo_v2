@@ -49,3 +49,22 @@ CREATE TABLE IF NOT EXISTS user_feedback
     content    TEXT         NOT NULL,
     created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS growth_card
+(
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    card_id            VARCHAR(64)  NOT NULL,
+    user_id            BIGINT       NOT NULL,
+    type               VARCHAR(16)  NOT NULL,
+    status             VARCHAR(16)  NOT NULL,
+    next_due_at        DATE,
+    front              TEXT         NOT NULL,
+    back               TEXT         NOT NULL,
+    source_analysis_id VARCHAR(64),
+    source_ref         VARCHAR(128) NOT NULL,
+    evidence_json      TEXT,
+    created_at         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (card_id),
+    UNIQUE (user_id, source_analysis_id, type, source_ref)
+);
