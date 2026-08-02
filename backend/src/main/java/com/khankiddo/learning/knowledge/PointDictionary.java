@@ -56,13 +56,31 @@ public final class PointDictionary {
         Map<String, FamilyDefinition> familiesById = new LinkedHashMap<>();
         if (!CollectionUtils.isEmpty(document.families())) {
             for (FamilyDefinition family : document.families()) {
-                familiesById.put(family.familyId(), family);
+                if (family == null || !StringUtils.hasText(family.familyId())) {
+                    throw new IllegalStateException("知识点字典存在空白 familyId");
+                }
+                String familyId = family.familyId().trim();
+                if (familiesById.containsKey(familyId)) {
+                    throw new IllegalStateException("知识点字典重复 familyId: " + familyId);
+                }
+                familiesById.put(familyId, family);
             }
         }
 
         Map<String, PointDefinition> pointsById = new LinkedHashMap<>();
         for (PointDefinition point : document.points()) {
-            pointsById.put(point.pointId(), point);
+            if (point == null || !StringUtils.hasText(point.pointId())) {
+                throw new IllegalStateException("知识点字典存在空白 pointId");
+            }
+            String pointId = point.pointId().trim();
+            if (pointsById.containsKey(pointId)) {
+                throw new IllegalStateException("知识点字典重复 pointId: " + pointId);
+            }
+            if (!StringUtils.hasText(point.familyId()) || !familiesById.containsKey(point.familyId().trim())) {
+                throw new IllegalStateException(
+                        "知识点字典 pointId=" + pointId + " 引用了不存在的 familyId: " + point.familyId());
+            }
+            pointsById.put(pointId, point);
         }
 
         if (!pointsById.containsKey(FALLBACK_POINT_ID)) {
