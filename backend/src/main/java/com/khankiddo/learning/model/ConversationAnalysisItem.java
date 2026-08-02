@@ -18,6 +18,7 @@ public class ConversationAnalysisItem {
     private Long sentenceId;
     private String originalSentence;
     private String problemTypes;
+    private String pointId;
     private String errorPoint;
     private String suggestion;
     private LocalDateTime createdAt;

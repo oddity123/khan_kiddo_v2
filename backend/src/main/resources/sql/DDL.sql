@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     `sentence_id`       BIGINT       NOT NULL COMMENT '句子ID（同一个句子的不同错误使用相同的sentenceId）',
     `original_sentence` TEXT         NOT NULL COMMENT '用户原句',
     `problem_types`     VARCHAR(100) NOT NULL COMMENT '问题类型，如 "Tense"',
+    `point_id`          VARCHAR(48)  NULL COMMENT '知识点叶子 pointId',
     `error_point`       VARCHAR(500) NOT NULL COMMENT '错误点描述',
     `suggestion`        TEXT         NOT NULL COMMENT '修改建议或正确英文表达',
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -56,6 +57,10 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     INDEX `idx_analysis_sentence` (`analysis_id`, `sentence_id`),
     INDEX `idx_problem_types` (`problem_types`) COMMENT '问题类型索引，用于查询特定问题类型'
 ) ENGINE = InnoDB COMMENT = '对话分析明细表';
+
+-- 已存在数据库需手动执行（新建库通过上面的 CREATE TABLE IF NOT EXISTS 已包含该列）：
+-- ALTER TABLE conversation_analysis_item
+--   ADD COLUMN point_id VARCHAR(48) NULL COMMENT '知识点叶子 pointId' AFTER problem_types;
 
 -- 用户反馈/留言表
 CREATE TABLE IF NOT EXISTS `user_feedback`

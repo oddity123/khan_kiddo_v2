@@ -5,6 +5,8 @@ import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
@@ -39,6 +41,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final EducationalSummaryParser summaryParser;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final PointDictionary pointDictionary;
 
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
@@ -152,13 +155,23 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 continue;
             }
             for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
-                String englishType = toEnglishProblemType(error.getType());
                 String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
+                String resolvedPointId;
+                String englishType;
+                if (StringUtils.hasText(error.getPointId())) {
+                    PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+                    resolvedPointId = definition.pointId();
+                    englishType = definition.problemType();
+                } else {
+                    resolvedPointId = pointDictionary.resolveOrFallback(null).pointId();
+                    englishType = toEnglishProblemType(error.getType());
+                }
                 dbItems.add(ConversationAnalysisItem.builder()
                         .analysisId(analysisId)
                         .sentenceId(sentenceId)
                         .originalSentence(item.getOriginalSentence())
                         .problemTypes(englishType)
+                        .pointId(resolvedPointId)
                         .errorPoint(point)
                         .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
                         .build());
@@ -194,6 +207,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                             .map(err -> ConversationAnalysisSaveRequest.SaveError.builder()
                                     .type(err.getType())
                                     .point(err.getPoint())
+                                    .pointId(err.getPointId())
                                     .build())
                             .toList())
                     .build());
@@ -214,6 +228,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                                     .map(err -> AnalysisErrorDto.builder()
                                             .type(err.getType())
                                             .point(err.getPoint())
+                                            .pointId(err.getPointId())
                                             .build())
                                     .toList())
                             .build())

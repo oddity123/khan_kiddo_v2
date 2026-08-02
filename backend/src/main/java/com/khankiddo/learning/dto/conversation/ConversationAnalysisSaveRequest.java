@@ -52,5 +52,7 @@ public class ConversationAnalysisSaveRequest {
         private String type;
 
         private String point;
+
+        private String pointId;
     }
 }

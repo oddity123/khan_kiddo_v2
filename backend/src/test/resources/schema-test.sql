@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS conversation_analysis_item
     sentence_id       BIGINT       NOT NULL,
     original_sentence TEXT         NOT NULL,
     problem_types     VARCHAR(100) NOT NULL,
+    point_id          VARCHAR(48),
     error_point       VARCHAR(200) NOT NULL,
     suggestion        TEXT         NOT NULL,
     created_at        TIMESTAMP    DEFAULT CURRENT_TIMESTAMP

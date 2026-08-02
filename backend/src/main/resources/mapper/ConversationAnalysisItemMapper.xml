@@ -8,6 +8,7 @@
         <result column="sentence_id" property="sentenceId"/>
         <result column="original_sentence" property="originalSentence"/>
         <result column="problem_types" property="problemTypes"/>
+        <result column="point_id" property="pointId"/>
         <result column="error_point" property="errorPoint"/>
         <result column="suggestion" property="suggestion"/>
         <result column="created_at" property="createdAt"/>
@@ -61,6 +62,7 @@
                cai.sentence_id,
                cai.original_sentence,
                cai.problem_types,
+               cai.point_id,
                cai.error_point,
                cai.suggestion,
                cai.created_at
@@ -84,6 +86,7 @@
                sentence_id,
                original_sentence,
                problem_types,
+               point_id,
                error_point,
                suggestion,
                created_at
@@ -99,6 +102,7 @@
                sentence_id,
                original_sentence,
                problem_types,
+               point_id,
                error_point,
                suggestion,
                created_at
@@ -139,6 +143,7 @@
         cai.sentence_id,
         cai.original_sentence,
         cai.problem_types,
+        cai.point_id,
         cai.error_point,
         cai.suggestion,
         cai.created_at
@@ -185,12 +190,12 @@
     </select>
 
     <insert id="batchInsert">
-        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, error_point,
-        suggestion, created_at)
+        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, point_id,
+        error_point, suggestion, created_at)
         VALUES
         <foreach collection="items" item="item" separator=",">
-            (#{item.analysisId}, #{item.sentenceId}, #{item.originalSentence}, #{item.problemTypes}, #{item.errorPoint},
-            #{item.suggestion}, NOW())
+            (#{item.analysisId}, #{item.sentenceId}, #{item.originalSentence}, #{item.problemTypes}, #{item.pointId},
+            #{item.errorPoint}, #{item.suggestion}, NOW())
         </foreach>
     </insert>
 
