@@ -243,14 +243,26 @@ watch(analysisId, loadDetail)
       />
       <div class="detail-grid">
         <main class="detail-main">
-          <TopHabitHero
-              v-if="topHabit"
-              :card="topHabit"
-              @practice="onPractice"
-              @locate="locate"
-          />
+          <section
+              v-if="topHabit || actionCards.length"
+              class="habit-ladder kk-glass kk-glass--panel"
+              aria-label="本场优先改的说话习惯"
+          >
+            <header class="habit-ladder-head">
+              <p class="habit-ladder-kicker">优先阶梯</p>
+              <h2 class="habit-ladder-title">本场优先改 · Top 3</h2>
+              <p class="habit-ladder-sub">按影响排序，先攻最值得改的习惯</p>
+            </header>
 
-          <ActionCardsPanel :cards="actionCards" @locate="locate" @practice="onPractice"/>
+            <TopHabitHero
+                v-if="topHabit"
+                :card="topHabit"
+                @practice="onPractice"
+                @locate="locate"
+            />
+
+            <ActionCardsPanel :cards="actionCards" @locate="locate" @practice="onPractice"/>
+          </section>
 
           <ChineseExpressionFan
               v-if="chineseExpressions.length"
@@ -519,6 +531,52 @@ watch(analysisId, loadDetail)
   align-items: start;
 }
 
+.detail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  min-width: 0;
+}
+
+.habit-ladder {
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-top: 2px solid var(--kk-color-accent);
+}
+
+.habit-ladder-head {
+  margin-bottom: 1rem;
+}
+
+.habit-ladder-kicker {
+  margin: 0 0 0.25rem;
+  font-family: var(--kk-font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--kk-color-accent-text);
+}
+
+.habit-ladder-title {
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--kk-color-primary);
+}
+
+.habit-ladder-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--kk-color-text-muted);
+}
+
+.habit-ladder :deep(.ac-panel) {
+  margin-top: 0.75rem;
+}
+
 .detail-aside {
   order: -1;
   display: flex;
@@ -547,7 +605,7 @@ watch(analysisId, loadDetail)
 }
 
 .sentences-fold {
-  margin-bottom: 1.25rem;
+  margin-bottom: 0;
 }
 
 .sentences-fold-body {

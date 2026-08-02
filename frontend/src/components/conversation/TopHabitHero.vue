@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {MagicStick, TrendCharts} from '@element-plus/icons-vue'
+import {MagicStick} from '@element-plus/icons-vue'
 import {computed} from 'vue'
 
 import type {ActionCard, ActionCardExample} from '@/types/conversation'
@@ -32,15 +32,16 @@ function onLocate(example: ActionCardExample) {
 </script>
 
 <template>
-  <section class="hero kk-glass kk-glass--panel" aria-label="本次最该改的说话习惯">
+  <article class="hero" aria-label="Top 1 最该改的说话习惯">
     <div class="hero-top">
-      <span class="hero-icon-wrap" aria-hidden="true">
-        <el-icon class="hero-icon"><TrendCharts/></el-icon>
-      </span>
+      <div class="rank-mark" aria-hidden="true">
+        <span class="rank-mark-label">TOP</span>
+        <span class="rank-mark-num">1</span>
+      </div>
 
       <div class="hero-body">
-        <p class="hero-eyebrow">本场习惯诊断</p>
-        <h2 class="hero-headline">{{ headline }}</h2>
+        <p class="hero-eyebrow">本场最该先改</p>
+        <h3 class="hero-headline">{{ headline }}</h3>
         <p v-if="card.whyZh" class="hero-why">{{ card.whyZh }}</p>
         <span v-if="card.errorCount" class="hero-count">命中 {{ card.errorCount }} 句</span>
       </div>
@@ -69,7 +70,7 @@ function onLocate(example: ActionCardExample) {
         </button>
       </div>
     </div>
-  </section>
+  </article>
 </template>
 
 <style scoped>
@@ -77,36 +78,53 @@ function onLocate(example: ActionCardExample) {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  padding: 1.15rem 1.3rem;
-  margin-bottom: 1.25rem;
-  border-top: 2px solid var(--kk-color-accent);
+  padding: 1.05rem 1.15rem 1.15rem;
+  border-radius: var(--kk-radius-lg);
+  background: linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--kk-color-accent) 14%, white) 0%,
+      color-mix(in srgb, var(--kk-color-primary) 4%, white) 55%,
+      rgba(255, 255, 255, 0.5) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--kk-color-accent) 28%, var(--kk-glass-inner-border));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .hero-top {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  align-items: flex-start;
+  gap: 0.95rem;
 }
 
-.hero-icon-wrap {
-  display: inline-flex;
+.rank-mark {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 3rem;
-  height: 3rem;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: linear-gradient(
-      145deg,
-      color-mix(in srgb, var(--kk-color-accent) 22%, white),
-      color-mix(in srgb, var(--kk-color-primary) 10%, white)
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  width: 3.1rem;
+  padding: 0.35rem 0.2rem 0.4rem;
+  border-radius: var(--kk-radius-md);
+  background: linear-gradient(160deg, var(--kk-color-primary), var(--kk-color-primary-soft));
+  color: #fff;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
+  line-height: 1;
 }
 
-.hero-icon {
-  font-size: 1.3rem;
-  color: var(--kk-color-primary);
+.rank-mark-label {
+  font-family: var(--kk-font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  opacity: 0.85;
+}
+
+.rank-mark-num {
+  margin-top: 0.12rem;
+  font-family: var(--kk-font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .hero-body {
@@ -129,7 +147,7 @@ function onLocate(example: ActionCardExample) {
 .hero-headline {
   margin: 0;
   font-family: var(--kk-font-display);
-  font-size: clamp(1.05rem, 2vw, 1.3rem);
+  font-size: clamp(1.05rem, 2vw, 1.28rem);
   font-weight: 800;
   line-height: 1.35;
   color: var(--kk-color-primary);
@@ -164,6 +182,7 @@ function onLocate(example: ActionCardExample) {
   align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
+  align-self: center;
   padding: 0.6rem 1.15rem;
   border-radius: var(--kk-radius-pill);
   border: none;
@@ -190,12 +209,12 @@ function onLocate(example: ActionCardExample) {
   flex-direction: column;
   gap: 0.5rem;
   padding-top: 0.75rem;
-  border-top: 1px solid var(--kk-glass-divider);
+  border-top: 1px solid color-mix(in srgb, var(--kk-color-accent) 18%, var(--kk-glass-divider));
 }
 
 .hero-example {
   padding: 0.65rem 0.75rem;
-  border-radius: var(--kk-radius-sm);
+  border-radius: var(--kk-radius-md);
   background: var(--kk-glass-inner-bg);
   border-left: 3px solid color-mix(in srgb, var(--kk-color-primary) 35%, transparent);
 }

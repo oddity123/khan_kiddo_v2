@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-  ArrowRight,
-  ChatLineSquare,
-  Connection,
-  Document,
-  Promotion,
-} from '@element-plus/icons-vue'
-import type {Component} from 'vue'
+import {ArrowRight} from '@element-plus/icons-vue'
 
 import type {ActionCard, ActionCardExample, PointChannel} from '@/types/conversation'
 
@@ -29,19 +22,8 @@ const CHANNEL_LABEL: Record<PointChannel, string> = {
   chinese: '中式思维',
 }
 
-const CHANNEL_ICON: Record<PointChannel, Component> = {
-  rule: Document,
-  fluency: Promotion,
-  lexical: ChatLineSquare,
-  chinese: Connection,
-}
-
 function channelLabel(channel: PointChannel): string {
   return CHANNEL_LABEL[channel] ?? '其它'
-}
-
-function channelIcon(channel: PointChannel): Component {
-  return CHANNEL_ICON[channel] ?? Document
 }
 
 function previewExamples(card: ActionCard): ActionCardExample[] {
@@ -68,15 +50,14 @@ function cardKey(card: ActionCard): string {
     <details
         v-for="card in props.cards"
         :key="cardKey(card)"
-        class="ac-card kk-glass"
-        :open="card.rank < 2"
+        class="ac-card"
+        :open="card.rank < 3"
     >
       <summary class="ac-summary">
         <el-icon class="ac-chevron"><ArrowRight/></el-icon>
-        <span class="ac-channel-icon" :class="`ac-channel-icon--${card.channel}`" aria-hidden="true">
-          <el-icon>
-            <component :is="channelIcon(card.channel)"/>
-          </el-icon>
+        <span class="rank-mark" :aria-label="`Top ${card.rank}`">
+          <span class="rank-mark-label">TOP</span>
+          <span class="rank-mark-num">{{ card.rank }}</span>
         </span>
         <span class="ac-title">{{ card.titleZh }}</span>
         <span class="ac-channel-tag">{{ channelLabel(card.channel) }}</span>
@@ -119,13 +100,14 @@ function cardKey(card: ActionCard): string {
 .ac-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  margin-bottom: 1.75rem;
+  gap: 0.65rem;
 }
 
 .ac-card {
-  padding: 0.9rem 1rem;
-  border-radius: var(--kk-radius-md);
+  padding: 0.85rem 0.95rem;
+  border-radius: var(--kk-radius-lg);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid var(--kk-glass-inner-border);
 }
 
 .ac-card > summary {
@@ -141,7 +123,7 @@ function cardKey(card: ActionCard): string {
 .ac-summary {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.65rem;
 }
 
 .ac-chevron {
@@ -154,22 +136,34 @@ function cardKey(card: ActionCard): string {
   transform: rotate(90deg);
 }
 
-.ac-channel-icon {
+.rank-mark {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 1.55rem;
-  height: 1.55rem;
   flex-shrink: 0;
-  border-radius: var(--kk-radius-sm);
-  font-size: 0.85rem;
+  width: 2.35rem;
+  padding: 0.22rem 0.1rem 0.28rem;
+  border-radius: var(--kk-radius-md);
   background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
-  color: var(--kk-color-primary-soft);
+  color: var(--kk-color-primary);
+  line-height: 1;
 }
 
-.ac-channel-icon--chinese {
-  background: color-mix(in srgb, var(--kk-color-accent) 20%, white);
-  color: var(--kk-color-accent-text);
+.rank-mark-label {
+  font-family: var(--kk-font-mono);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+
+.rank-mark-num {
+  margin-top: 0.08rem;
+  font-family: var(--kk-font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .ac-title {
@@ -186,7 +180,7 @@ function cardKey(card: ActionCard): string {
   flex-shrink: 0;
   padding: 0.15rem 0.55rem;
   border-radius: var(--kk-radius-pill);
-  background: var(--kk-glass-inner-bg);
+  background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--kk-glass-inner-border);
   font-size: 0.7rem;
   font-weight: 600;
@@ -226,8 +220,8 @@ function cardKey(card: ActionCard): string {
 
 .ac-example {
   padding: 0.65rem 0.75rem;
-  border-radius: var(--kk-radius-sm);
-  background: var(--kk-glass-inner-bg);
+  border-radius: var(--kk-radius-md);
+  background: rgba(255, 255, 255, 0.45);
   border-left: 3px solid color-mix(in srgb, var(--kk-color-primary) 35%, transparent);
 }
 
@@ -267,6 +261,12 @@ function cardKey(card: ActionCard): string {
 .ac-actions {
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .ac-channel-tag {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
