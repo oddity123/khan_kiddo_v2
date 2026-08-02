@@ -52,3 +52,6 @@ spring.log
 
 # 离线挖掘产出（含口语纠错语料，勿提交）
 scripts/out/
+
+# Git worktrees
+.worktrees/
