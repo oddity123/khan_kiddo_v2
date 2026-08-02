@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   ArrowLeft,
+  ArrowRight,
   ChatDotRound,
   Clock,
   Cpu,
@@ -242,7 +243,12 @@ watch(analysisId, loadDetail)
       />
       <div class="detail-grid">
         <main class="detail-main">
-          <TopHabitHero v-if="topHabit" :card="topHabit" @practice="onPractice"/>
+          <TopHabitHero
+              v-if="topHabit"
+              :card="topHabit"
+              @practice="onPractice"
+              @locate="locate"
+          />
 
           <ActionCardsPanel :cards="actionCards" @locate="locate" @practice="onPractice"/>
 
@@ -254,6 +260,7 @@ watch(analysisId, loadDetail)
 
           <details ref="sentencesFoldRef" class="sentences-fold raw-fold kk-glass kk-glass--panel">
             <summary>
+              <el-icon class="fold-chevron"><ArrowRight/></el-icon>
               <el-icon>
                 <ChatDotRound/>
               </el-icon>
@@ -300,6 +307,7 @@ watch(analysisId, loadDetail)
 
           <details v-if="detail.conversationContent" class="raw-fold kk-glass kk-glass--panel">
             <summary>
+              <el-icon class="fold-chevron"><ArrowRight/></el-icon>
               <el-icon>
                 <Document/>
               </el-icon>
@@ -723,6 +731,22 @@ watch(analysisId, loadDetail)
 
 .raw-fold summary::-webkit-details-marker {
   display: none;
+}
+
+.fold-chevron {
+  flex-shrink: 0;
+  color: var(--kk-color-text-subtle);
+  transition: transform 0.2s var(--kk-ease-out);
+}
+
+.raw-fold[open] > summary .fold-chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fold-chevron {
+    transition: none;
+  }
 }
 
 .content-pre {

@@ -120,6 +120,7 @@ function cardKey(card: ActionCard): string {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  margin-bottom: 1.75rem;
 }
 
 .ac-card {
@@ -164,13 +165,11 @@ function cardKey(card: ActionCard): string {
   font-size: 0.85rem;
   background: color-mix(in srgb, var(--kk-color-primary) 10%, white);
   color: var(--kk-color-primary-soft);
-  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 16%, transparent);
 }
 
 .ac-channel-icon--chinese {
   background: color-mix(in srgb, var(--kk-color-accent) 20%, white);
   color: var(--kk-color-accent-text);
-  border-color: color-mix(in srgb, var(--kk-color-accent) 30%, transparent);
 }
 
 .ac-title {

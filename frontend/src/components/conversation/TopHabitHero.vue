@@ -2,7 +2,7 @@
 import {MagicStick, TrendCharts} from '@element-plus/icons-vue'
 import {computed} from 'vue'
 
-import type {ActionCard} from '@/types/conversation'
+import type {ActionCard, ActionCardExample} from '@/types/conversation'
 
 const props = defineProps<{
   card: ActionCard
@@ -10,44 +10,82 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   practice: [card: ActionCard]
+  locate: [sentenceId: string | number]
 }>()
 
 const headline = computed(() => props.card.headlineZh || `本次最该改：${props.card.titleZh}`)
 const buttonLabel = computed(() => props.card.actionHintZh || '重说一句')
 
+const previewExamples = computed((): ActionCardExample[] =>
+    (props.card.examples ?? []).slice(0, 2),
+)
+
 function onPractice() {
   emit('practice', props.card)
+}
+
+function onLocate(example: ActionCardExample) {
+  if (example.sentenceId != null) {
+    emit('locate', example.sentenceId)
+  }
 }
 </script>
 
 <template>
   <section class="hero kk-glass kk-glass--panel" aria-label="本次最该改的说话习惯">
-    <span class="hero-icon-wrap" aria-hidden="true">
-      <el-icon class="hero-icon"><TrendCharts/></el-icon>
-    </span>
+    <div class="hero-top">
+      <span class="hero-icon-wrap" aria-hidden="true">
+        <el-icon class="hero-icon"><TrendCharts/></el-icon>
+      </span>
 
-    <div class="hero-body">
-      <p class="hero-eyebrow">本场习惯诊断</p>
-      <h2 class="hero-headline">{{ headline }}</h2>
-      <p v-if="card.whyZh" class="hero-why">{{ card.whyZh }}</p>
-      <span v-if="card.errorCount" class="hero-count">命中 {{ card.errorCount }} 句</span>
+      <div class="hero-body">
+        <p class="hero-eyebrow">本场习惯诊断</p>
+        <h2 class="hero-headline">{{ headline }}</h2>
+        <p v-if="card.whyZh" class="hero-why">{{ card.whyZh }}</p>
+        <span v-if="card.errorCount" class="hero-count">命中 {{ card.errorCount }} 句</span>
+      </div>
+
+      <button type="button" class="hero-cta" @click="onPractice">
+        <el-icon><MagicStick/></el-icon>
+        {{ buttonLabel }}
+      </button>
     </div>
 
-    <button type="button" class="hero-cta" @click="onPractice">
-      <el-icon><MagicStick/></el-icon>
-      {{ buttonLabel }}
-    </button>
+    <div v-if="previewExamples.length" class="hero-examples">
+      <div
+          v-for="(example, i) in previewExamples"
+          :key="example.sentenceId ?? `hero-ex-${i}`"
+          class="hero-example"
+      >
+        <p class="hero-example-orig">{{ example.originalSentence }}</p>
+        <p v-if="example.suggestion" class="hero-example-suggest">{{ example.suggestion }}</p>
+        <button
+            v-if="example.sentenceId != null"
+            type="button"
+            class="hero-link-btn"
+            @click="onLocate(example)"
+        >
+          查看原句
+        </button>
+      </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
 .hero {
   display: flex;
-  align-items: center;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.85rem;
   padding: 1.15rem 1.3rem;
   margin-bottom: 1.25rem;
   border-top: 2px solid var(--kk-color-accent);
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .hero-icon-wrap {
@@ -63,7 +101,6 @@ function onPractice() {
       color-mix(in srgb, var(--kk-color-accent) 22%, white),
       color-mix(in srgb, var(--kk-color-primary) 10%, white)
   );
-  border: 1.5px solid color-mix(in srgb, var(--kk-color-accent) 42%, var(--kk-color-primary));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
@@ -148,8 +185,56 @@ function onPractice() {
   transform: translateY(0);
 }
 
+.hero-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--kk-glass-divider);
+}
+
+.hero-example {
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--kk-radius-sm);
+  background: var(--kk-glass-inner-bg);
+  border-left: 3px solid color-mix(in srgb, var(--kk-color-primary) 35%, transparent);
+}
+
+.hero-example-orig {
+  margin: 0;
+  font-family: var(--kk-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--kk-color-text-muted);
+  font-style: italic;
+}
+
+.hero-example-suggest {
+  margin: 0.25rem 0 0;
+  font-family: var(--kk-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--kk-color-primary);
+}
+
+.hero-link-btn {
+  margin-top: 0.4rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--kk-color-link);
+  cursor: pointer;
+}
+
+.hero-link-btn:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 640px) {
-  .hero {
+  .hero-top {
     flex-wrap: wrap;
   }
 
