@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
+import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
@@ -43,6 +44,8 @@ class HabitCardDetailAssemblyTest {
     private ObjectMapper objectMapper;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private GrowthCardReviewService growthCardReviewService;
 
     private ConversationAnalysisServiceImpl service;
 
@@ -52,7 +55,7 @@ class HabitCardDetailAssemblyTest {
         HabitCardScorer habitCardScorer = new HabitCardScorer(dictionary);
         service = new ConversationAnalysisServiceImpl(
                 pipeline, analysisMapper, itemMapper, summaryParser, objectMapper, eventPublisher,
-                dictionary, habitCardScorer);
+                dictionary, habitCardScorer, growthCardReviewService);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.khankiddo.learning.dto.conversation;
 
+import com.khankiddo.learning.dto.growth.GrowthCardDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -63,4 +64,10 @@ public class ConversationAnalysisDetailDto {
 
     /** 语法家族分布（饼图用），仅新数据（含 pointId）才计算，旧数据回退 {@link #errorTypeDistribution} */
     private List<FamilyDistributionDto> familyDistribution;
+
+    /** 习惯成长卡铸卡状态：{@code pending}、{@code ready}、{@code failed}、{@code none} */
+    private String habitGrowthMintStatus;
+
+    /** 已铸成的习惯成长卡，{@code habitGrowthMintStatus=ready} 时有值 */
+    private GrowthCardDto habitGrowthCard;
 }

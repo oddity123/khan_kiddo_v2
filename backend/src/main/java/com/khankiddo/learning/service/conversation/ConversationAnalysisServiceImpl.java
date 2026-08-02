@@ -14,7 +14,9 @@ import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.enums.ProblemType;
+import com.khankiddo.learning.dto.growth.GrowthCardDto;
 import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
+import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
 import com.khankiddo.learning.rag.grammar.GrammarErrorIndexedEvent;
 import com.khankiddo.learning.security.SecurityUtils;
@@ -46,6 +48,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final ApplicationEventPublisher eventPublisher;
     private final PointDictionary pointDictionary;
     private final HabitCardScorer habitCardScorer;
+    private final GrowthCardReviewService growthCardReviewService;
 
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
@@ -304,6 +307,10 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         HabitCardScorer.HabitScoreResult habitScoreResult =
                 buildHabitScoreResult(rows, enrichedSummary.getChineseExpressions());
 
+        Optional<GrowthCardDto> habitCard = growthCardReviewService.findHabitCardForAnalysis(analysisId);
+        String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(
+                habitScoreResult.topHabit(), analysis.getCreatedAt(), habitCard.isPresent());
+
         return ConversationAnalysisDetailDto.builder()
                 .analysisId(analysis.getAnalysisId())
                 .conversationContent(analysis.getConversationContent())
@@ -321,6 +328,8 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .topHabit(habitScoreResult.topHabit())
                 .actionCards(habitScoreResult.actionCards())
                 .familyDistribution(habitScoreResult.familyDistribution())
+                .habitGrowthMintStatus(habitGrowthMintStatus)
+                .habitGrowthCard(habitCard.orElse(null))
                 .build();
     }
 
