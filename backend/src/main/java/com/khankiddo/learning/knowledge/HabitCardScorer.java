@@ -20,6 +20,7 @@ import java.util.Map;
 public class HabitCardScorer {
 
     private static final String CHINESE_POINT_ID = "CHINESE_CODE_SWITCH";
+    private static final String CHINESE_INJECT_SEVERITY = "BASIC";
     private static final String HEADLINE_PREFIX = "本次最该改：";
     private static final int MIN_HIT_COUNT = 2;
     private static final int MAX_EXAMPLES = 5;
@@ -67,7 +68,7 @@ public class HabitCardScorer {
                         expression.getOriginalSentence(),
                         focusPhrase,
                         expression.getSuggestion(),
-                        chinesePoint.errorLevel()));
+                        CHINESE_INJECT_SEVERITY));
             }
         }
 
@@ -109,7 +110,7 @@ public class HabitCardScorer {
         return switch (point.habitUnit()) {
             case FAMILY -> point.familyId();
             case LEAF -> point.pointId();
-            case CHANNEL -> point.channel().getJsonValue();
+            case CHANNEL -> point.channel().name();
         };
     }
 

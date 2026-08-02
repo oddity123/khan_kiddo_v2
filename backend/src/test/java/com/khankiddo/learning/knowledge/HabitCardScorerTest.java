@@ -35,6 +35,29 @@ class HabitCardScorerTest {
     }
 
     @Test
+    void chineseInjectUsesBasicSeverityNotDictionaryStyle() {
+        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        HabitCardScorer scorer = new HabitCardScorer(dict);
+
+        // FAM_ARTICLE score = 2 * (BASIC=2 * impactWeight=1.0 * fixability=0.9) = 3.6
+        List<HabitScoreInput.ErrorHit> hits = List.of(
+                hit("ARTICLE_A_AN", "BASIC", "a apple", "an apple", "I eat a apple."),
+                hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
+        );
+        // 2 条中文夹杂：BASIC 应为 2*(2*1.25*1.0)=5.0 > 3.6；若误用字典 STYLE=1 则为 2*(1*1.25*1.0)=2.5 < 3.6
+        List<ChineseExpressionDto> chinese = List.of(
+                chinese("立法", "legislation"),
+                chinese("客商", "client")
+        );
+
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
+
+        assertEquals("CHINESE_CODE_SWITCH", result.topHabit().getPointId());
+        assertEquals(5.0, result.topHabit().getScore(), 1e-9);
+        assertEquals("CHINESE", result.topHabit().getHabitKey());
+    }
+
+    @Test
     void rarePrepositionNeverEntersTop() {
         PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
         HabitCardScorer scorer = new HabitCardScorer(dict);
@@ -71,6 +94,7 @@ class HabitCardScorerTest {
                 .count();
         assertEquals(1, lexicalCardCount);
         assertEquals(10, result.topHabit().getErrorCount());
+        assertEquals("LEXICAL", result.topHabit().getHabitKey());
     }
 
     @Test
