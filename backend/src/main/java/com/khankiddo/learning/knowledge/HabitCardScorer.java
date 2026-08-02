@@ -162,12 +162,10 @@ public class HabitCardScorer {
             countByPoint.merge(point.pointId(), 1, Integer::sum);
         }
 
-        String rawTopPointId = pickHighestScoringPointId(scoreByPoint, countByPoint, false);
         String tipPointId = pickHighestScoringPointId(scoreByPoint, countByPoint, true);
         PointDefinition tipPoint = dictionary.require(tipPointId);
-        PointDefinition rawTopPoint = dictionary.require(rawTopPointId);
 
-        CardCopy copy = resolveCardCopy(tipPoint, rawTopPoint);
+        CardCopy copy = resolveCardCopy(tipPoint);
 
         List<ResolvedHit> orderedHits = orderHitsForDisplay(hits, tipPointId);
         List<ActionCardDto.ExampleDto> examples = new ArrayList<>();
@@ -263,7 +261,7 @@ public class HabitCardScorer {
      * 家族卡：大标题始终用家族名（习惯粒度）；有可教细叶子时副文写「其中可先练」。
      * 非家族卡（leaf/channel）仍用代表点自身文案。
      */
-    private CardCopy resolveCardCopy(PointDefinition tipPoint, PointDefinition rawTopPoint) {
+    private CardCopy resolveCardCopy(PointDefinition tipPoint) {
         if (tipPoint.habitUnit() != HabitUnit.FAMILY) {
             return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
         }
