@@ -108,6 +108,9 @@ export interface AnalysisError {
   type: string
   point?: string
   errorLevel?: string
+  pointId?: string
+  familyId?: string
+  channel?: PointChannel
 }
 
 export interface ErrorTypeDistribution {
@@ -169,6 +172,78 @@ export interface ConversationAnalysisDetail {
   items?: AnalysisItem[]
   errorTypeDistribution?: ErrorTypeDistribution[]
   chineseExpressions?: ChineseExpressionItem[]
+    /** 本次最该改的说话习惯（rank1），无足够证据时为空 */
+    topHabit?: ActionCard
+    /** 跨通道习惯行动卡 Top 1-3，无足够证据时为空数组 */
+    actionCards?: ActionCard[]
+    /** 语法家族分布（饼图用），旧数据回退 errorTypeDistribution */
+    familyDistribution?: FamilyDistributionItem[]
+}
+
+/** 与后端 knowledge.PointChannel 一致，JSON 小写 */
+export type PointChannel = 'rule' | 'fluency' | 'lexical' | 'chinese'
+
+/** 与后端 knowledge.CardKind 一致，JSON 小写 */
+export type CardKind = 'grammar' | 'fluency_strategy' | 'lexical_upgrade' | 'chinese_bypass'
+
+/** 与后端 knowledge.CardPolicy 一致，JSON 小写 */
+export type CardPolicy = 'normal' | 'rare' | 'channel'
+
+export interface PracticePrompt {
+    /** 本场第一条证据的原句 */
+    originalSentence?: string
+    /** 建议改说的目标句 / 目标表达 */
+    targetSentence?: string
+    /** 中文教练提示，取自字典 actionHintZh */
+    coachingZh?: string
+}
+
+/** 跨通道习惯行动卡（Top 1-3），与后端 ActionCardDto 一致 */
+export interface ActionCard {
+    /** 1-based 排名，1 即 topHabit */
+    rank: number
+    channel: PointChannel
+    cardKind: CardKind
+    cardPolicy?: CardPolicy
+    /** 排序分组键：family→familyId，leaf→pointId，channel→PointChannel 大写名 */
+    habitKey: string
+    /** 组内代表叶子（出现最多/分数贡献最大） */
+    pointId: string
+    /** rank=1 为完整结论句，rank=2/3 为 topTitleZh 本身 */
+    headlineZh?: string
+    titleZh: string
+    whyZh?: string
+    /** 本场计入该习惯的证据条数 */
+    errorCount: number
+    score?: number
+    /** ≤5 条证据 */
+    examples?: ActionCardExample[]
+    /** 仅 rule 家族填充：同家族其它叶子（不含代表叶子） */
+    siblingPoints?: SiblingPoint[]
+    actionHintZh?: string
+    practicePrompt?: PracticePrompt
+}
+
+export interface ActionCardExample {
+    /** 后端 sentenceId 为 String */
+    sentenceId?: string | number
+    originalSentence: string
+    errorPoint?: string
+    suggestion?: string
+}
+
+export interface SiblingPoint {
+    pointId: string
+    titleZh: string
+    errorCount: number
+}
+
+/** 侧栏家族分布（饼图用），与后端 FamilyDistributionDto 一致 */
+export interface FamilyDistributionItem {
+    familyId: string
+    titleZh: string
+    channel?: PointChannel
+    count: number
 }
 
 export const PROGRESS_STATUS = {
