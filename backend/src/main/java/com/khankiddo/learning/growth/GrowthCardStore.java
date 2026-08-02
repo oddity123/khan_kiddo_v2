@@ -4,6 +4,7 @@ import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.mapper.GrowthCardMapper;
 import com.khankiddo.learning.model.GrowthCard;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -39,8 +40,13 @@ public class GrowthCardStore {
                 .sourceRef(sourceRef)
                 .evidenceJson(evidenceJson)
                 .build();
-        mapper.insert(card);
-        return card;
+        try {
+            mapper.insert(card);
+            return card;
+        } catch (DataIntegrityViolationException ex) {
+            return mapper.findByUserSource(userId, sourceAnalysisId, type, sourceRef)
+                    .orElseThrow(() -> ex);
+        }
     }
 
     public List<GrowthCard> listDue(long userId, LocalDate today) {

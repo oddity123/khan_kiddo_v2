@@ -1,5 +1,6 @@
 package com.khankiddo.learning.growth;
 
+import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.mapper.GrowthCardMapper;
 import com.khankiddo.learning.model.GrowthCard;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,15 +9,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,6 +88,34 @@ class GrowthCardStoreTest {
     }
 
     @Test
+    void persistNewOrGet_shouldReturnExistingOnDuplicateInsert() {
+        GrowthCard existing = GrowthCard.builder()
+                .id(10L)
+                .cardId("existing-card-id")
+                .userId(1L)
+                .type("habit")
+                .status("unfamiliar")
+                .nextDueAt(LocalDate.now())
+                .front("front")
+                .back("back")
+                .sourceAnalysisId("analysis-1")
+                .sourceRef("ref-1")
+                .build();
+        when(mapper.findByUserSource(1L, "analysis-1", "habit", "ref-1"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(existing));
+        doThrow(new DataIntegrityViolationException("duplicate key"))
+                .when(mapper).insert(any());
+
+        GrowthCard result = store.persistNewOrGet(
+                1L, "habit", "front", "back", "analysis-1", "ref-1", null);
+
+        assertEquals(existing, result);
+        verify(mapper).insert(any());
+        verify(mapper, times(2)).findByUserSource(1L, "analysis-1", "habit", "ref-1");
+    }
+
+    @Test
     void updateReview_shouldUpdateOwnedCard() {
         GrowthCard existing = GrowthCard.builder()
                 .cardId("card-1")
@@ -98,6 +131,17 @@ class GrowthCardStoreTest {
         verify(mapper).updateReview("card-1", 1L, "fuzzy", nextDue);
         assertEquals("fuzzy", updated.getStatus());
         assertEquals(nextDue, updated.getNextDueAt());
+    }
+
+    @Test
+    void updateReview_shouldThrowWhenCardMissing() {
+        when(mapper.findByCardIdAndUserId("missing", 1L)).thenReturn(Optional.empty());
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> store.updateReview("missing", 1L, "fuzzy", LocalDate.now()));
+
+        assertEquals("成长卡不存在", ex.getMessage());
+        verify(mapper, never()).updateReview(any(), any(), any(), any());
     }
 
     @Test
