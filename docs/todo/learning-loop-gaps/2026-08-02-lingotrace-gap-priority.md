@@ -1,5 +1,7 @@
 # 相对 LingoTrace 的补给优先级
 
+> **注：** P0「今日复习队列 / 掌握度」已由成长卡设计吸收，见 [`../growth-cards/`](../growth-cards/)。
+
 - 对照竞品：[LingoTrace-Public](https://github.com/fionazhang676-oss/LingoTrace-Public)
 - 整理日期：2026-08-02
 - 口径：按「对转化/留存影响 × 现有基础好不好补」排序；目标是补齐学习闭环，而不是 Mirror 对方实现。
