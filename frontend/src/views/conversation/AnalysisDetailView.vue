@@ -15,16 +15,25 @@ import {
   TrendCharts,
 } from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
+import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
+import ResayPracticeDialog from '@/components/conversation/ResayPracticeDialog.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
-import type {ChineseExpressionItem, ConversationAnalysisDetail} from '@/types/conversation'
-import {formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
+import TopHabitHero from '@/components/conversation/TopHabitHero.vue'
+import type {
+  ActionCard,
+  AnalysisItem,
+  ChineseExpressionItem,
+  ConversationAnalysisDetail,
+  ErrorTypeDistribution,
+} from '@/types/conversation'
+import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
 const route = useRoute()
@@ -43,6 +52,70 @@ const sortedItems = computed(() => {
   const items = detail.value?.items ?? []
   return sortItemsByPriority(items)
 })
+
+const topHabit = computed(() => detail.value?.topHabit)
+
+// rank 1 已由 topHabit 独占展示为 Hero，面板只需 rank>1，避免重复
+const actionCards = computed(() => (detail.value?.actionCards ?? []).filter((card) => card.rank > 1))
+
+const practiceVisible = ref(false)
+const practiceCard = ref<ActionCard | null>(null)
+const practicePrompt = computed(() => practiceCard.value?.practicePrompt ?? null)
+
+function onPractice(card: ActionCard) {
+  practiceCard.value = card
+  practiceVisible.value = true
+}
+
+interface FilterChip {
+  key: string
+  label: string
+}
+
+// 从证据里收集 pointId/familyId 作为筛选维度，兜底用 type 保证旧数据也能筛
+function chipKey(item: AnalysisItem): string[] {
+  return (item.errors ?? []).map((err) => err.pointId || err.familyId || err.type)
+}
+
+const filterChips = computed((): FilterChip[] => {
+  const seen = new Map<string, string>()
+  for (const item of sortedItems.value) {
+    for (const err of item.errors ?? []) {
+      const key = err.pointId || err.familyId || err.type
+      if (key && !seen.has(key)) {
+        seen.set(key, displayTypeLabel(err.type))
+      }
+    }
+  }
+  return Array.from(seen.entries()).map(([key, label]) => ({key, label}))
+})
+
+const activeFilter = ref<string | null>(null)
+
+const filteredItems = computed(() => {
+  if (!activeFilter.value) {
+    return sortedItems.value
+  }
+  return sortedItems.value.filter((item) => chipKey(item).includes(activeFilter.value as string))
+})
+
+function toggleFilter(key: string) {
+  activeFilter.value = activeFilter.value === key ? null : key
+}
+
+const sentencesFoldRef = ref<HTMLDetailsElement | null>(null)
+
+function locate(sentenceId: string | number) {
+  activeFilter.value = null
+  if (sentencesFoldRef.value) {
+    sentencesFoldRef.value.open = true
+  }
+  nextTick(() => {
+    document
+        .getElementById(`sentence-${sentenceId}`)
+        ?.scrollIntoView({behavior: 'smooth', block: 'center'})
+  })
+}
 
 const chineseExpressions = computed((): ChineseExpressionItem[] => {
   const fromDetail = detail.value?.chineseExpressions
@@ -79,6 +152,15 @@ const performanceScore = computed(() => {
 const dimensionScores = computed(() => overallStats.value?.dimensionScores)
 
 const mainCategory = computed(() => overallStats.value?.mainCategory)
+
+// 有语法家族分布则优先展示（颗粒度更贴近行动卡），旧数据回退 errorTypeDistribution
+const pieDistribution = computed((): ErrorTypeDistribution[] => {
+  const family = detail.value?.familyDistribution
+  if (family?.length) {
+    return family.map((item) => ({type: item.titleZh, count: item.count}))
+  }
+  return detail.value?.errorTypeDistribution ?? []
+})
 
 function formatTime(value?: string) {
   if (!value) {
@@ -160,38 +242,61 @@ watch(analysisId, loadDetail)
       />
       <div class="detail-grid">
         <main class="detail-main">
+          <TopHabitHero v-if="topHabit" :card="topHabit" @practice="onPractice"/>
+
+          <ActionCardsPanel :cards="actionCards" @locate="locate" @practice="onPractice"/>
+
           <ChineseExpressionFan
               v-if="chineseExpressions.length"
               layout="main"
               :items="chineseExpressions"
           />
 
-          <section class="sentences-panel">
-            <header class="sentences-head">
-              <h2 class="section-title">
-                <el-icon>
-                  <ChatDotRound/>
-                </el-icon>
-                句子级检查
-              </h2>
+          <details ref="sentencesFoldRef" class="sentences-fold raw-fold kk-glass kk-glass--panel">
+            <summary>
+              <el-icon>
+                <ChatDotRound/>
+              </el-icon>
+              句子级检查（证据）· {{ sortedItems.length }} 句
+            </summary>
+
+            <div class="sentences-fold-body">
               <p v-if="englishPracticeCount > 0" class="section-subtitle">
                 已分析 {{ englishPracticeCount }} 句纯英文表达
               </p>
-            </header>
 
-            <el-empty
-                v-if="!sortedItems.length"
-                :description="detail.status === 'failed'
-                  ? '分析过程中出错，可查看下方原始对话'
-                  : '恭喜！暂未发现需要优化的表达'"
-            />
-            <SentenceAnalysisCard
-                v-for="(item, idx) in sortedItems"
-                :key="item.sentenceId ?? item.originalSentence"
-                :item="item"
-                :index="idx"
-            />
-          </section>
+              <div v-if="filterChips.length" class="filter-chip-row">
+                <button
+                    v-for="chip in filterChips"
+                    :key="chip.key"
+                    type="button"
+                    class="filter-chip"
+                    :class="{ 'filter-chip--active': activeFilter === chip.key }"
+                    @click="toggleFilter(chip.key)"
+                >
+                  {{ chip.label }}
+                </button>
+              </div>
+
+              <el-empty
+                  v-if="!sortedItems.length"
+                  :description="detail.status === 'failed'
+                    ? '分析过程中出错，可查看下方原始对话'
+                    : '恭喜！暂未发现需要优化的表达'"
+              />
+              <el-empty
+                  v-else-if="!filteredItems.length"
+                  description="没有匹配当前筛选的句子"
+              />
+              <SentenceAnalysisCard
+                  v-for="(item, idx) in filteredItems"
+                  :id="`sentence-${item.sentenceId}`"
+                  :key="item.sentenceId ?? item.originalSentence"
+                  :item="item"
+                  :index="idx"
+              />
+            </div>
+          </details>
 
           <details v-if="detail.conversationContent" class="raw-fold kk-glass kk-glass--panel">
             <summary>
@@ -262,7 +367,7 @@ watch(analysisId, loadDetail)
             </div>
 
             <div
-                v-if="dimensionScores || detail.errorTypeDistribution?.length || summaryReport?.overallSummary?.levelSummary"
+                v-if="dimensionScores || pieDistribution.length || summaryReport?.overallSummary?.levelSummary"
                 class="summary-sections"
             >
               <section
@@ -280,7 +385,7 @@ watch(analysisId, loadDetail)
               </section>
 
               <section
-                  v-if="detail.errorTypeDistribution?.length"
+                  v-if="pieDistribution.length"
                   class="summary-block"
                   aria-label="类型分布"
               >
@@ -295,7 +400,7 @@ watch(analysisId, loadDetail)
                     legend-right
                     body-size="summary"
                     :size="136"
-                    :items="detail.errorTypeDistribution"
+                    :items="pieDistribution"
                     :animate="pageReady"
                 />
               </section>
@@ -334,6 +439,12 @@ watch(analysisId, loadDetail)
           </section>
         </aside>
       </div>
+
+      <ResayPracticeDialog
+          v-model="practiceVisible"
+          :prompt="practicePrompt"
+          :action-hint="practiceCard?.actionHintZh"
+      />
     </template>
   </div>
 </template>
@@ -427,26 +538,48 @@ watch(analysisId, loadDetail)
   padding: 1rem 1.1rem;
 }
 
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0;
-  font-family: var(--kk-font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--kk-color-primary);
+.sentences-fold {
+  margin-bottom: 1.25rem;
 }
 
-.sentences-head {
-  margin-bottom: 1rem;
-  padding: 0 0.15rem;
+.sentences-fold-body {
+  margin-top: 0.85rem;
 }
 
 .section-subtitle {
-  margin: 0.35rem 0 0;
+  margin: 0 0 0.15rem;
   font-size: 0.84rem;
   color: var(--kk-color-text-muted);
+}
+
+.filter-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.65rem 0 1rem;
+}
+
+.filter-chip {
+  padding: 0.28rem 0.75rem;
+  border-radius: var(--kk-radius-pill);
+  border: 1px solid var(--kk-glass-inner-border);
+  background: var(--kk-glass-inner-bg);
+  color: var(--kk-color-text-subtle);
+  font-family: var(--kk-font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.filter-chip:hover {
+  border-color: color-mix(in srgb, var(--kk-color-primary) 30%, transparent);
+}
+
+.filter-chip--active {
+  background: var(--kk-color-primary);
+  border-color: var(--kk-color-primary);
+  color: #fff;
 }
 
 .summary-mini-cards {
