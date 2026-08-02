@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * 跨通道打分：语法家族 / 流利度策略 / 词汇缺口 / 中文夹杂竞争 Top1-3「本次最该改的说话习惯」。
- * 算法锁定见 docs/superpowers/specs/2026-08-01-conversation-analysis-action-cards-design.md §4。
+ * 算法锁定见 docs/achieved/conversation-analysis-action-cards/2026-08-01-design.md §4。
  */
 public class HabitCardScorer {
 

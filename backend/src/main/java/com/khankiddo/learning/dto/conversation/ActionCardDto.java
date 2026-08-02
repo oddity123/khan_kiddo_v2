@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * 跨通道习惯行动卡（Top 1-3），详情页 API 扩展见
- * docs/superpowers/specs/2026-08-01-conversation-analysis-action-cards-design.md §7.2。
+ * docs/achieved/conversation-analysis-action-cards/2026-08-01-design.md §7.2。
  */
 @Data
 @Builder
