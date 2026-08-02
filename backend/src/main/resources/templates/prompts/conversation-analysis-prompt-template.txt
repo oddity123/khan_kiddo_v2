@@ -24,19 +24,20 @@
 - 可接受的口语用法（缩写、省略、常见话语标记、短答）**不是错误**。
 - 一句话没有错误是正常且常见的结果，**不要为了显得全面而硬找错误**。
 
-### 4. 问题类型（每个错误只选最贴切的一个）
-- 语法：`Tense` 时态 / `Agreement` 主谓一致 / `Plural` 单复数 / `Article` 冠词 / `Preposition` 介词 / `Pronoun` 代词 / `Structure` 句式 / `Clause` 从句 / `Word Form` 词性 / `Comparison` 比较级
-- 表达：`Word Choice` 用词不当 / `Collocation` 搭配 / `Chinglish` 中式英语 / `Redundancy` 冗余 / `Tone` 语气 / `Unnatural` 生硬 / `Vocabulary` 词汇贫乏 / `Formal` 口语化不足
-- 其他：`Incomplete` 句子未完成（非 ASR 导致）
+### 4. 知识点 ID（pointId，每个错误只选最贴切的一个）
+- 每个 error 必须给出知识点字典中的具体 `pointId`，**不要**输出问题类型的英文名称（如 `Agreement`、`Article` 等已不是有效字段）。
+- 知识点字典全量列表（按 family 分组、含判别规则 discriminators）见 system prompt；本文件不重复罗列，请以 system prompt 为准选点。
+- 找不到合适的细分点位时，使用对应 family 的 `*_OTHER` 兜底 ID（如 `STRUCTURE_OTHER`），**禁止编造字典外的 ID**。
+- 相近点位如何区分（例如单复数本身错 vs 只是冠词多/少、时态 vs 动词句型等），严格按 system prompt 中的 discriminators 判断。
 
-**注意**：含中文的句子已由系统单独处理，本阶段输入中不会出现；请勿输出 `Chinese` 类型。中式英语请标为 `Chinglish`。
+**注意**：含中文的句子已由系统单独处理，本阶段输入中不会出现完整中文句；仅当英文句子里混入个别中文词时才使用 `CHINESE_CODE_SWITCH`，其它情况不要涉及该通道。
 
 ### 5. 句子粒度（重要）
 - **`originalSentence` 必须是单个句子**。若用户一段话包含多个句子（如「First… . Second… . Then… .」），必须**拆成多个 item** 分别分析，不要把一大段当成一句。
 
 ### 6. 去重与归类（重要）
-- **同一处改动只标一次**：同一个片段的同一处修改只归入**最贴切的一个**类型，禁止在多个类型里重复标注（例如 `them → it` 只能出现在一个 error 中）。
-- **禁止整句/整段综合改写作为 error**：综合改写只放进 `suggestion`；不要把整句重写塞进某个 `Unnatural`/`Structure` 的 `point` 里充当一个错误。
+- **同一处改动只标一次**：同一个片段的同一处修改只归入**最贴切的一个** `pointId`，禁止在多个点位里重复标注（例如 `them → it` 只能出现在一个 error 中）。
+- **禁止整句/整段综合改写作为 error**：综合改写只放进 `suggestion`；不要把整句重写塞进某个 `pointId` 的 `point` 里充当一个错误。
 - **按句子合并**：同一句的多个不同错误合并到该 item 的 `errors` 数组。
 
 ### 7. 输出字段要求
@@ -64,9 +65,9 @@
       "originalSentence": "Yeah, but your model have some several issues like the first, the first one you the first one.",
       "suggestion": "Yeah, but your model has several issues. For example, the first one is...",
       "errors": [
-        { "type": "Agreement", "point": "have → has（主谓一致，主语 your model 为第三人称单数）" },
-        { "type": "Redundancy", "point": "some several → several（some 与 several 语义重复，保留其一）" },
-        { "type": "Incomplete", "point": "the first one you the first one → For example, the first one is...（句子未完成，需补全）" }
+        { "pointId": "SVA_THIRD_PERSON", "point": "have → has（主谓一致，主语 your model 为第三人称单数）" },
+        { "pointId": "FLUENCY_REDUNDANCY", "point": "some several → several（some 与 several 语义重复，保留其一）" },
+        { "pointId": "FLUENCY_INCOMPLETE", "point": "the first one you the first one → For example, the first one is...（句子未完成，需补全）" }
       ]
     }
   ]
@@ -84,9 +85,8 @@
       "originalSentence": "This feature is very helpful for the beginner who want to improve oral English.",
       "suggestion": "This feature is really helpful for beginners who want to improve their spoken English.",
       "errors": [
-        { "type": "Article", "point": "the beginner → beginners（泛指一类人用复数，不加 the）" },
-        { "type": "Agreement", "point": "who want → who wants（关系从句主语 beginner 为单数）" },
-        { "type": "Collocation", "point": "oral English → spoken English（口语更地道的搭配）" }
+        { "pointId": "PLURAL_COUNTABLE", "point": "the beginner → beginners（泛指一类人，可数名词用复数，不加 the）" },
+        { "pointId": "COLLOCATION", "point": "oral English → spoken English（口语更地道的搭配）" }
       ]
     }
   ]
