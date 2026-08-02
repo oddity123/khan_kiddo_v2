@@ -129,7 +129,7 @@ class HabitCardScorerTest {
 
         assertEquals("FAM_WORD_FORM", result.topHabit().getHabitKey());
         assertEquals("GERUND_AS_SUBJECT", result.topHabit().getPointId());
-        assertTrue(result.topHabit().getHeadlineZh().contains("词形与词类"));
+        assertTrue(result.topHabit().getHeadlineZh().contains("词形与词类容易用错"));
         assertTrue(result.topHabit().getWhyZh().contains("其中可先练"));
         assertTrue(result.topHabit().getWhyZh().contains("动词做主语"));
         assertTrue(!result.topHabit().getWhyZh().contains("FEEL_ED_ADJ"));
@@ -138,6 +138,29 @@ class HabitCardScorerTest {
         assertTrue(firstPoint.contains("improve") || firstPoint.contains("interrupt"));
         String practiceOriginal = result.topHabit().getPracticePrompt().getOriginalSentence();
         assertTrue(practiceOriginal.contains("improve") || practiceOriginal.contains("interrupt"));
+    }
+
+    @Test
+    void familyCardUsesFamilyHeadlineEvenWhenTipLeafDominatesScore() {
+        // tip == raw == GERUND（细叶子本身分最高）时，大标题仍用家族名，不把 tip 抬成整场结论
+        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        HabitCardScorer scorer = new HabitCardScorer(dict);
+
+        List<HabitScoreInput.ErrorHit> hits = List.of(
+                hit("GERUND_AS_SUBJECT", "BASIC", "improve → improving", "improving", "improve quality is urgent"),
+                hit("GERUND_AS_SUBJECT", "BASIC", "interrupt → interrupting", "interrupting", "interrupt is not fluent"),
+                hit("FEEL_ED_ADJ", "NATURAL", "exciting → excited", "excited", "I'm so exciting."),
+                hit("FEEL_ED_ADJ", "NATURAL", "boring → bored", "bored", "I am so boring.")
+        );
+
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+
+        assertEquals("FAM_WORD_FORM", result.topHabit().getHabitKey());
+        assertEquals("GERUND_AS_SUBJECT", result.topHabit().getPointId());
+        assertEquals("本次最该改：词形与词类容易用错", result.topHabit().getHeadlineZh());
+        assertEquals("词形与词类", result.topHabit().getTitleZh());
+        assertTrue(result.topHabit().getWhyZh().startsWith("其中可先练："));
+        assertTrue(result.topHabit().getWhyZh().contains("动词做主语"));
     }
 
     private static int sequence = 0;

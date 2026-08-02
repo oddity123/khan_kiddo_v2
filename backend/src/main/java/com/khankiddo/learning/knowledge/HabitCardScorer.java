@@ -260,7 +260,8 @@ public class HabitCardScorer {
     }
 
     /**
-     * 家族卡：若分数最高的是兜底叶子，对外用家族标题，练习 tip 用可教的细叶子。
+     * 家族卡：大标题始终用家族名（习惯粒度）；有可教细叶子时副文写「其中可先练」。
+     * 非家族卡（leaf/channel）仍用代表点自身文案。
      */
     private CardCopy resolveCardCopy(PointDefinition tipPoint, PointDefinition rawTopPoint) {
         if (tipPoint.habitUnit() != HabitUnit.FAMILY) {
@@ -271,21 +272,14 @@ public class HabitCardScorer {
             return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
         }
 
-        boolean rawIsCatchAll = isCatchAllLeaf(rawTopPoint);
-        boolean tipIsCatchAll = isCatchAllLeaf(tipPoint);
-        if (rawIsCatchAll && !tipIsCatchAll) {
-            return new CardCopy(
-                    family.titleZh() + "容易用错",
-                    family.titleZh(),
-                    "其中可先练：" + tipPoint.titleZh() + "。" + tipPoint.whyZh());
+        String familyHeadline = family.titleZh() + "容易用错";
+        if (isCatchAllLeaf(tipPoint)) {
+            return new CardCopy(familyHeadline, family.titleZh(), tipPoint.whyZh());
         }
-        if (tipIsCatchAll) {
-            return new CardCopy(
-                    family.titleZh() + "容易用错",
-                    family.titleZh(),
-                    tipPoint.whyZh());
-        }
-        return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
+        return new CardCopy(
+                familyHeadline,
+                family.titleZh(),
+                "其中可先练：" + tipPoint.titleZh() + "。" + tipPoint.whyZh());
     }
 
     private static List<ResolvedHit> orderHitsForDisplay(List<ResolvedHit> hits, String tipPointId) {
