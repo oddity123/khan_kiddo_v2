@@ -110,6 +110,50 @@ class GrammarAnalysisSanitizerTest {
     }
 
     @Test
+    void replacesUnknownPointIdWithFallback() {
+        GrammarAnalysisResult grammar = result(item(
+                "Some raw sentence.",
+                "Some suggestion.",
+                error("NOT_REAL", "无法解析的说明文本")));
+
+        GrammarAnalysisResult cleaned = sanitizer.sanitize(grammar);
+
+        assertThat(cleaned.getItems()).hasSize(1);
+        List<GrammarErrorDto> errors = cleaned.getItems().get(0).getErrors();
+        assertThat(errors).hasSize(1);
+        assertThat(errors.get(0).getPointId()).isEqualTo(PointDictionary.FALLBACK_POINT_ID);
+    }
+
+    @Test
+    void replacesBlankOrNullPointIdWithFallback() {
+        GrammarAnalysisResult grammar = result(item(
+                "Some raw sentence.",
+                "Some suggestion.",
+                error("", "无法解析的说明文本"),
+                error(null, "无法解析的说明文本")));
+
+        GrammarAnalysisResult cleaned = sanitizer.sanitize(grammar);
+
+        assertThat(cleaned.getItems()).hasSize(1);
+        List<GrammarErrorDto> errors = cleaned.getItems().get(0).getErrors();
+        assertThat(errors).hasSize(2);
+        assertThat(errors).allSatisfy(e -> assertThat(e.getPointId()).isEqualTo(PointDictionary.FALLBACK_POINT_ID));
+    }
+
+    @Test
+    void keepsValidPointIdUnchanged() {
+        GrammarAnalysisResult grammar = result(item(
+                "And today I want to recap some phrase and vocabulary I learned.",
+                "And today I want to recap some phrases and vocabulary I learned.",
+                error("PLURAL_COUNTABLE", "phrase → phrases（some 后接可数名词复数）")));
+
+        GrammarAnalysisResult cleaned = sanitizer.sanitize(grammar);
+
+        assertThat(cleaned.getItems()).hasSize(1);
+        assertThat(cleaned.getItems().get(0).getErrors().get(0).getPointId()).isEqualTo("PLURAL_COUNTABLE");
+    }
+
+    @Test
     void disabledSanitizer_keepsEverything() {
         properties.setSanitizerEnabled(false);
         GrammarAnalysisResult grammar = result(item(

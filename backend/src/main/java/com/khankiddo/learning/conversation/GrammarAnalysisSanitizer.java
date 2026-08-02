@@ -66,6 +66,7 @@ public class GrammarAnalysisSanitizer {
             if (!CollectionUtils.isEmpty(item.getErrors())) {
                 for (GrammarErrorDto error : item.getErrors()) {
                     if (shouldKeep(error, normalizedOriginal)) {
+                        error.setPointId(pointDictionary.resolveOrFallback(error.getPointId()).pointId());
                         kept.add(error);
                     } else {
                         droppedErrors++;
