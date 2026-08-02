@@ -259,11 +259,25 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             if (CollectionUtils.isEmpty(item.getErrors())) {
                 item.setErrors(new ArrayList<>());
             }
-            ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
+            PointDefinition definition = StringUtils.hasText(row.getPointId())
+                    ? pointDictionary.resolveOrFallback(row.getPointId())
+                    : null;
+            ProblemType problemType = definition != null
+                    ? ProblemType.fromEnglishName(definition.problemType())
+                    : ProblemType.fromEnglishName(row.getProblemTypes());
+            String displayType = problemType != null
+                    ? problemType.getChineseName()
+                    : (definition != null ? definition.titleZh() : row.getProblemTypes());
+            String errorLevel = definition != null && StringUtils.hasText(definition.errorLevel())
+                    ? definition.errorLevel()
+                    : (problemType != null ? problemType.getErrorLevel().name() : "STYLE");
             item.getErrors().add(AnalysisErrorDto.builder()
-                    .type(problemType != null ? problemType.getChineseName() : row.getProblemTypes())
+                    .pointId(definition != null ? definition.pointId() : row.getPointId())
+                    .type(displayType)
                     .point(row.getErrorPoint())
-                    .errorLevel(problemType != null ? problemType.getErrorLevel().name() : "STYLE")
+                    .errorLevel(errorLevel)
+                    .familyId(definition != null ? definition.familyId() : null)
+                    .channel(definition != null ? definition.channel().getJsonValue() : null)
                     .build());
         }
 

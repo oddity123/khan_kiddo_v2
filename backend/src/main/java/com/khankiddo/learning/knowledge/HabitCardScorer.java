@@ -162,15 +162,16 @@ public class HabitCardScorer {
             countByPoint.merge(point.pointId(), 1, Integer::sum);
         }
 
-        String topPointId = scoreByPoint.entrySet().stream()
-                .max(Comparator.<Map.Entry<String, Double>>comparingDouble(Map.Entry::getValue)
-                        .thenComparingInt(entry -> countByPoint.getOrDefault(entry.getKey(), 0)))
-                .map(Map.Entry::getKey)
-                .orElseThrow();
-        PointDefinition topPoint = dictionary.require(topPointId);
+        String rawTopPointId = pickHighestScoringPointId(scoreByPoint, countByPoint, false);
+        String tipPointId = pickHighestScoringPointId(scoreByPoint, countByPoint, true);
+        PointDefinition tipPoint = dictionary.require(tipPointId);
+        PointDefinition rawTopPoint = dictionary.require(rawTopPointId);
 
+        CardCopy copy = resolveCardCopy(tipPoint, rawTopPoint);
+
+        List<ResolvedHit> orderedHits = orderHitsForDisplay(hits, tipPointId);
         List<ActionCardDto.ExampleDto> examples = new ArrayList<>();
-        for (ResolvedHit hit : hits) {
+        for (ResolvedHit hit : orderedHits) {
             if (examples.size() >= MAX_EXAMPLES) {
                 break;
             }
@@ -183,10 +184,10 @@ public class HabitCardScorer {
         }
 
         List<ActionCardDto.SiblingPointDto> siblingPoints = null;
-        if (topPoint.habitUnit() == HabitUnit.FAMILY) {
+        if (tipPoint.habitUnit() == HabitUnit.FAMILY) {
             siblingPoints = new ArrayList<>();
             for (Map.Entry<String, Integer> entry : countByPoint.entrySet()) {
-                if (entry.getKey().equals(topPointId)) {
+                if (entry.getKey().equals(tipPointId)) {
                     continue;
                 }
                 PointDefinition sibling = dictionary.require(entry.getKey());
@@ -198,29 +199,110 @@ public class HabitCardScorer {
             }
         }
 
-        ResolvedHit firstEvidence = hits.get(0);
+        ResolvedHit firstEvidence = orderedHits.get(0);
         PracticePromptDto practicePrompt = PracticePromptDto.builder()
                 .originalSentence(firstEvidence.originalSentence())
                 .targetSentence(resolveTargetSentence(firstEvidence))
-                .coachingZh(topPoint.actionHintZh())
+                .coachingZh(tipPoint.actionHintZh())
                 .build();
 
         return ActionCardDto.builder()
-                .channel(topPoint.channel())
-                .cardKind(topPoint.cardKind())
-                .cardPolicy(topPoint.cardPolicy())
+                .channel(tipPoint.channel())
+                .cardKind(tipPoint.cardKind())
+                .cardPolicy(tipPoint.cardPolicy())
                 .habitKey(habitKey)
-                .pointId(topPointId)
-                .headlineZh(topPoint.topTitleZh())
-                .titleZh(topPoint.titleZh())
-                .whyZh(topPoint.whyZh())
+                .pointId(tipPointId)
+                .headlineZh(copy.headlineZh())
+                .titleZh(copy.titleZh())
+                .whyZh(copy.whyZh())
                 .errorCount(hits.size())
                 .score(totalScore)
                 .examples(examples)
                 .siblingPoints(siblingPoints)
-                .actionHintZh(topPoint.actionHintZh())
+                .actionHintZh(tipPoint.actionHintZh())
                 .practicePrompt(practicePrompt)
                 .build();
+    }
+
+    /**
+     * 选代表叶子：优先非兜底（非 {@code *_OTHER}、非家族 otherPointId、非 WORD_FORM_POS）；
+     * 若全是兜底则退回分数最高者。
+     */
+    private String pickHighestScoringPointId(
+            Map<String, Double> scoreByPoint,
+            Map<String, Integer> countByPoint,
+            boolean preferNonCatchAll) {
+        Comparator<Map.Entry<String, Double>> byScoreThenCount =
+                Comparator.<Map.Entry<String, Double>>comparingDouble(Map.Entry::getValue)
+                        .thenComparingInt(entry -> countByPoint.getOrDefault(entry.getKey(), 0));
+
+        if (preferNonCatchAll) {
+            return scoreByPoint.entrySet().stream()
+                    .filter(entry -> !isCatchAllLeaf(dictionary.require(entry.getKey())))
+                    .max(byScoreThenCount)
+                    .map(Map.Entry::getKey)
+                    .orElseGet(() -> pickHighestScoringPointId(scoreByPoint, countByPoint, false));
+        }
+        return scoreByPoint.entrySet().stream()
+                .max(byScoreThenCount)
+                .map(Map.Entry::getKey)
+                .orElseThrow();
+    }
+
+    private boolean isCatchAllLeaf(PointDefinition point) {
+        if ("WORD_FORM_POS".equals(point.pointId()) || point.pointId().endsWith("_OTHER")) {
+            return true;
+        }
+        FamilyDefinition family = dictionary.familiesById().get(point.familyId());
+        return family != null
+                && StringUtils.hasText(family.otherPointId())
+                && family.otherPointId().equals(point.pointId());
+    }
+
+    /**
+     * 家族卡：若分数最高的是兜底叶子，对外用家族标题，练习 tip 用可教的细叶子。
+     */
+    private CardCopy resolveCardCopy(PointDefinition tipPoint, PointDefinition rawTopPoint) {
+        if (tipPoint.habitUnit() != HabitUnit.FAMILY) {
+            return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
+        }
+        FamilyDefinition family = dictionary.familiesById().get(tipPoint.familyId());
+        if (family == null) {
+            return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
+        }
+
+        boolean rawIsCatchAll = isCatchAllLeaf(rawTopPoint);
+        boolean tipIsCatchAll = isCatchAllLeaf(tipPoint);
+        if (rawIsCatchAll && !tipIsCatchAll) {
+            return new CardCopy(
+                    family.titleZh() + "容易用错",
+                    family.titleZh(),
+                    "其中可先练：" + tipPoint.titleZh() + "。" + tipPoint.whyZh());
+        }
+        if (tipIsCatchAll) {
+            return new CardCopy(
+                    family.titleZh() + "容易用错",
+                    family.titleZh(),
+                    tipPoint.whyZh());
+        }
+        return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
+    }
+
+    private static List<ResolvedHit> orderHitsForDisplay(List<ResolvedHit> hits, String tipPointId) {
+        List<ResolvedHit> tipFirst = new ArrayList<>();
+        List<ResolvedHit> rest = new ArrayList<>();
+        for (ResolvedHit hit : hits) {
+            if (tipPointId.equals(hit.point().pointId())) {
+                tipFirst.add(hit);
+            } else {
+                rest.add(hit);
+            }
+        }
+        tipFirst.addAll(rest);
+        return tipFirst;
+    }
+
+    private record CardCopy(String headlineZh, String titleZh, String whyZh) {
     }
 
     private String resolveTargetSentence(ResolvedHit hit) {

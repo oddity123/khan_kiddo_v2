@@ -112,6 +112,34 @@ class HabitCardScorerTest {
         assertNull(result.topHabit());
     }
 
+    @Test
+    void familyCatchAllDoesNotStealHeadlineWhenSpecificLeavesExist() {
+        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        HabitCardScorer scorer = new HabitCardScorer(dict);
+
+        List<HabitScoreInput.ErrorHit> hits = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            hits.add(hit("WORD_FORM_POS", "BASIC", "accurate → check", "check", "and accurate the accuracy"));
+        }
+        hits.add(hit("GERUND_AS_SUBJECT", "BASIC", "improve → improving", "improving", "improve quality is urgent"));
+        hits.add(hit("GERUND_AS_SUBJECT", "BASIC", "interrupt → interrupting", "interrupting", "interrupt is not fluent"));
+        hits.add(hit("FEEL_ED_ADJ", "NATURAL", "exciting → excited", "excited", "I'm so exciting."));
+
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+
+        assertEquals("FAM_WORD_FORM", result.topHabit().getHabitKey());
+        assertEquals("GERUND_AS_SUBJECT", result.topHabit().getPointId());
+        assertTrue(result.topHabit().getHeadlineZh().contains("词形与词类"));
+        assertTrue(result.topHabit().getWhyZh().contains("其中可先练"));
+        assertTrue(result.topHabit().getWhyZh().contains("动词做主语"));
+        assertTrue(!result.topHabit().getWhyZh().contains("FEEL_ED_ADJ"));
+        assertTrue(!result.topHabit().getHeadlineZh().contains("其它词性"));
+        String firstPoint = result.topHabit().getExamples().get(0).getErrorPoint();
+        assertTrue(firstPoint.contains("improve") || firstPoint.contains("interrupt"));
+        String practiceOriginal = result.topHabit().getPracticePrompt().getOriginalSentence();
+        assertTrue(practiceOriginal.contains("improve") || practiceOriginal.contains("interrupt"));
+    }
+
     private static int sequence = 0;
 
     private static HabitScoreInput.ErrorHit hit(
