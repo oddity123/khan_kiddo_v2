@@ -52,7 +52,13 @@ public class HabitCardScorer {
             for (HabitScoreInput.ErrorHit hit : errorHits) {
                 PointDefinition point = dictionary.resolveOrFallback(hit.pointId());
                 String errorLevel = StringUtils.hasText(hit.errorLevel()) ? hit.errorLevel() : point.errorLevel();
-                resolved.add(new ResolvedHit(point, hit.originalSentence(), hit.errorPoint(), hit.suggestion(), errorLevel));
+                resolved.add(new ResolvedHit(
+                        point,
+                        hit.sentenceId(),
+                        hit.originalSentence(),
+                        hit.errorPoint(),
+                        hit.suggestion(),
+                        errorLevel));
             }
         }
 
@@ -63,8 +69,12 @@ public class HabitCardScorer {
                 String focusPhrase = StringUtils.hasText(expression.getFocusPhrase())
                         ? expression.getFocusPhrase()
                         : expression.getOriginalSentence();
+                String sentenceId = expression.getOriginalIndex() != null
+                        ? String.valueOf(expression.getOriginalIndex())
+                        : null;
                 resolved.add(new ResolvedHit(
                         chinesePoint,
+                        sentenceId,
                         expression.getOriginalSentence(),
                         focusPhrase,
                         expression.getSuggestion(),
@@ -165,19 +175,26 @@ public class HabitCardScorer {
                 break;
             }
             examples.add(ActionCardDto.ExampleDto.builder()
+                    .sentenceId(hit.sentenceId())
                     .originalSentence(hit.originalSentence())
                     .errorPoint(hit.errorPoint())
                     .suggestion(hit.suggestion())
                     .build());
         }
 
-        Map<String, Integer> siblingPoints = null;
+        List<ActionCardDto.SiblingPointDto> siblingPoints = null;
         if (topPoint.habitUnit() == HabitUnit.FAMILY) {
-            siblingPoints = new LinkedHashMap<>();
+            siblingPoints = new ArrayList<>();
             for (Map.Entry<String, Integer> entry : countByPoint.entrySet()) {
-                if (!entry.getKey().equals(topPointId)) {
-                    siblingPoints.put(entry.getKey(), entry.getValue());
+                if (entry.getKey().equals(topPointId)) {
+                    continue;
                 }
+                PointDefinition sibling = dictionary.require(entry.getKey());
+                siblingPoints.add(ActionCardDto.SiblingPointDto.builder()
+                        .pointId(entry.getKey())
+                        .titleZh(sibling.titleZh())
+                        .errorCount(entry.getValue())
+                        .build());
             }
         }
 
@@ -247,6 +264,7 @@ public class HabitCardScorer {
 
     private record ResolvedHit(
             PointDefinition point,
+            String sentenceId,
             String originalSentence,
             String errorPoint,
             String suggestion,

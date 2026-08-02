@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 跨通道习惯行动卡（Top 1-3），详情页 API 扩展见
@@ -28,7 +27,10 @@ public class ActionCardDto {
     private CardKind cardKind;
     private CardPolicy cardPolicy;
 
-    /** 排序分组键：family→familyId，leaf→pointId，channel→channel 值 */
+    /**
+     * 排序分组键：family→familyId，leaf→pointId，channel→{@link PointChannel#name()}
+     * （如 {@code CHINESE}/{@code LEXICAL}，与 JSON 小写 channel 字段不同）。
+     */
     private String habitKey;
 
     /** 组内代表叶子（出现最多/分数贡献最大） */
@@ -48,8 +50,8 @@ public class ActionCardDto {
     /** ≤5 条证据 */
     private List<ExampleDto> examples;
 
-    /** 仅 rule 家族填充：同家族其它叶子 pointId → count */
-    private Map<String, Integer> siblingPoints;
+    /** 仅 rule 家族填充：同家族其它叶子（不含代表叶子） */
+    private List<SiblingPointDto> siblingPoints;
 
     private String actionHintZh;
 
@@ -60,8 +62,19 @@ public class ActionCardDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ExampleDto {
+        private String sentenceId;
         private String originalSentence;
         private String errorPoint;
         private String suggestion;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SiblingPointDto {
+        private String pointId;
+        private String titleZh;
+        private int errorCount;
     }
 }
