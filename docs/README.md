@@ -1,26 +1,15 @@
 # Docs
 
-按状态二分管理：
+按状态二分管理文件：
 
-| 目录 | 含义 |
+| 目录 | 放什么 |
 |---|---|
-| [`todo/`](todo/) | 还没做的事；**一任务一文件夹** |
-| [`achieved/`](achieved/) | 已做完的事；**一功能一文件夹** |
+| `todo/` | 还没做的事 |
+| `achieved/` | 已经做完的事 |
 
-## todo
+## 放置规则
 
-| 任务 | 说明 |
-|---|---|
-| [`focus-recheck/`](todo/focus-recheck/) | 习惯盯梢 + 回检条（backlog，非当前优先） |
-| [`learning-loop-gaps/`](todo/learning-loop-gaps/) | 相对 LingoTrace 的学习闭环补给优先级 |
-
-## achieved
-
-| 功能 | 说明 |
-|---|---|
-| [`conversation-analysis-action-cards/`](achieved/conversation-analysis-action-cards/) | 对话分析 Top 习惯行动卡（设计 + 计划） |
-
-## 约定
-
-- 字典草案真源：`scripts/data/v1_dictionary_draft.json`（不在 `docs/` 留第二份）
-- 做完一项：把对应 `todo/<任务>/` 挪到 `achieved/<功能>/`（可改名对齐功能名）
+1. **`todo/`**：一任务一文件夹，文件夹名用任务简称（如 `focus-recheck`）。任务相关的设计、备忘、待办清单都放进该文件夹。
+2. **`achieved/`**：一功能一文件夹，文件夹名用功能简称（如 `conversation-analysis-action-cards`）。该功能的设计、计划及必要附件一并归档。
+3. **完成迁移**：任务做完后，把对应的 `todo/<任务>/` 挪到 `achieved/<功能>/`（文件夹名可按功能名调整）。
+4. **不要在 `docs/` 放运行时真源数据**（例如字典草案真源在 `scripts/data/`），文档里写路径引用即可。
