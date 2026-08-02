@@ -14,6 +14,7 @@ import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.enums.ProblemType;
+import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
 import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
 import com.khankiddo.learning.rag.grammar.GrammarErrorIndexedEvent;
 import com.khankiddo.learning.security.SecurityUtils;
@@ -129,6 +130,8 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             itemMapper.batchInsert(dbItems);
             eventPublisher.publishEvent(new GrammarErrorIndexedEvent(userId, analysisId, dbItems));
         }
+
+        eventPublisher.publishEvent(new GrowthCardMintRequestedEvent(userId, analysisId));
 
         return ConversationAnalysisResultDto.builder()
                 .analysisId(analysisId)

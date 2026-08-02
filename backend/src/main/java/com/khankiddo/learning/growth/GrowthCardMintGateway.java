@@ -59,6 +59,9 @@ public class GrowthCardMintGateway {
         if (topHabit != null && store.findHabitByAnalysis(userId, analysisId).isEmpty()) {
             String brief = contextBuilder.build(analysisId, topHabit);
             assistant.mintHabitCard(userId, brief);
+            if (store.findHabitByAnalysis(userId, analysisId).isEmpty()) {
+                log.warn("成长卡 habit 铸卡后仍不存在 analysisId={}，LLM 可能未调用 persist 工具", analysisId);
+            }
         }
 
         for (ChineseExpressionDto expression : chineseExpressions) {
