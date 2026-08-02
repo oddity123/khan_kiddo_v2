@@ -1,50 +1,57 @@
 # 对话分析详情页：知识点行动卡设计
 
-**日期：** 2026-08-01  
-**状态：** 待评审  
-**范围：** `khan_kiddo_v2` 对话分析详情页「下一步该练什么」能力（字典 + Top 卡 + 回检 + 练 3 句）  
-**字典草案：** `scripts/data/v1_dictionary_draft.json`（同份副本：`docs/superpowers/specs/2026-08-01-v1-dictionary-draft.json`，version `v1-draft-2026-08-01-r2`）
+**日期：** 2026-08-01（修订 2026-08-02）  
+**状态：** 待评审（r3：跨通道 Top + MVP 瘦身）  
+**范围：** `khan_kiddo_v2` 对话分析详情页「下次最该改变的说话习惯」  
+**字典草案：** `scripts/data/v1_dictionary_draft.json`（副本：`docs/superpowers/specs/2026-08-01-v1-dictionary-draft.json`，version `v1-draft-2026-08-01-r2`）
 
 ---
 
 ## 1. 问题与目标
 
-### 1.1 现状痛点
+### 1.1 产品定位（修订）
 
-详情页已能展示句子级检查（原句 / AI 建议 / 错误类型 chip），侧栏有综合得分与类型分布。用户能看见「错了什么」，但难以回答：
+本能力**不是语法批改排行榜**，而是从一次真实对话里找出：
 
-> 我下一步到底该练哪一条？
+> 下次开口时，最该改变的说话习惯是什么？
 
-现有「知识卡片」仅覆盖中文表达缺口（词汇闪卡），且复习进度不落库。饼图按旧 `ProblemType` 统计，会把互不相干的一次性换词堆成「用词不当」，把同一母语迁移根因拆进多个类目。
+语法规则、流利度策略、词汇绕行、中文夹杂——都可以成为「最该改」的那一件事。
 
-### 1.2 成功标准
+### 1.2 现状痛点
 
-一次看完详情页后，用户能在 10 秒内得到：
+详情页能展示句子级检查与类型分布，用户看得见「错了 44 处」，但难以回答「下一步改哪个习惯」。旧 `ProblemType` 统计会把无关换词堆成「用词不当」，又把同一根因拆进多个类目。
 
-1. **本场 Top 1–3 个可练焦点**（人话规则 + 自己的原句证据）  
-2. **一个即时行动**（练 3 句，约 40 秒）  
-3. **从第二次分析起**：上次盯着的点有没有改掉（回检）
+### 1.3 成功标准（MVP）
 
-非目标（v1 不做）：完整 SRS、跨用户公共语法知识库、文章生成、回填全部历史 `point_id`。
+用户 10 秒内先看到 **一句 Top 1**：
+
+> 本次最该改：想不到词时容易切回中文，导致表达中断。
+
+然后能展开 / 下翻看到 Top 2–3；每张卡有一个轻量行动（MVP：**用这个表达重说一句**，不依赖 LLM）。
+
+**下一版再做：** 回检、LLM「练 3 句」、长期追踪。
+
+非目标：完整 SRS、公共语法知识库、文章生成、回填历史 `point_id`、Stage3 生成卡片文案。
 
 ---
 
 ## 2. 核心概念与层级
 
 ```
-家族 Family（归因 / Top 排序）
-  └── 叶子 pointId（可练规则 / 一张行动卡）
-         └── 单条错误（原句 + error_point 证据）
+习惯候选 HabitCandidate（Top 排序单位）
+  └── 展示用叶子 / 策略 pointId（卡片标题与行动锚点）
+         └── 单条证据（原句 + error_point）
 ```
 
 | 层 | 标识 | 职责 |
 |---|---|---|
-| 家族 | `FAM_*` | 「同一个毛病」；Top 排序单位；饼图着色 |
-| 叶子 | `pointId` | Stage2 模型唯一分类目标；卡片标题与练习锚点 |
-| 通道 | `rule` / `fluency` / `lexical` / `chinese` | 决定 UI 去向；仅 `rule` 参与行动卡排序 |
-| 旧类型 | `ProblemType` | **兼容层**：由 `pointId` 查表得到，写入现有 `problem_types`；不参与模型选择 |
+| 习惯候选 | 见 §4.2 | Top 1–3 的竞争单位；跨 channel |
+| 家族 | `FAM_*` | 归因聚合；饼图着色 |
+| 叶子 | `pointId` | Stage2 分类目标；卡片文案键 |
+| 通道 | `rule` / `fluency` / `lexical` / `chinese` | **决定卡片形态**，不再决定「能不能进 Top」 |
+| 旧类型 | `ProblemType` | 兼容层：由 `pointId` 查表写入 `problem_types` |
 
-**Stage2 契约变更：** 模型输出从 `type`（ProblemType 枚举）改为 `pointId`（知识点枚举）。`type` / `errorLevel` / `familyId` / `channel` / 卡片文案全部后端查字典推导。
+**Stage2：** 模型只输出 `pointId`；`family` / `channel` / `problemType` / `errorLevel` / 文案全部查表。
 
 ---
 
@@ -52,119 +59,134 @@
 
 ### 3.1 来源
 
-由本地 + 线上合并去重语料（2791 条错误）离线挖掘后人工定稿，产物见  
-`scripts/data/v1_dictionary_draft.json`。离线挖掘脚本：`scripts/mine_knowledge_points.py`（原始语料与 batch 输出在 `scripts/out/`，已 gitignore）。
+2791 条合并语料离线挖掘 + 人工定稿：`scripts/data/v1_dictionary_draft.json`。  
+脚本：`scripts/mine_knowledge_points.py`（`scripts/out/` 已 gitignore）。
 
 ### 3.2 家族（12）
 
-**规则家族（9）：**  
-`FAM_ARTICLE` · `FAM_NOUN_NUMBER` · `FAM_AGREEMENT` · `FAM_TENSE` · `FAM_VERB_PATTERN` · `FAM_PREPOSITION` · `FAM_WORD_FORM` · `FAM_STRUCTURE` · `FAM_PRONOUN`
+**规则（9）：** Article · NounNumber · Agreement · Tense · VerbPattern · Preposition · WordForm · Structure · Pronoun  
 
-**通道家族（3）：**  
-`FAM_FLUENCY` · `FAM_LEXICAL` · `FAM_CHINESE`
+**通道习惯（3）：** Fluency · Lexical · Chinese  
 
-每家族一个 `{FAMILY}_OTHER` 兜底（词汇/中文通道叶子本身即兜底，不再另加）。
+每规则家族一个 `*_OTHER`；`LEXICAL_GAP` / `CHINESE_CODE_SWITCH` 本身即通道锚点。
 
-### 3.3 Stage2 枚举规模
+### 3.3 Stage2 枚举
 
-约 **28 个 `v1Keep` 叶子 + 10 个家族 OTHER ≈ 38 项** 写入 JSON Schema `enum`。
+约 28 个 `v1Keep` + 10 个 OTHER ≈ 38 项。判据（冠词 vs 复数、时态 vs 句型等）见字典 `discriminators`，必须进 Stage2 system prompt。
 
-完全体候补（`v1Keep=false`，不进 Stage2 enum）：如 `PAST_VS_PERFECT`、`COMPARISON_FORM` 等，后续按 OTHER 命中率迭代加入。
+### 3.4 字典字段（补充）
 
-### 3.4 关键判据（必须进 Stage2 system prompt）
+在 r2 字段基础上，实现时为每个叶子/家族增加（可写进字典或代码常量）：
 
-1. **冠词 vs 单复数：** 数错 → 单复数叶子；数对只错冠词 → 冠词叶子。  
-2. **时态 vs 动词句型：** 选错时间 → `FAM_TENSE`；助动词已出现、后面形态错 → `FAM_VERB_PATTERN`。  
-3. **词形细叶子优先：** `FEEL_ED_ADJ` / `GERUND_*` 能命中则不用 `WORD_FORM_POS`。  
-4. **Structure 溢出：** 说不清规则的整句问题 → `FLUENCY_*` / `LEXICAL_GAP` / `CHINESE_CODE_SWITCH`，禁止硬塞 `STRUCTURE_*`。  
-5. **搭配 vs 介词 vs 词汇：** 固定短语 → `COLLOCATION`；单纯 in/on/at → `PREP_FIXED`；一次性换词 → `LEXICAL_GAP`。
-
-### 3.5 字典落地形态
-
-- 运行时：classpath 资源（JSON 或 YAML），启动加载为不可变索引：`pointId → PointDefinition`。  
-- 每条至少含：`pointId`、`familyId`、`channel`、`cardPolicy`、`titleZh`、`whyZh`、`fixability`、`errorLevel`、`problemType`。  
-- 非法 / 未知 `pointId`：sanitizer 降级到对应家族 `*_OTHER`（若无法解析家族则 `STRUCTURE_OTHER`），并打日志。
-
----
-
-## 4. Top 行动卡算法
-
-### 4.1 目标函数
-
-> 练哪一个，能一次消掉最多「未来还会再犯」的错——不是哪个标签出现次数最多。
-
-### 4.2 公式（v1）
-
-对每个**规则家族**（仅聚合 `channel=rule` 且 `cardPolicy=normal` 的叶子）：
-
-```
-familyScore = Σ severity(error) × family.fixability × recurrenceBoost
-```
-
-| 因子 | v1 取值 |
+| 字段 | 含义 |
 |---|---|
-| `severity` | `FATAL=3` · `BASIC=2` · `NATURAL=1.5` · `STYLE=1`（沿用现有 `ErrorLevel`） |
-| `fixability` | 字典家族默认值（叶子可覆盖） |
-| `recurrenceBoost` | **恒为 1**（历史加权字段预留，本版不启用） |
+| `channel` | 卡片形态键 |
+| `cardKind` | `grammar` / `fluency_strategy` / `lexical_upgrade` / `chinese_bypass` |
+| `cardPolicy` | `normal` \| `rare` \| `channel`；`rare` 不进 Top |
+| `habitUnit` | 排序粒度：`family`（多数 rule）或 `leaf`（流利度细分）或 `channel`（lexical/chinese 整通道一个习惯） |
+| `impactWeight` | 跨通道可比的影响权重（见 §4.3） |
+| `topTitleZh` | Top 1 结论句用的短标题（习惯口径，可与 `titleZh` 不同） |
 
-**准入：** 该家族本场 `cardPolicy=normal` 错误条数 ≥ 2。  
-**输出：** 分数最高的最多 **3** 个家族；每张卡正面展示该家族内本场得分最高的叶子规则。  
-**`cardPolicy=rare`：** 可累计用于诊断展示，**不进入 Top3 焦点位**（`PREP_FIXED`、`COLLOCATION`、`SENTENCE_LOOSE_AND`）。
+通道习惯的文案示例（字典里补全）：
 
-### 4.3 卡片内容（零额外 LLM）
-
-全部由字典静态文案 + 本场 `items` 过滤得到：
-
-- 徽章：本次 TOP n · 家族名 · 本场条数  
-- `titleZh`（人话规则）  
-- 正误对照：取该叶子下一条代表性 `originalSentence` + `suggestion` / `error_point`  
-- `whyZh`（母语迁移）  
-- 证据列表：最多 5 条，可点击定位句子级检查  
-- 同家族其它叶子摘要（「同一个毛病的其它表现」）  
-- 操作：练 3 句 · 下次帮我盯着 · 我已经会了  
-
-### 4.4 时间窗
-
-- **排序：仅本场。**  
-- `point_id` **现在落库**，用于回检与未来复发加权；不回填 19/74 条旧测试数据。
+| pointId / 习惯 | topTitleZh 示例 | 卡片形态 |
+|---|---|---|
+| `CHINESE_CODE_SWITCH` | 想不到词时容易切回中文 | 英文绕行卡：怎么撑住、可替换说法 |
+| `LEXICAL_GAP`（通道级） | 关键概念缺少可出口的表达 | 表达升级卡：下次可直接用的说法 |
+| `FLUENCY_INCOMPLETE` | 句子常说到一半就断 | 口语策略卡：说完一句再开下一句 |
+| `FLUENCY_REDUNDANCY` | 启动时重复 / 叠词拖慢表达 | 口语策略卡：去重与换说法 |
+| `FEEL_ED_ADJ` 等 | （规则人话标题） | 语法行动卡：规则 + 改错 |
 
 ---
 
-## 5. 行动层（档位 C）
+## 4. Top 习惯排序（跨通道）
 
-### 5.1 练 3 句
+### 4.1 目标函数（修订）
 
-- **触发：** 用户点击按钮后按需调用，**不**并入分析 SSE，不预生成。  
-- **模型：** 轻量模型（豆包 Flash / mini 级），超时与失败需友好降级。  
-- **输入：** `pointId` + `titleZh` + 本场最多 3 条原句证据。  
-- **输出：** 3 道改错或中译英微练习（JSON）；改错题可与标准答案比对，开放题可再调一次轻量评判或先做「自评 / 展示参考答案」。  
-- **v1 评判策略：** 优先「改错 + 标准答案比对」；开放造句可先展示参考句，不做强判分（避免拖延上线）。
+> 找出本场**最该改变的说话习惯**——可以是语法族，也可以是流利度、词汇缺口或中文夹杂。
 
-### 5.2 下次帮我盯着（回检）
+**明确否决：** Top 排序不得只从 `channel=rule` 选取。
 
-新表（示意）：
+### 4.2 习惯候选如何切分
+
+| 通道 | 排序单位 `habitUnit` | 说明 |
+|---|---|---|
+| `rule` | 家族（仅 `cardPolicy=normal` 的叶子计入） | 卡面展示该家族本场最强叶子 |
+| `fluency` | 叶子（`FLUENCY_INCOMPLETE` / `FLUENCY_REDUNDANCY` 可分别竞争） | 策略卡 |
+| `lexical` | **整通道一个候选** | 不把 11 个无关错词拆成 11 个 Top；习惯是「词到不了嘴边时的应对」 |
+| `chinese` | **整通道一个候选** | 习惯是「卡词时切中文」 |
+
+`cardPolicy=rare` 的 rule 叶子（介词/搭配/松散 and）**不进 Top 池**，仍可出现在证据层与家族分布里。
+
+### 4.3 公式（v1）
+
+```
+habitScore = Σ severity(e) × impactWeight(channel) × fixability'
+```
+
+| 因子 | 取值 |
+|---|---|
+| `severity` | FATAL=3 · BASIC=2 · NATURAL=1.5 · STYLE=1 |
+| `impactWeight` | `chinese=1.25` · `fluency=1.15` · `rule=1.0` · `lexical=0.95`（可调常量，单测锁样例） |
+| `fixability'` | rule 用字典 fixability；非 rule 通道用 `1.0`（习惯可练的是策略，不是语法固化系数） |
+
+**准入：** 该候选本场计入条数 ≥ 2（中文/流利度同）。  
+**输出：** 分数最高的最多 3 个习惯；**UI 强制突出 rank=1**（见 §8）。
+
+**可比性说明：** 权重用于避免「纯语法分」永远压过真实口语习惯；上线后用 3–5 场真实分析人工校准，不在 Stage3 里算。
+
+### 4.4 四种卡片形态
+
+| cardKind | 通道 | 用户看到的「下一步」 | MVP 主按钮 |
+|---|---|---|---|
+| `grammar` | rule | 一条人话规则 + 正误对照 + 证据 | 用纠正句重说一句 |
+| `fluency_strategy` | fluency | 一条说话策略（非语法点）+ 断句/重复证据 | 把这句说完整 / 去重再说一遍 |
+| `lexical_upgrade` | lexical | 本场高频缺口里挑 1–3 个「下次可直接用」的说法 | 用目标词重说一句 |
+| `chinese_bypass` | chinese | 卡词时的英文绕行（释义、笼统词、ask for word） | 不用中文，用绕行重说一句 |
+
+共性结构：习惯标题 · 为什么这是习惯 · 本场证据（可点回句子）· 一个行动按钮。  
+**MVP 不要求**「练 3 句」LLM 与「下次帮我盯着」。
+
+### 4.5 时间窗
+
+排序仅本场。`point_id` 现在落库，供下一版回检；不回填旧数据。
+
+---
+
+## 5. 行动层与分期（修订）
+
+### 5.1 MVP（与 P0 合并上线）
+
+必做：
+
+1. Stage2 `pointId` + 字典 + 落库  
+2. **跨通道 Top 习惯排序** → `actionCards`  
+3. **Top 1 结论句**（详情页第一眼）  
+4. Top 2–3 行动卡（可默认折叠为标题行）  
+5. 句子级检查降级为证据层 + 深链  
+6. 侧栏分布改家族（或习惯通道着色，与 Top 口径一致）  
+7. 每张卡一个**静态行动**：「用这个表达重说一句」（展示目标句 / 绕行句；本地勾选「我说过了」即可，无 LLM、可不落库）
+
+### 5.2 下一版（原 P1/P2）
+
+- `user_focus_point` + 回检条（「上次盯的习惯改掉了吗」）  
+- 按需 LLM「练 3 句」  
+- 词汇闪卡与 `LEXICAL_GAP` 深合并；中文表达卡与 `CHINESE_CODE_SWITCH` 统一入口  
+
+### 5.3 回检 / 练 3 句（规格保留，非 MVP）
+
+表结构与 API 见原方案，实现顺延：
 
 ```sql
 user_focus_point (
-  id BIGINT PK,
-  user_id BIGINT NOT NULL,
-  point_id VARCHAR(48) NOT NULL,
-  source_analysis_id VARCHAR(64) NOT NULL,
-  status VARCHAR(16) NOT NULL,  -- watching | dismissed | mastered
+  id, user_id, point_id, source_analysis_id,
+  status, -- watching | mastered | dismissed
   created_at, updated_at,
   UNIQUE(user_id, point_id)
 )
 ```
 
-- 「下次帮我盯着」→ `watching`  
-- 「我已经会了」→ `mastered`（不再出现在回检条；同一 `pointId` 再次「盯着」可覆盖回 `watching`）  
-- 「略过 / 不想练」若需要第三按钮 → `dismissed`（v1 UI 可不暴露，状态预留）  
-- 详情页加载时：取该用户 `watching` 列表，与**本场**按 `point_id` 计数对比，渲染回检条：  
-  - 上次有、本次 0 或明显下降 → 改掉了  
-  - 上次有、本次仍 ≥1 → 还在犯  
-  - 样本不足 → 灰态  
-
-不需要 SRS 调度；产品每次分析即考试。
+`POST /focus-points`、`POST /practice` 仍按登录用户校验归属。
 
 ---
 
@@ -172,109 +194,84 @@ user_focus_point (
 
 | 环节 | 变更 | 增量耗时 |
 |---|---|---|
-| Stage1 分离 | 不变 | 0 |
-| 中文表达审查 | 不变；与 `CHINESE_CODE_SWITCH` / 词汇卡对齐展示 | 0 |
-| Stage2 语法 | Schema/`type`→`pointId`；prompt 加判据 | ≈0（字段替换，非新增输出） |
-| Sanitizer | 校验 pointId，非法降级 OTHER | &lt;5ms |
-| Top3 / 卡片组装 | 纯函数，分析完成后 | &lt;5ms |
-| Stage3 教育总结 | **不变**；不负责生成行动卡文案 | 0 |
-| 回检查询 | 详情 GET 时 | &lt;20ms |
-| 练 3 句 | 按需 API | 2–4s（仅点击者） |
-
-分析主路径总时长预期仍与现状同量级（约 1 分钟级，取决于所选模型）。
+| Stage1 / 中文表达审查 / Stage3 | 不变；卡片不进 Stage3 | 0 |
+| Stage2 | `type`→`pointId` + 判据 | ≈0 |
+| Sanitizer + Top 组装 | 纯函数 | &lt;10ms |
+| MVP「重说一句」 | 纯前端 | 0 |
+| 回检 / 练 3 句 | 下一版 | 查询 &lt;20ms / 按需 2–4s |
 
 ---
 
-## 7. 数据模型
+## 7. 数据模型与 API
 
 ### 7.1 `conversation_analysis_item`
 
-新增列：
-
 ```sql
-point_id VARCHAR(48) NULL COMMENT '知识点叶子；旧数据可为 NULL'
+point_id VARCHAR(48) NULL
 ```
 
-- 新分析：每条错误一行，写入 `point_id`；`problem_types` 继续写英文 `ProblemType` 名（由字典反查）。  
-- 旧行：`point_id IS NULL`；不参与回检分子。
+新分析必写；`problem_types` 仍由字典反查写入。
 
 ### 7.2 详情 API 扩展
 
-`GET /api/conversation/analyses/{id}` 在现有字段上增加（命名可在实现时微调，语义固定）：
-
 ```json
 {
-  "actionCards": [
-    {
-      "rank": 1,
-      "familyId": "FAM_WORD_FORM",
-      "familyTitleZh": "词形与词类",
-      "pointId": "FEEL_ED_ADJ",
-      "titleZh": "...",
-      "whyZh": "...",
-      "errorCount": 8,
-      "score": 12.75,
-      "examples": [{ "sentenceId": 1, "originalSentence": "...", "errorPoint": "...", "suggestion": "..." }],
-      "siblingPoints": [{ "pointId": "...", "titleZh": "...", "errorCount": 2 }]
-    }
-  ],
-  "focusRecheck": [
-    {
-      "pointId": "FEEL_ED_ADJ",
-      "titleZh": "...",
-      "previousCount": 5,
-      "currentCount": 1,
-      "status": "improved"
-    }
-  ],
-  "fluencyHints": [{ "pointId": "FLUENCY_INCOMPLETE", "count": 5, "titleZh": "..." }],
-  "familyDistribution": [{ "familyId": "...", "titleZh": "...", "count": 12 }]
+  "topHabit": {
+    "rank": 1,
+    "channel": "chinese",
+    "cardKind": "chinese_bypass",
+    "habitKey": "FAM_CHINESE",
+    "pointId": "CHINESE_CODE_SWITCH",
+    "headlineZh": "本次最该改：想不到词时容易切回中文，导致表达中断。",
+    "titleZh": "...",
+    "whyZh": "...",
+    "errorCount": 5,
+    "score": 14.2,
+    "examples": [],
+    "actionHintZh": "不用中文，用英文绕行重说一句",
+    "practicePrompt": { "targetSentence": "...", "coachingZh": "..." }
+  },
+  "actionCards": [ /* rank 1..3，含与 topHabit 相同结构；rank1 与 topHabit 一致 */ ],
+  "familyDistribution": [{ "familyId": "...", "titleZh": "...", "channel": "...", "count": 12 }],
+  "focusRecheck": []
 }
 ```
 
-`items[].errors[]` 增加 `pointId`（及可选 `familyId`），保留 `type` / `errorLevel` / `point` 以兼容现有句子卡。
+`items[].errors[]` 增加 `pointId`（及可选 `familyId`/`channel`），保留 `type`/`errorLevel`/`point`。
 
-### 7.3 新 API
+MVP 可不返回 `focusRecheck`（空数组）。`practicePrompt` 由字典模板 + 本场证据字符串拼出，无 LLM。
+
+### 7.3 下一版 API
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/api/conversation/focus-points` | body: `{ pointId, analysisId, action: watch\|master\|dismiss }` |
-| POST | `/api/conversation/practice` | body: `{ pointId, analysisId }` → 3 道题 JSON |
-
-均需登录；`pointId` / `analysisId` 校验归属当前用户。
+| POST | `/api/conversation/focus-points` | watch / master / dismiss |
+| POST | `/api/conversation/practice` | LLM 练 3 句 |
 
 ---
 
-## 8. 详情页信息架构
+## 8. 详情页信息架构（修订）
 
-桌面端保持主栏 + 右侧概要；主栏顺序：
+主栏：
 
-1. 顶栏（返回 / 标题 / 删除）— 保留  
-2. **本次结论条**（一句：句数 · 可优化点数 · 主要矛盾家族）— 改造  
-3. **该练什么 · Top 3 行动卡** — **新增，页面重心**  
-4. **回检条**（第二次分析起有 watching 时显示）— 新增  
-5. **词汇卡**（现有中文表达闪卡 + 本场 `LEXICAL_GAP` 可后续合并；v1 至少保留现有中文表达卡，并展示 `CHINESE_CODE_SWITCH` 入口或合并说明）— 改造  
-6. **流利度提示**（`FLUENCY_*`）— 新增  
-7. **句子级检查** — **降级为证据层**：默认折叠或仅展开含 FATAL；顶部品类 chip 按 `pointId`/家族筛选；从行动卡「查看原句」深链定位  
-8. 原始对话 — 保留折叠  
+1. 顶栏 — 保留  
+2. **Top 1 结论句（hero）** — 新增，第一眼只这一句习惯  
+3. **Top 2–3 行动卡** — 新增；Top 1 卡可与 hero 合并为「展开详情」  
+4. 词汇 / 中文闪卡区 — 保留现有中文表达卡；若 Top 已是 lexical/chinese，此处不重复刷屏，改为「更多缺口」  
+5. 句子级检查 — **证据层**（折叠 + 筛选 + 深链）  
+6. 原始对话 — 折叠  
 
-侧栏：
-
-- 综合自然度 / 分项得分 — 保留  
-- 类型分布 — **改为按家族** `familyDistribution` 着色（避免与行动卡口径打架）  
-- AI 总结 / 元信息 — 保留  
-
-移动端：行动卡单列；侧栏概要置于行动卡之后或手风琴。
+**不再**把 fluency 只塞进侧栏弱提示而排除在 Top 外。  
+侧栏：得分保留；分布改家族/通道口径，与 Top 一致。
 
 ---
 
 ## 9. 前端要点
 
-- 新组件建议：`ActionCardsPanel.vue`、`FocusRecheckBar.vue`、`FluencyHints.vue`；练习可用 Dialog/Drawer。  
-- 类型扩展：`frontend/src/types/conversation.ts`。  
-- API：`frontend/src/api/conversationAnalysis.ts`。  
-- 排序/标签工具可扩展 `analysisDisplay.ts`；**Top 分由后端算好下发**，前端不重算家族分。  
-- 样式：沿用 `--kk-*` 与现有详情页玻璃面板，不引入新设计体系。
+- `TopHabitHero.vue` + `ActionCardsPanel.vue`（按 `cardKind` 切换布局）  
+- MVP 行动：Dialog 展示 `practicePrompt`，按钮「我说过了」仅本地状态即可  
+- Top 分后端下发；前端不重算  
+- 样式沿用 `--kk-*`
 
 ---
 
@@ -282,26 +279,24 @@ point_id VARCHAR(48) NULL COMMENT '知识点叶子；旧数据可为 NULL'
 
 | 模块 | 职责 |
 |---|---|
-| 字典加载器 | 读资源文件，建索引，校验 OTHER 齐全 |
-| Schema / Prompt | `conversation-analysis-schema.json` enum；system prompt 嵌入判据与精简叶子说明 |
-| `GrammarAnalysisSanitizer` | pointId 合法性与降级 |
-| `ActionCardScorer`（纯函数） | 本场 items → `actionCards` |
-| Focus 仓储 | `user_focus_point` CRUD |
-| Practice 服务 | 按需 LLM，独立超时 |
-| 详情组装 | 填充 `actionCards` / `focusRecheck` / `fluencyHints` / `familyDistribution` |
-
-持久化仍走现有 `analyzeAndPersist`；`point_id` 写入 `buildDbItems()`。
+| 字典加载器 | 索引 + OTHER 校验 + channel/habitUnit/impactWeight |
+| Schema / Prompt | pointId enum + 判据 |
+| Sanitizer | 非法 pointId 降级 |
+| `HabitCardScorer` | 跨通道候选 → `topHabit` + `actionCards` |
+| 详情组装 | 填充分布与卡片；MVP 不做 focus/practice |
 
 ---
 
-## 11. 测试计划（验收）
+## 11. 测试计划
 
-1. **字典单元测试：** 每个 `v1Keep` pointId 可解析出 family/problemType/errorLevel；未知 id 降级 OTHER。  
-2. **打分单元测试：** 用固定 fixtures（含 rare 叶子、单条不足准入、FATAL 加权）断言 Top 顺序与张数。  
-3. **Sanitizer：** 非法 pointId → OTHER；细叶子优先判据用样例 prompt 抽检（可人工 + 少量集成）。  
-4. **API：** 关注点写入后，同用户下一次详情 `focusRecheck` 状态正确；越权 analysisId 拒绝。  
-5. **回归：** 无 `point_id` 的旧详情页不报错；句子卡仍可读 `type`/`errorLevel`。  
-6. **手动：** 用分析 `045d6688` 同类语料重跑，确认 Top 卡不是「用词不当」而是可练叶子，且饼图家族口径与卡一致。
+1. 字典：pointId → channel/cardKind/habitUnit 完整。  
+2. **打分：**  
+   - 纯语法场 → Top1 为 rule 家族  
+   - 中文夹杂 ≥2 且权重下应能压过少量 STYLE 语法  
+   - lexical 再多也只产生 **1 个** lexical 候选  
+   - `rare` 永不进 Top  
+3. Sanitizer / 旧详情兼容。  
+4. 手动：重跑含中文夹杂与 uh 重复的会话，确认 Top1 可以是 chinese/fluency，而不是「用词不当」。
 
 ---
 
@@ -309,42 +304,43 @@ point_id VARCHAR(48) NULL COMMENT '知识点叶子；旧数据可为 NULL'
 
 | 风险 | 缓解 |
 |---|---|
-| enum 从 ~19→~38，分类准确率下降 | 判据进 prompt；OTHER 兜底；sanitizer；上线后看 OTHER 命中率再拆叶子 |
-| 冠词/单复数易混 | 硬性 discriminator #1 |
-| rare 叶子占满 Top | 打分器强制过滤 `cardPolicy=rare` |
-| 练 3 句延迟/失败 | 按需调用 + 超时文案 + 可重试；v1 不做强判开放题 |
-| 字典文案质量 | 人工维护 JSON；改文案不改代码 |
+| 跨通道分数不好比 | 固定 impactWeight + fixture 单测；用真实场次校准 |
+| lexical 条数爆炸永远 Top1 | 整通道一个候选 + weight 0.95；证据只展示 1–3 个可练说法 |
+| 分类准确率 | 判据 + OTHER + 监控命中率 |
+| MVP 无回检显得「说完就走」 | hero + 重说一句先建立行动感；回检紧接下一版 |
 
 ---
 
-## 13. 明确不在 v1
+## 13. 明确不在 MVP
 
-- 历史复发加权进排序（列已有，逻辑关闭）  
-- 回填旧分析 `point_id`  
-- 完整 SRS / 错题本产品化  
-- Stage3 生成卡片文案  
-- 分析时预生成练习题  
-- 比较级、past vs perfect 等完全体叶子进 enum  
+- 回检条与 `user_focus_point`  
+- LLM 练 3 句  
+- 历史复发加权  
+- 回填旧 `point_id`  
+- Stage3 写卡片  
+- 预生成练习  
 
 ---
 
-## 14. 决策记录（已确认）
+## 14. 决策记录
 
 | 决策 | 结论 |
 |---|---|
-| 卡片粒度 | 知识点叶子（方案 B） |
-| 时间窗 | 本场排序；point_id 预留历史 |
-| 行动档位 | C：讲清 + 练 3 句 + 回检 |
-| 卡片是否进 Stage3 | 否，字典静态 + Stage2 聚合 |
-| 字典来源 | 全历史语料挖掘 + 人工定稿（r2） |
-| 旧 ProblemType | 查表兼容，非模型输出 |
+| 卡片粒度 | 知识点 / 习惯，不是单条错误 |
+| Top 范围 | **全 channel 竞争**；形态随 channel 变 |
+| Top UI | **先 Top1 一句，再 Top2/3** |
+| 时间窗 | 本场；point_id 预留 |
+| 卡片文案 | 字典静态，不进 Stage3 |
+| MVP 行动 | 静态「重说一句」，不先做 LLM 三连练 |
+| 回检 / 练 3 句 | 下一版 |
+| 旧 ProblemType | 查表兼容 |
 
 ---
 
-## 15. 实现分期建议
+## 15. 实现分期（修订）
 
-**P0（可独立上线）：** 字典 + Stage2 pointId + 落库 + 详情 `actionCards` / `familyDistribution` + 句子卡降级与深链 + 侧栏饼图改家族。  
-**P1：** `user_focus_point` + 回检条。  
-**P2：** 练 3 句 API + UI；词汇卡与 `LEXICAL_GAP` 更深合并。
+**MVP / P0：** 字典 + pointId 落库 + 跨通道 Top1+Top3 + 四种卡形态（可先做信息结构，视觉可简）+ 重说一句 + 证据层降级 + 分布口径对齐。  
 
-P0 即可解决「看不见下一步」的主痛点；P1/P2 闭合学习闭环。
+**P1：** 回检。  
+
+**P2：** LLM 练 3 句；词汇/中文卡与 Top 习惯统一体验。
