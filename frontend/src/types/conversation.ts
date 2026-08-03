@@ -58,11 +58,13 @@ export interface AnalysisResultsPayload {
 }
 
 export interface ChineseExpressionItem {
-  originalIndex?: number
-  originalSentence: string
+    originalIndex?: number
+    originalSentence: string
     /** 词汇求助时抽出的中文目标词；有则作为知识卡片正面 */
     focusPhrase?: string
-  suggestion?: string
+    suggestion?: string
+    /** 可选角标（成长卡：习惯 / 词汇） */
+    kindLabel?: string
 }
 
 /** 与后端 EducationalSummaryParser / v1 一致：{ report: { overallStats, overallSummary }, chineseExpressions? } */
@@ -184,6 +186,8 @@ export interface ConversationAnalysisDetail {
     habitGrowthMintStatus?: 'pending' | 'ready' | 'failed' | 'none'
     /** 已铸成的习惯成长卡，ready 时有值 */
     habitGrowthCard?: GrowthCard
+    /** 本场已生成的全部成长卡（habit + vocab） */
+    growthCards?: GrowthCard[]
 }
 
 /** 与后端 knowledge.PointChannel 一致，JSON 小写 */

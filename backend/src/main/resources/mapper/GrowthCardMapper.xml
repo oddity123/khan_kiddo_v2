@@ -77,4 +77,13 @@
         LIMIT 1
     </select>
 
+    <select id="findByUserAndAnalysis" resultMap="GrowthCardResultMap">
+        SELECT
+        <include refid="GrowthCardColumns"/>
+        FROM growth_card
+        WHERE user_id = #{userId}
+          AND source_analysis_id = #{analysisId}
+        ORDER BY type ASC, created_at ASC
+    </select>
+
 </mapper>

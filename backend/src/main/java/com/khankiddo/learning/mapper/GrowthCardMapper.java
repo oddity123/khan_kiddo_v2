@@ -31,4 +31,7 @@ public interface GrowthCardMapper {
 
     Optional<GrowthCard> findHabitByAnalysis(@Param("userId") Long userId,
                                                @Param("analysisId") String analysisId);
+
+    List<GrowthCard> findByUserAndAnalysis(@Param("userId") Long userId,
+                                           @Param("analysisId") String analysisId);
 }

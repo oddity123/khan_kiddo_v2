@@ -310,6 +310,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         Optional<GrowthCardDto> habitCard = growthCardReviewService.findHabitCardForAnalysis(analysisId);
         String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(
                 habitScoreResult.topHabit(), analysis.getCreatedAt(), habitCard.isPresent());
+        List<GrowthCardDto> growthCards = growthCardReviewService.listByAnalysis(analysisId);
 
         return ConversationAnalysisDetailDto.builder()
                 .analysisId(analysis.getAnalysisId())
@@ -330,6 +331,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .familyDistribution(habitScoreResult.familyDistribution())
                 .habitGrowthMintStatus(habitGrowthMintStatus)
                 .habitGrowthCard(habitCard.orElse(null))
+                .growthCards(growthCards)
                 .build();
     }
 

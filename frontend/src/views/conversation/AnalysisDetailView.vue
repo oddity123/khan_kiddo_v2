@@ -59,8 +59,12 @@ const sortedItems = computed(() => {
 const topHabit = computed(() => detail.value?.topHabit)
 
 const habitGrowthMintStatus = computed(() => detail.value?.habitGrowthMintStatus ?? 'none')
-const habitGrowthCard = computed((): GrowthCard | undefined => detail.value?.habitGrowthCard)
-const showMintBlock = computed(() => habitGrowthMintStatus.value !== 'none')
+const growthCards = computed((): GrowthCard[] => detail.value?.growthCards ?? [])
+const asideTab = ref<'summary' | 'cards'>('summary')
+const growthCardCountLabel = computed(() => {
+  const n = growthCards.value.length
+  return n > 0 ? `已生成的卡片 · ${n}` : '已生成的卡片'
+})
 
 const MINT_POLL_INTERVAL_MS = 1500
 const MINT_POLL_MAX = 10
@@ -118,8 +122,10 @@ async function onRetryMint() {
         ...detail.value,
         habitGrowthMintStatus: 'pending',
         habitGrowthCard: undefined,
+        growthCards: [],
       }
     }
+    asideTab.value = 'cards'
     scheduleMintPoll()
     ElMessage.success('已开始重新生成成长卡')
   } catch (error) {
@@ -139,6 +145,11 @@ const practicePrompt = computed(() => practiceCard.value?.practicePrompt ?? null
 function onPractice(card: ActionCard) {
   practiceCard.value = card
   practiceVisible.value = true
+}
+
+async function onHabitCardGenerated() {
+  asideTab.value = 'cards'
+  await refreshDetailSilent()
 }
 
 interface FilterChip {
@@ -191,20 +202,28 @@ function locate(sentenceId: string | number) {
   })
 }
 
-const chineseExpressions = computed((): ChineseExpressionItem[] => {
-  const fromDetail = detail.value?.chineseExpressions
-  if (fromDetail?.length) {
-    return [...fromDetail].sort((a, b) => (a.originalIndex ?? 0) - (b.originalIndex ?? 0))
+const chineseExpressionCount = computed(() => {
+  if (overallStats.value?.chineseExpressionCount != null) {
+    return overallStats.value.chineseExpressionCount
   }
-  const fromSummary = detail.value?.educationalSummary?.chineseExpressions
-  if (fromSummary?.length) {
-    return [...fromSummary].sort((a, b) => (a.originalIndex ?? 0) - (b.originalIndex ?? 0))
-  }
-  return []
+  const fromDetail = detail.value?.chineseExpressions?.length ?? 0
+  const fromSummary = detail.value?.educationalSummary?.chineseExpressions?.length ?? 0
+  return fromDetail || fromSummary
 })
 
-const chineseExpressionCount = computed(
-    () => overallStats.value?.chineseExpressionCount ?? chineseExpressions.value.length,
+function growthCardTypeLabel(type: string): string {
+  return type === 'habit' ? '习惯' : type === 'vocab' ? '词汇' : type
+}
+
+/** 复用知识卡片 Fan：把成长卡映射为正反面闪卡 */
+const growthFanItems = computed((): ChineseExpressionItem[] =>
+    growthCards.value.map((card, index) => ({
+      originalIndex: index,
+      originalSentence: card.front,
+      focusPhrase: card.type === 'vocab' ? card.front : undefined,
+      suggestion: card.back,
+      kindLabel: growthCardTypeLabel(card.type),
+    })),
 )
 
 const englishPracticeCount = computed(() => {
@@ -257,7 +276,10 @@ async function loadDetail() {
       pageReady.value = true
     })
     if (data.habitGrowthMintStatus === 'pending') {
+      asideTab.value = 'cards'
       scheduleMintPoll()
+    } else if ((data.growthCards?.length ?? 0) > 0) {
+      // keep summary as default unless user already switched
     }
   } catch (error) {
     detail.value = null
@@ -327,9 +349,7 @@ onBeforeUnmount(clearMintPoll)
               aria-label="本场优先改的说话习惯"
           >
             <header class="habit-ladder-head">
-              <p class="habit-ladder-kicker">优先阶梯</p>
-              <h2 class="habit-ladder-title">本场优先改 · Top 3</h2>
-              <p class="habit-ladder-sub">按影响排序，先攻最值得改的习惯</p>
+              <h2 class="habit-ladder-title">本场优先改</h2>
             </header>
 
             <TopHabitHero
@@ -339,47 +359,13 @@ onBeforeUnmount(clearMintPoll)
                 @locate="locate"
             />
 
-            <div
-                v-if="showMintBlock"
-                class="habit-mint-block"
-                :class="`habit-mint-block--${habitGrowthMintStatus}`"
-            >
-              <template v-if="habitGrowthMintStatus === 'pending'">
-                <p class="habit-mint-label">成长卡生成中…</p>
-              </template>
-              <template v-else-if="habitGrowthMintStatus === 'ready' && habitGrowthCard">
-                <p class="habit-mint-label">已生成成长卡</p>
-                <div class="habit-mint-preview">
-                  <p class="habit-mint-front">{{ habitGrowthCard.front }}</p>
-                  <p class="habit-mint-back">{{ habitGrowthCard.back }}</p>
-                </div>
-                <router-link to="/" class="habit-mint-link">
-                  可在首页今日成长卡复习
-                </router-link>
-              </template>
-              <template v-else-if="habitGrowthMintStatus === 'failed'">
-                <p class="habit-mint-label habit-mint-label--warn">成长卡生成失败</p>
-                <el-button
-                    size="small"
-                    type="primary"
-                    plain
-                    :loading="retryingMint"
-                    @click="onRetryMint"
-                >
-                  重新生成成长卡
-                </el-button>
-              </template>
-            </div>
-
-            <ActionCardsPanel :cards="actionCards" @locate="locate" @practice="onPractice"/>
+            <ActionCardsPanel
+                :cards="actionCards"
+                :analysis-id="analysisId"
+                @locate="locate"
+                @generated="onHabitCardGenerated"
+            />
           </section>
-
-          <ChineseExpressionFan
-              v-if="chineseExpressions.length"
-              layout="main"
-              :items="chineseExpressions"
-              :analysis-id="analysisId"
-          />
 
           <details ref="sentencesFoldRef" class="sentences-fold raw-fold kk-glass kk-glass--panel">
             <summary>
@@ -442,8 +428,34 @@ onBeforeUnmount(clearMintPoll)
         </main>
 
         <aside class="detail-aside">
-          <h2 class="summary-aside-title">会话概要</h2>
-          <section class="summary-panel kk-glass kk-glass--panel">
+          <div class="aside-tabs" role="tablist" aria-label="侧栏视图">
+            <button
+                type="button"
+                role="tab"
+                class="aside-tab"
+                :class="{ 'aside-tab--active': asideTab === 'summary' }"
+                :aria-selected="asideTab === 'summary'"
+                @click="asideTab = 'summary'"
+            >
+              会话概要
+            </button>
+            <button
+                type="button"
+                role="tab"
+                class="aside-tab"
+                :class="{ 'aside-tab--active': asideTab === 'cards' }"
+                :aria-selected="asideTab === 'cards'"
+                @click="asideTab = 'cards'"
+            >
+              {{ growthCardCountLabel }}
+            </button>
+          </div>
+
+          <section
+              v-show="asideTab === 'summary'"
+              class="summary-panel kk-glass kk-glass--panel"
+              role="tabpanel"
+          >
             <div class="summary-top">
               <div class="summary-badge" aria-label="综合口语自然度得分">
                 <span class="summary-badge-icon-wrap" aria-hidden="true">
@@ -569,6 +581,53 @@ onBeforeUnmount(clearMintPoll)
               </span>
             </footer>
           </section>
+
+          <section
+              v-show="asideTab === 'cards'"
+              class="growth-cards-tab"
+              role="tabpanel"
+              aria-label="已生成的卡片"
+          >
+            <div
+                v-if="habitGrowthMintStatus === 'pending'"
+                class="growth-cards-status growth-cards-status--pending kk-glass kk-glass--panel"
+            >
+              成长卡生成中…
+            </div>
+            <div
+                v-else-if="habitGrowthMintStatus === 'failed' && !growthCards.length"
+                class="growth-cards-status growth-cards-status--failed kk-glass kk-glass--panel"
+            >
+              <p>成长卡生成失败</p>
+              <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  :loading="retryingMint"
+                  @click="onRetryMint"
+              >
+                重新生成
+              </el-button>
+            </div>
+            <el-empty
+                v-else-if="!growthCards.length"
+                class="growth-cards-empty kk-glass kk-glass--panel"
+                description="本场还没有生成成长卡"
+                :image-size="64"
+            />
+            <template v-else>
+              <ChineseExpressionFan
+                  layout="aside"
+                  variant="growth"
+                  heading="成长卡"
+                  :show-hint="false"
+                  :items="growthFanItems"
+              />
+              <router-link to="/" class="growth-cards-home-link">
+                去首页复习今日成长卡
+              </router-link>
+            </template>
+          </section>
         </aside>
       </div>
 
@@ -656,17 +715,7 @@ onBeforeUnmount(clearMintPoll)
 }
 
 .habit-ladder-head {
-  margin-bottom: 1rem;
-}
-
-.habit-ladder-kicker {
-  margin: 0 0 0.25rem;
-  font-family: var(--kk-font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--kk-color-accent-text);
+  margin-bottom: 0.85rem;
 }
 
 .habit-ladder-title {
@@ -678,89 +727,90 @@ onBeforeUnmount(clearMintPoll)
   color: var(--kk-color-primary);
 }
 
-.habit-ladder-sub {
-  margin: 0.35rem 0 0;
-  font-size: 0.86rem;
-  line-height: 1.45;
-  color: var(--kk-color-text-muted);
-}
-
 .habit-ladder :deep(.ac-panel) {
   margin-top: 0.75rem;
-}
-
-.habit-mint-block {
-  margin: 0.85rem 0 0.25rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: var(--kk-radius-md);
-  background: var(--kk-glass-inner-bg);
-  border: 1px solid var(--kk-glass-inner-border);
-}
-
-.habit-mint-block--pending {
-  border-left: 3px solid var(--kk-color-accent);
-}
-
-.habit-mint-block--ready {
-  border-left: 3px solid var(--kk-color-success);
-}
-
-.habit-mint-block--failed {
-  border-left: 3px solid var(--kk-color-danger);
-}
-
-.habit-mint-label {
-  margin: 0 0 0.45rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--kk-color-text-muted);
-}
-
-.habit-mint-label--warn {
-  color: var(--kk-color-danger);
-}
-
-.habit-mint-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.45rem;
-}
-
-.habit-mint-front,
-.habit-mint-back {
-  margin: 0;
-  font-size: 0.84rem;
-  line-height: 1.5;
-  word-break: break-word;
-}
-
-.habit-mint-front {
-  font-weight: 700;
-  color: var(--kk-color-primary);
-}
-
-.habit-mint-back {
-  color: var(--kk-color-text-muted);
-}
-
-.habit-mint-link {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--kk-color-primary);
-  text-decoration: none;
-}
-
-.habit-mint-link:hover {
-  color: var(--kk-color-accent-text);
-  text-decoration: underline;
 }
 
 .detail-aside {
   order: -1;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
+}
+
+.aside-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem;
+  padding: 0.3rem;
+  border-radius: var(--kk-radius-pill);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid var(--kk-glass-inner-border);
+}
+
+.aside-tab {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: none;
+  border-radius: var(--kk-radius-pill);
+  background: transparent;
+  color: var(--kk-color-text-muted);
+  font-family: var(--kk-font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.aside-tab:hover {
+  color: var(--kk-color-primary);
+}
+
+.aside-tab--active {
+  background: var(--kk-color-primary);
+  color: #fff;
+}
+
+.growth-cards-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.growth-cards-status,
+.growth-cards-empty {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--kk-color-text-muted);
+}
+
+.growth-cards-status--failed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.growth-cards-status--failed p {
+  margin: 0;
+  color: var(--kk-color-danger);
+}
+
+.growth-cards-home-link {
+  align-self: flex-start;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--kk-color-primary);
+  text-decoration: none;
+  padding: 0 0.15rem;
+}
+
+.growth-cards-home-link:hover {
+  color: var(--kk-color-accent-text);
+  text-decoration: underline;
 }
 
 @media (min-width: 1024px) {
@@ -998,16 +1048,6 @@ onBeforeUnmount(clearMintPoll)
   word-break: break-word;
   max-height: 16rem;
   overflow-y: auto;
-}
-
-.summary-aside-title {
-  margin: 0;
-  padding: 0 0.1rem;
-  font-family: var(--kk-font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--kk-color-primary);
-  line-height: 1.2;
 }
 
 .summary-panel {

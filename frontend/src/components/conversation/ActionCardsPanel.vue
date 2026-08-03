@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import {ArrowRight} from '@element-plus/icons-vue'
+import {ArrowRight, MagicStick} from '@element-plus/icons-vue'
+import {ElMessage} from 'element-plus'
+import {ref} from 'vue'
 
+import {collectGrowthCard} from '@/api/growthCard'
 import type {ActionCard, ActionCardExample, PointChannel} from '@/types/conversation'
+import {getErrorMessage} from '@/utils/error'
 
 const props = withDefaults(
     defineProps<{
       cards: ActionCard[]
+      analysisId?: string
     }>(),
     {cards: () => []},
 )
 
 const emit = defineEmits<{
   locate: [sentenceId: string | number]
-  practice: [card: ActionCard]
+  generated: [card: ActionCard]
 }>()
 
 const CHANNEL_LABEL: Record<PointChannel, string> = {
@@ -21,6 +26,8 @@ const CHANNEL_LABEL: Record<PointChannel, string> = {
   lexical: '词汇选择',
   chinese: '中式思维',
 }
+
+const mintingKey = ref<string | null>(null)
 
 function channelLabel(channel: PointChannel): string {
   return CHANNEL_LABEL[channel] ?? '其它'
@@ -36,12 +43,53 @@ function onLocate(example: ActionCardExample) {
   }
 }
 
-function onPractice(card: ActionCard) {
-  emit('practice', card)
-}
-
 function cardKey(card: ActionCard): string {
   return card.habitKey || card.pointId
+}
+
+function resolveFront(card: ActionCard): string {
+  return (card.headlineZh || card.titleZh || '').trim()
+}
+
+function resolveBack(card: ActionCard): string {
+  const fromPractice = card.practicePrompt?.targetSentence?.trim()
+  if (fromPractice) {
+    return fromPractice
+  }
+  const fromExample = card.examples?.find((ex) => ex.suggestion?.trim())?.suggestion?.trim()
+  if (fromExample) {
+    return fromExample
+  }
+  return (card.whyZh || card.actionHintZh || '').trim()
+}
+
+async function onGenerate(card: ActionCard) {
+  if (!props.analysisId || mintingKey.value) {
+    return
+  }
+  const front = resolveFront(card)
+  const back = resolveBack(card)
+  if (!front || !back) {
+    ElMessage.warning('暂无可生成的卡片内容')
+    return
+  }
+  const key = cardKey(card)
+  mintingKey.value = key
+  try {
+    await collectGrowthCard({
+      analysisId: props.analysisId,
+      type: 'habit',
+      front,
+      back,
+      sourceRef: `habit:${key}`,
+    })
+    ElMessage.success('已生成成长卡')
+    emit('generated', card)
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '生成卡片失败'))
+  } finally {
+    mintingKey.value = null
+  }
 }
 </script>
 
@@ -87,9 +135,15 @@ function cardKey(card: ActionCard): string {
         </div>
 
         <div class="ac-actions">
-          <el-button size="small" type="primary" plain @click="onPractice(card)">
-            重说
-          </el-button>
+          <button
+              type="button"
+              class="ac-cta"
+              :disabled="!analysisId || mintingKey === cardKey(card)"
+              @click="onGenerate(card)"
+          >
+            <el-icon><MagicStick/></el-icon>
+            {{ mintingKey === cardKey(card) ? '生成中…' : '生成卡片' }}
+          </button>
         </div>
       </div>
     </details>
@@ -263,14 +317,50 @@ function cardKey(card: ActionCard): string {
   justify-content: flex-end;
 }
 
+.ac-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--kk-radius-pill);
+  border: none;
+  background: linear-gradient(145deg, var(--kk-color-primary), var(--kk-color-primary-soft));
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--kk-shadow-btn);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+
+.ac-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--kk-shadow-btn-hover);
+}
+
+.ac-cta:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.ac-cta:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   .ac-channel-tag {
     display: none;
   }
+
+  .ac-cta {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ac-chevron {
+  .ac-chevron,
+  .ac-cta {
     transition: none;
   }
 }

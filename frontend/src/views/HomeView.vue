@@ -6,18 +6,14 @@ import {useRouter} from 'vue-router'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
 import PillarMark from '@/components/home/PillarMark.vue'
-import GrowthFlashcardDeck from '@/components/growth/GrowthFlashcardDeck.vue'
 import {fetchHomePage} from '@/api/home'
-import {fetchTodayGrowthCards} from '@/api/growthCard'
 import type {HomePageResponse} from '@/types/home'
-import type {GrowthCard} from '@/types/growthCard'
 import {getErrorMessage} from '@/utils/error'
 import {signalPrerenderReady} from '@/utils/prerender'
 
 const router = useRouter()
 const loading = ref(true)
 const home = ref<HomePageResponse | null>(null)
-const todayGrowthCards = ref<GrowthCard[]>([])
 const revealed = ref(false)
 
 const DEMO_CARDS = [
@@ -237,9 +233,6 @@ function runFlashcardDeckStep() {
 }
 
 function startFlashcardAuto() {
-  if (home.value?.authenticated) {
-    return
-  }
   demoReviewed.value = 0
   demoResetting.value = false
   pauseAutoFlipUntil = 0
@@ -335,22 +328,11 @@ function startPillarAnimations() {
 
 async function loadHome() {
   loading.value = true
-  todayGrowthCards.value = []
   try {
     const {data} = await fetchHomePage()
     home.value = data
-    if (data.authenticated) {
-      try {
-        const {data: cards} = await fetchTodayGrowthCards()
-        todayGrowthCards.value = cards
-      } catch (error) {
-        todayGrowthCards.value = []
-        ElMessage.error(getErrorMessage(error, '加载今日成长卡失败'))
-      }
-    }
   } catch (error) {
     home.value = null
-    todayGrowthCards.value = []
     ElMessage.error(getErrorMessage(error, '加载首页数据失败'))
   } finally {
     loading.value = false
@@ -483,24 +465,13 @@ onUnmounted(() => {
         <article class="pillar">
           <header class="pillar-head">
             <PillarMark kind="cards"/>
-            <h3 class="pillar-heading">
-              {{ home?.authenticated ? '今日成长卡' : '自动生成知识卡片' }}
-            </h3>
+            <h3 class="pillar-heading">自动生成知识卡片</h3>
           </header>
           <p class="pillar-body">
-            {{
-              home?.authenticated
-                  ? '复习今日到期的习惯与词汇卡片；先看提示，翻面后自评掌握程度。'
-                  : '分析结束后自动抽出可练表达，生成正反面知识卡片；先看中文场景，再翻出地道英文。'
-            }}
+            分析结束后自动抽出可练表达，生成正反面知识卡片；先看中文场景，再翻出地道英文。
           </p>
           <div class="pillar-foot">
-            <GrowthFlashcardDeck
-                v-if="home?.authenticated"
-                :cards="todayGrowthCards"
-            />
             <div
-                v-else
                 ref="deckRootRef"
                 class="flashcard-deck"
                 aria-label="知识卡片演示"

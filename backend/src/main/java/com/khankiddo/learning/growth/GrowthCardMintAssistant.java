@@ -6,11 +6,16 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.spring.AiService;
 import dev.langchain4j.service.spring.AiServiceWiringMode;
 
+/**
+ * 成长卡铸卡助手。{@code @MemoryId userId} 用于经 {@code @ToolMemoryId} 注入
+ * {@link GrowthCardTools}（异步线程无 SecurityContext）。
+ */
 @AiService(
         wiringMode = AiServiceWiringMode.EXPLICIT,
         chatModel = "openAiChatModel",
         streamingChatModel = "openAiStreamingChatModel",
-        tools = {"growthCardTools"})
+        tools = {"growthCardTools"},
+        chatMemoryProvider = GrowthCardMintChatMemoryConfig.GROWTH_CARD_MINT_CHAT_MEMORY_PROVIDER)
 public interface GrowthCardMintAssistant {
 
     String SYSTEM = """

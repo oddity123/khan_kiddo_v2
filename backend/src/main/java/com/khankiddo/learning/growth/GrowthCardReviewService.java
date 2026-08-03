@@ -60,6 +60,13 @@ public class GrowthCardReviewService {
         return store.findHabitByAnalysis(userId, analysisId).map(this::toDto);
     }
 
+    public List<GrowthCardDto> listByAnalysis(String analysisId) {
+        Long userId = SecurityUtils.requireUserId();
+        return store.listByAnalysis(userId, analysisId).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
     public String resolveHabitMintStatus(ActionCardDto topHabit, LocalDateTime createdAt, boolean habitCardPresent) {
         if (habitCardPresent) {
             return "ready";

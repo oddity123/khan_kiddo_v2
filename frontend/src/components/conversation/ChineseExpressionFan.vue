@@ -1,21 +1,27 @@
 <script setup lang="ts">
 import {ChatLineSquare, Check, CloseBold, Refresh, RefreshLeft,} from '@element-plus/icons-vue'
 import confetti from 'canvas-confetti'
-import {ElMessage} from 'element-plus'
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
-import {collectGrowthCard} from '@/api/growthCard'
 import type {ChineseExpressionItem} from '@/types/conversation'
-import {getErrorMessage} from '@/utils/error'
 
 const props = withDefaults(
     defineProps<{
       items: ChineseExpressionItem[]
       layout?: 'main' | 'aside'
-      analysisId?: string
+      /** 标题文案；成长卡侧栏可传「成长卡」 */
+      heading?: string
+      /** expression=中文表达知识卡；growth=成长卡（标签改为提示/答案） */
+      variant?: 'expression' | 'growth'
+      showHint?: boolean
     }>(),
-    {layout: 'main'},
+    {
+      layout: 'main',
+      heading: '知识卡片',
+      variant: 'expression',
+      showHint: undefined,
+    },
 )
 
 interface FlashCardItem {
@@ -24,8 +30,13 @@ interface FlashCardItem {
   originalSentence: string
   focusPhrase?: string
   suggestion?: string
+  kindLabel?: string
   [key: string]: unknown
 }
+
+const resolvedHint = computed(() =>
+    props.showHint ?? props.layout !== 'aside',
+)
 
 type SwipeDir = 'left' | 'right'
 
@@ -52,7 +63,6 @@ const feedbackCardId = ref<string | null>(null)
 const hotkeysArmed = ref(false)
 /** 驱动 canRestore / isStart 在脚本侧刷新 */
 const uiTick = ref(0)
-const collecting = ref(false)
 
 const deckItems = computed((): FlashCardItem[] =>
     props.items.map((item, index) => ({
@@ -61,8 +71,23 @@ const deckItems = computed((): FlashCardItem[] =>
       originalSentence: item.originalSentence,
       focusPhrase: item.focusPhrase,
       suggestion: item.suggestion,
+      kindLabel: item.kindLabel,
     })),
 )
+
+function frontPaneTag(item: FlashCardItem): string {
+  if (props.variant === 'growth') {
+    return isVocabFocus(item) ? '中文' : '提示'
+  }
+  return isVocabFocus(item) ? '目标词' : '原句'
+}
+
+function backPaneTag(item: FlashCardItem): string {
+  if (props.variant === 'growth') {
+    return isVocabFocus(item) ? '英文' : '答案'
+  }
+  return isVocabFocus(item) ? '英文' : '英文建议'
+}
 
 const count = computed(() => deckItems.value.length)
 
@@ -247,41 +272,6 @@ function disarmHotkeys() {
   hotkeysArmed.value = false
 }
 
-const currentCard = computed(() => deckItems.value[reviewed.value] ?? null)
-
-const canCollectCurrent = computed(() =>
-    Boolean(
-        props.analysisId
-        && currentCard.value
-        && currentCard.value.suggestion?.trim(),
-    ),
-)
-
-async function collectCurrent() {
-  const card = currentCard.value
-  if (!canCollectCurrent.value || !props.analysisId || !card || collecting.value) {
-    return
-  }
-  const front = cardFrontText(card)
-  const back = card.suggestion!.trim()
-  const idx = card.originalIndex ?? deckItems.value.findIndex((c) => c.id === card.id)
-  collecting.value = true
-  try {
-    await collectGrowthCard({
-      analysisId: props.analysisId,
-      type: 'vocab',
-      front,
-      back,
-      sourceRef: `vocab:${idx}`,
-    })
-    ElMessage.success('已收入卡包')
-  } catch (error) {
-    ElMessage.error(getErrorMessage(error, '收藏失败'))
-  } finally {
-    collecting.value = false
-  }
-}
-
 function onKeydown(event: KeyboardEvent) {
   if (!hotkeysArmed.value) {
     return
@@ -322,24 +312,25 @@ onBeforeUnmount(() => {
   <section
       ref="rootRef"
       class="cn-fan kk-glass kk-glass--panel"
-      :class="`cn-fan--${layout}`"
-      aria-label="知识卡片"
+      :class="[`cn-fan--${layout}`, `cn-fan--${variant}`]"
+      :aria-label="heading"
       @mouseenter="armHotkeys"
       @mouseleave="disarmHotkeys()"
   >
     <header class="cn-fan-head">
       <span class="cn-fan-title">
         <el-icon aria-hidden="true"><ChatLineSquare/></el-icon>
-        知识卡片
+        {{ heading }}
       </span>
       <span class="cn-fan-count">总计 {{ count }} 张卡片</span>
     </header>
-    <p class="cn-fan-hint">
+    <p v-if="resolvedHint" class="cn-fan-hint">
       鼠标移入本区后：
       <kbd>空格</kbd> 翻面 ·
       <kbd>←</kbd> 略过 ·
       <kbd>→</kbd> 掌握 ·
-      也可滑动或点击卡片 · 不计入语法错误
+      也可滑动或点击卡片
+      <template v-if="variant === 'expression'"> · 不计入语法错误</template>
     </p>
 
     <div class="cn-fan-stage">
@@ -368,25 +359,30 @@ onBeforeUnmount(() => {
                   <template #front>
                     <article class="cn-card cn-card--front">
                       <header class="cn-card-head">
-                        <span class="cn-badge">正面</span>
+                        <span class="cn-badge">{{ item.kindLabel || '正面' }}</span>
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
                       <section class="cn-pane cn-pane--back">
-                        <template v-if="isVocabFocus(item)">
+                        <template v-if="isVocabFocus(item) || variant === 'growth'">
                           <div class="cn-suggest-block cn-suggest-block--solo">
-                            <span class="pane-tag">目标词</span>
+                            <span class="pane-tag">{{ frontPaneTag(item) }}</span>
                             <p
-                                class="pane-improved pane-improved--center pane-improved--term"
+                                class="pane-improved pane-improved--center"
+                                :class="{ 'pane-improved--term': isVocabFocus(item) }"
                                 :title="cardFrontText(item)"
                             >{{ cardFrontText(item) }}</p>
                           </div>
-                          <p class="cn-orig-mini" :title="item.originalSentence">
+                          <p
+                              v-if="variant === 'expression' && isVocabFocus(item)"
+                              class="cn-orig-mini"
+                              :title="item.originalSentence"
+                          >
                             原句：{{ item.originalSentence }}
                           </p>
                         </template>
                         <template v-else>
                           <div class="cn-suggest-block cn-suggest-block--solo">
-                            <span class="pane-tag">原句</span>
+                            <span class="pane-tag">{{ frontPaneTag(item) }}</span>
                             <p
                                 class="pane-improved pane-improved--center"
                                 :title="item.originalSentence"
@@ -400,21 +396,25 @@ onBeforeUnmount(() => {
                   <template #back>
                     <article class="cn-card cn-card--back">
                       <header class="cn-card-head">
-                        <span class="cn-badge cn-badge--back">反面</span>
+                        <span class="cn-badge cn-badge--back">{{ item.kindLabel || '反面' }}</span>
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
                       <section class="cn-pane cn-pane--back">
-                        <template v-if="isVocabFocus(item)">
+                        <template v-if="isVocabFocus(item) || variant === 'growth'">
                           <div class="cn-suggest-block cn-suggest-block--solo">
-                            <span class="pane-tag">英文</span>
+                            <span class="pane-tag">{{ backPaneTag(item) }}</span>
                             <p
                                 v-if="item.suggestion"
                                 class="pane-improved pane-improved--center"
                                 :title="item.suggestion"
                             >{{ item.suggestion }}</p>
-                            <p v-else class="cn-empty-hint">暂未生成英文对应</p>
+                            <p v-else class="cn-empty-hint">暂未生成对应内容</p>
                           </div>
-                          <p class="cn-orig-mini" :title="item.originalSentence">
+                          <p
+                              v-if="variant === 'expression' && isVocabFocus(item)"
+                              class="cn-orig-mini"
+                              :title="item.originalSentence"
+                          >
                             原句：{{ item.originalSentence }}
                           </p>
                         </template>
@@ -424,7 +424,7 @@ onBeforeUnmount(() => {
                             <p class="pane-orig" :title="item.originalSentence">{{ item.originalSentence }}</p>
                           </div>
                           <div class="cn-suggest-block">
-                            <span class="pane-tag">英文建议</span>
+                            <span class="pane-tag">{{ backPaneTag(item) }}</span>
                             <p
                                 v-if="item.suggestion"
                                 class="pane-improved"
@@ -478,17 +478,6 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="cn-actions" v-if="!isComplete">
-        <el-button
-            v-if="analysisId"
-            size="small"
-            plain
-            class="cn-collect-btn"
-            :loading="collecting"
-            :disabled="!canCollectCurrent || resetting || swiping"
-            @click="collectCurrent"
-        >
-          收入卡包
-        </el-button>
         <button
             type="button"
             class="cn-action-btn"
@@ -572,12 +561,39 @@ onBeforeUnmount(() => {
   outline: none !important;
 }
 
-.cn-fan--main .cn-fan-title {
+.cn-fan--aside {
+  padding: 0.75rem 0.8rem 0.9rem;
+}
+
+.cn-fan--aside .cn-fan-stage {
+  width: 100%;
+  margin-top: 0.55rem;
+}
+
+.cn-fan--aside .cn-fan-deck {
+  min-height: calc(14.5rem + 2.5rem);
+}
+
+.cn-fan--aside .cn-fan-deck :deep(.flip-card),
+.cn-fan--aside .cn-fan-deck :deep(.flip-card__inner) {
+  height: 14.5rem;
+}
+
+.cn-fan--aside .cn-fan-deck :deep(.flashcards) {
+  padding-top: 2.25rem;
+}
+
+.cn-fan--aside .cn-actions {
+  margin-top: 0.75rem;
+}
+
+.cn-fan--main .cn-fan-title,
+.cn-fan--aside .cn-fan-title {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   font-family: var(--kk-font-display);
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--kk-color-primary);
 }
@@ -920,11 +936,6 @@ onBeforeUnmount(() => {
   gap: 0.75rem;
   margin-top: 1.1rem;
   padding-top: 0.15rem;
-}
-
-.cn-collect-btn {
-  flex: 0 0 100%;
-  margin-bottom: 0.15rem;
 }
 
 .cn-actions--done {

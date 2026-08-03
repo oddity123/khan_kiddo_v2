@@ -70,4 +70,7 @@ public class ConversationAnalysisDetailDto {
 
     /** 已铸成的习惯成长卡，{@code habitGrowthMintStatus=ready} 时有值 */
     private GrowthCardDto habitGrowthCard;
+
+    /** 本场已生成的全部成长卡（habit + vocab），按 type / 时间排序 */
+    private List<GrowthCardDto> growthCards;
 }

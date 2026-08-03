@@ -69,4 +69,8 @@ public class GrowthCardStore {
     public Optional<GrowthCard> findHabitByAnalysis(long userId, String analysisId) {
         return mapper.findHabitByAnalysis(userId, analysisId);
     }
+
+    public List<GrowthCard> listByAnalysis(long userId, String analysisId) {
+        return mapper.findByUserAndAnalysis(userId, analysisId);
+    }
 }
