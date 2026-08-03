@@ -305,7 +305,10 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         summaryRoot, items, resolveTotalSentences(summaryRoot, items.size()));
 
         HabitCardScorer.HabitScoreResult habitScoreResult =
-                buildHabitScoreResult(rows, enrichedSummary.getChineseExpressions());
+                buildHabitScoreResult(
+                        rows,
+                        enrichedSummary.getChineseExpressions(),
+                        resolveLevelSummary(enrichedSummary));
 
         Optional<GrowthCardDto> habitCard = growthCardReviewService.findHabitCardForAnalysis(analysisId);
         String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(
@@ -342,6 +345,13 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
      */
     HabitCardScorer.HabitScoreResult buildHabitScoreResult(
             List<ConversationAnalysisItem> rows, List<ChineseExpressionDto> chineseExpressions) {
+        return buildHabitScoreResult(rows, chineseExpressions, null);
+    }
+
+    HabitCardScorer.HabitScoreResult buildHabitScoreResult(
+            List<ConversationAnalysisItem> rows,
+            List<ChineseExpressionDto> chineseExpressions,
+            String levelSummary) {
         boolean hasPointId = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
         if (!hasPointId) {
             return new HabitCardScorer.HabitScoreResult(null, List.of(), List.of());
@@ -357,12 +367,162 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         resolveErrorLevel(row.getProblemTypes())))
                 .toList();
 
-        return habitCardScorer.score(new HabitScoreInput(errorHits, chineseExpressions));
+        HabitCardScorer.HabitScoreResult result =
+                habitCardScorer.score(new HabitScoreInput(errorHits, chineseExpressions));
+        return enrichHabitCardsWithSummary(result, levelSummary);
     }
 
     private String resolveErrorLevel(String problemTypesEnglish) {
         ProblemType problemType = ProblemType.fromEnglishName(problemTypesEnglish);
         return problemType != null ? problemType.getErrorLevel().name() : null;
+    }
+
+    private HabitCardScorer.HabitScoreResult enrichHabitCardsWithSummary(
+            HabitCardScorer.HabitScoreResult result,
+            String levelSummary) {
+        if (ObjectUtils.isEmpty(result) || CollectionUtils.isEmpty(result.actionCards())) {
+            return result;
+        }
+        List<ActionCardDto> cards = result.actionCards();
+        for (ActionCardDto card : cards) {
+            String displayTitle = stripTopPrefix(card.getHeadlineZh());
+            if (StringUtils.hasText(displayTitle)) {
+                card.setTitleZh(displayTitle);
+            }
+        }
+
+        List<String> segments = splitSummarySegments(levelSummary);
+        Set<Integer> usedSegmentIndexes = new HashSet<>();
+        for (int i = 0; i < cards.size(); i++) {
+            ActionCardDto card = cards.get(i);
+            String segment = pickSummarySegment(card, segments, usedSegmentIndexes, i);
+            if (StringUtils.hasText(segment)) {
+                card.setWhyZh(composeHabitSummary(card, segment));
+            }
+        }
+        return result;
+    }
+
+    private static String resolveLevelSummary(EducationalSummaryDto summaryRoot) {
+        if (ObjectUtils.isEmpty(summaryRoot)
+                || ObjectUtils.isEmpty(summaryRoot.getReport())
+                || ObjectUtils.isEmpty(summaryRoot.getReport().getOverallSummary())) {
+            return null;
+        }
+        return summaryRoot.getReport().getOverallSummary().getLevelSummary();
+    }
+
+    private static List<String> splitSummarySegments(String levelSummary) {
+        if (!StringUtils.hasText(levelSummary)) {
+            return List.of();
+        }
+        String normalized = levelSummary.trim()
+                .replaceAll("\\s+", "")
+                .replaceAll("[。！？!?]+", "。");
+        if (!StringUtils.hasText(normalized)) {
+            return List.of();
+        }
+        List<String> segments = Arrays.stream(normalized.split("。"))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (segments.size() <= 1 && normalized.length() > 72) {
+            List<String> chunks = new ArrayList<>();
+            for (int start = 0; start < normalized.length(); start += 56) {
+                chunks.add(normalized.substring(start, Math.min(normalized.length(), start + 56)));
+            }
+            return chunks;
+        }
+        return segments;
+    }
+
+    private String pickSummarySegment(
+            ActionCardDto card,
+            List<String> segments,
+            Set<Integer> usedSegmentIndexes,
+            int fallbackIndex) {
+        if (CollectionUtils.isEmpty(segments)) {
+            return null;
+        }
+        List<String> keywords = summaryMatchKeywords(card);
+        for (int i = 0; i < segments.size(); i++) {
+            if (usedSegmentIndexes.contains(i)) {
+                continue;
+            }
+            String segment = segments.get(i);
+            if (keywords.stream().anyMatch(segment::contains)) {
+                usedSegmentIndexes.add(i);
+                return segment;
+            }
+        }
+        for (int offset = 0; offset < segments.size(); offset++) {
+            int index = (fallbackIndex + offset) % segments.size();
+            if (!usedSegmentIndexes.contains(index)) {
+                usedSegmentIndexes.add(index);
+                return segments.get(index);
+            }
+        }
+        return null;
+    }
+
+    private List<String> summaryMatchKeywords(ActionCardDto card) {
+        List<String> keywords = new ArrayList<>();
+        addKeyword(keywords, card.getTitleZh());
+        addKeyword(keywords, stripTopPrefix(card.getHeadlineZh()));
+
+        PointDefinition point = StringUtils.hasText(card.getPointId())
+                ? pointDictionary.resolveOrFallback(card.getPointId())
+                : null;
+        if (ObjectUtils.isNotEmpty(point)) {
+            addKeyword(keywords, point.titleZh());
+            addKeyword(keywords, ProblemType.translate(point.problemType()));
+        }
+        if (ObjectUtils.isNotEmpty(point) && StringUtils.hasText(point.familyId())) {
+            addKeyword(keywords, Optional.ofNullable(pointDictionary.familiesById().get(point.familyId()))
+                    .map(family -> family.titleZh())
+                    .orElse(null));
+        }
+        if (ObjectUtils.isNotEmpty(card.getChannel())) {
+            addKeyword(keywords, switch (card.getChannel()) {
+                case RULE -> "语法";
+                case FLUENCY -> "流利";
+                case LEXICAL -> "词汇";
+                case CHINESE -> "中文";
+            });
+        }
+        return keywords;
+    }
+
+    private static void addKeyword(List<String> keywords, String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return;
+        }
+        String keyword = raw.replace("容易用错", "").replaceAll("\\s+", "").trim();
+        if (keyword.length() >= 2 && !keywords.contains(keyword)) {
+            keywords.add(keyword);
+        }
+    }
+
+    private static String composeHabitSummary(ActionCardDto card, String segment) {
+        String title = StringUtils.hasText(card.getTitleZh()) ? card.getTitleZh() : "这一类表达";
+        String summary = "本场命中 " + card.getErrorCount() + " 句，优先看「" + title + "」。"
+                + ensureChinesePeriod(segment);
+        if (StringUtils.hasText(card.getActionHintZh())) {
+            summary += "下一步：" + ensureChinesePeriod(card.getActionHintZh());
+        }
+        return summary.length() > 180 ? summary.substring(0, 180) : summary;
+    }
+
+    private static String ensureChinesePeriod(String value) {
+        String trimmed = value.trim();
+        return trimmed.endsWith("。") ? trimmed : trimmed + "。";
+    }
+
+    private static String stripTopPrefix(String value) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        return value.replaceFirst("^本次最该改：", "").trim();
     }
 
     private int resolveTotalSentences(EducationalSummaryDto summaryRoot, int fallbackFromItems) {

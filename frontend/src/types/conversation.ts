@@ -65,6 +65,8 @@ export interface ChineseExpressionItem {
     suggestion?: string
     /** 可选角标（成长卡：习惯 / 词汇） */
     kindLabel?: string
+    /** 稳定键（成长卡 cardId 等），供闪卡列表复用 */
+    cardKey?: string
 }
 
 /** 与后端 EducationalSummaryParser / v1 一致：{ report: { overallStats, overallSummary }, chineseExpressions? } */

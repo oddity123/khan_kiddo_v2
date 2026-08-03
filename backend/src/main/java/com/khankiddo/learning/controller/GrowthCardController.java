@@ -3,6 +3,7 @@ package com.khankiddo.learning.controller;
 import com.khankiddo.learning.dto.growth.CollectGrowthCardRequest;
 import com.khankiddo.learning.dto.growth.GrowthCardDto;
 import com.khankiddo.learning.dto.growth.GrowthCardGradeRequest;
+import com.khankiddo.learning.dto.growth.MintHabitGrowthCardRequest;
 import com.khankiddo.learning.growth.GrowthCardReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -41,5 +42,12 @@ public class GrowthCardController {
     @PostMapping("/mint/{analysisId}")
     public void retryMint(@PathVariable String analysisId) {
         reviewService.retryMint(analysisId);
+    }
+
+    /** 对本场指定习惯（Top2/3 等）走 LLM 生成并落库 */
+    @PostMapping("/mint/{analysisId}/habit")
+    public GrowthCardDto mintHabit(@PathVariable String analysisId,
+                                   @Valid @RequestBody MintHabitGrowthCardRequest request) {
+        return reviewService.mintHabit(analysisId, request.getHabitKey());
     }
 }

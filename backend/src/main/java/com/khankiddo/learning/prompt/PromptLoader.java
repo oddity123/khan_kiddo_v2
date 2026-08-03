@@ -47,6 +47,14 @@ public class PromptLoader {
         return readPrompt("chinese-expression-review-prompt-template.txt");
     }
 
+    public String getSystemPromptGrowthCardMint() {
+        return readPrompt("system-prompt-growth-card-mint.txt");
+    }
+
+    public String getGrowthCardMintTemplate() {
+        return readPrompt("growth-card-mint-prompt-template.txt");
+    }
+
     public String fillTemplate(String template, String placeholder, String value) {
         return template.replace("{" + placeholder + "}", value);
     }

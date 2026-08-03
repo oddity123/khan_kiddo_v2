@@ -70,6 +70,11 @@ public class GrowthCardStore {
         return mapper.findHabitByAnalysis(userId, analysisId);
     }
 
+    public Optional<GrowthCard> findByUserSource(long userId, String sourceAnalysisId,
+                                                 String type, String sourceRef) {
+        return mapper.findByUserSource(userId, sourceAnalysisId, type, sourceRef);
+    }
+
     public List<GrowthCard> listByAnalysis(long userId, String analysisId) {
         return mapper.findByUserAndAnalysis(userId, analysisId);
     }

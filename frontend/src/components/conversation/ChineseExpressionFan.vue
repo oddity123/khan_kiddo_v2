@@ -31,6 +31,7 @@ interface FlashCardItem {
   focusPhrase?: string
   suggestion?: string
   kindLabel?: string
+  cardKey?: string
   [key: string]: unknown
 }
 
@@ -66,12 +67,13 @@ const uiTick = ref(0)
 
 const deckItems = computed((): FlashCardItem[] =>
     props.items.map((item, index) => ({
-      id: `cn-expr-${item.originalIndex ?? index}`,
+      id: item.cardKey ? `cn-expr-${item.cardKey}` : `cn-expr-${item.originalIndex ?? index}`,
       originalIndex: item.originalIndex,
       originalSentence: item.originalSentence,
       focusPhrase: item.focusPhrase,
       suggestion: item.suggestion,
       kindLabel: item.kindLabel,
+      cardKey: item.cardKey,
     })),
 )
 
@@ -178,13 +180,62 @@ function celebrate() {
   }, 220)
 }
 
+/** 插入动画期间抑制滑出庆祝 */
+const suppressCelebrate = ref(false)
+
 function onSwipe() {
   reviewed.value = Math.min(count.value, reviewed.value + 1)
   refreshUi()
-  if (reviewed.value >= count.value) {
+  if (!suppressCelebrate.value && reviewed.value >= count.value) {
     nextTick(() => celebrate())
   }
 }
+
+/**
+ * 用「撤回上一张」同款 restore 动画表现新卡插入：
+ * 先轻推走顶卡再 restore 飞回。
+ */
+async function playInsertRestore() {
+  if (resetting.value || swiping.value || count.value === 0) {
+    return
+  }
+  await nextTick()
+  const deck = deckRef.value
+  if (!deck) {
+    return
+  }
+  suppressCelebrate.value = true
+  celebrated.value = false
+  reviewed.value = 0
+  feedbackDir.value = null
+  feedbackCardId.value = null
+  try {
+    await deck.reset?.({animate: false, delay: 0})
+  } catch {
+    // reset 可选
+  }
+  await nextTick()
+  swiping.value = true
+  try {
+    deck.swipeLeft()
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 360)
+    })
+    deck.restore()
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 80)
+    })
+  } finally {
+    swiping.value = false
+    suppressCelebrate.value = false
+    reviewed.value = 0
+    refreshUi()
+  }
+}
+
+defineExpose({
+  playInsertRestore,
+})
 
 function onRestore() {
   reviewed.value = Math.max(0, reviewed.value - 1)

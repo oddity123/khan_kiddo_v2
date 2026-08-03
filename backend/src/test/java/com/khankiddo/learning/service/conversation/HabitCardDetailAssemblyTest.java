@@ -1,21 +1,11 @@
 package com.khankiddo.learning.service.conversation;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
-import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
-import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.PointDictionary;
-import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
-import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,23 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 详情装配：{@link ConversationAnalysisServiceImpl#buildHabitScoreResult} 从持久化的
  * {@code ConversationAnalysisItem} 行 + 中文表达组装 topHabit / actionCards / familyDistribution。
  */
-@ExtendWith(MockitoExtension.class)
 class HabitCardDetailAssemblyTest {
-
-    @Mock
-    private ConversationAnalysisPipeline pipeline;
-    @Mock
-    private ConversationAnalysisMapper analysisMapper;
-    @Mock
-    private ConversationAnalysisItemMapper itemMapper;
-    @Mock
-    private EducationalSummaryParser summaryParser;
-    @Mock
-    private ObjectMapper objectMapper;
-    @Mock
-    private ApplicationEventPublisher eventPublisher;
-    @Mock
-    private GrowthCardReviewService growthCardReviewService;
 
     private ConversationAnalysisServiceImpl service;
 
@@ -54,8 +28,7 @@ class HabitCardDetailAssemblyTest {
         PointDictionary dictionary = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
         HabitCardScorer habitCardScorer = new HabitCardScorer(dictionary);
         service = new ConversationAnalysisServiceImpl(
-                pipeline, analysisMapper, itemMapper, summaryParser, objectMapper, eventPublisher,
-                dictionary, habitCardScorer, growthCardReviewService);
+                null, null, null, null, null, null, dictionary, habitCardScorer, null);
     }
 
     @Test
@@ -140,6 +113,24 @@ class HabitCardDetailAssemblyTest {
 
         assertTrue(result.actionCards().stream()
                 .anyMatch(card -> "CHINESE_CODE_SWITCH".equals(card.getPointId())));
+    }
+
+    @Test
+    void levelSummaryIsDistributedIntoActionCardCopy() {
+        List<ConversationAnalysisItem> rows = List.of(
+                row(1L, "ARTICLE_A_AN", "Article", "a apple", "an apple"),
+                row(2L, "ARTICLE_A_AN", "Article", "a hour", "an hour")
+        );
+
+        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(
+                rows,
+                List.of(),
+                "整体错误集中在冠词和句式结构，说明名词短语边界不够稳。词形问题也有出现。");
+
+        assertEquals("冠词容易用错", result.topHabit().getTitleZh());
+        assertTrue(result.topHabit().getWhyZh().contains("本场命中 2 句"));
+        assertTrue(result.topHabit().getWhyZh().contains("整体错误集中在冠词和句式结构"));
+        assertTrue(result.topHabit().getWhyZh().contains("下一步：用纠正句重说一句"));
     }
 
     private static ConversationAnalysisItem row(

@@ -55,6 +55,11 @@ public class GrowthCardReviewService {
         gateway.retryMint(SecurityUtils.requireUserId(), analysisId);
     }
 
+    public GrowthCardDto mintHabit(String analysisId, String habitKey) {
+        GrowthCard card = gateway.mintHabitByKey(SecurityUtils.requireUserId(), analysisId, habitKey);
+        return toDto(card);
+    }
+
     public Optional<GrowthCardDto> findHabitCardForAnalysis(String analysisId) {
         Long userId = SecurityUtils.requireUserId();
         return store.findHabitByAnalysis(userId, analysisId).map(this::toDto);

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import {MagicStick} from '@element-plus/icons-vue'
 import {computed} from 'vue'
 
 import type {ActionCard, ActionCardExample} from '@/types/conversation'
@@ -9,20 +8,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  practice: [card: ActionCard]
   locate: [sentenceId: string | number]
 }>()
 
 const headline = computed(() => props.card.headlineZh || `本次最该改：${props.card.titleZh}`)
-const buttonLabel = computed(() => props.card.actionHintZh || '重说一句')
 
 const previewExamples = computed((): ActionCardExample[] =>
     (props.card.examples ?? []).slice(0, 2),
 )
-
-function onPractice() {
-  emit('practice', props.card)
-}
 
 function onLocate(example: ActionCardExample) {
   if (example.sentenceId != null) {
@@ -45,11 +38,6 @@ function onLocate(example: ActionCardExample) {
         <p v-if="card.whyZh" class="hero-why">{{ card.whyZh }}</p>
         <span v-if="card.errorCount" class="hero-count">命中 {{ card.errorCount }} 句</span>
       </div>
-
-      <button type="button" class="hero-cta" @click="onPractice">
-        <el-icon><MagicStick/></el-icon>
-        {{ buttonLabel }}
-      </button>
     </div>
 
     <div v-if="previewExamples.length" class="hero-examples">
@@ -177,33 +165,6 @@ function onLocate(example: ActionCardExample) {
   color: var(--kk-color-text-subtle);
 }
 
-.hero-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-  align-self: center;
-  padding: 0.6rem 1.15rem;
-  border-radius: var(--kk-radius-pill);
-  border: none;
-  background: linear-gradient(145deg, var(--kk-color-primary), var(--kk-color-primary-soft));
-  color: #fff;
-  font-size: 0.92rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--kk-shadow-btn);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.hero-cta:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--kk-shadow-btn-hover);
-}
-
-.hero-cta:active {
-  transform: translateY(0);
-}
-
 .hero-examples {
   display: flex;
   flex-direction: column;
@@ -250,22 +211,5 @@ function onLocate(example: ActionCardExample) {
 
 .hero-link-btn:hover {
   text-decoration: underline;
-}
-
-@media (max-width: 640px) {
-  .hero-top {
-    flex-wrap: wrap;
-  }
-
-  .hero-cta {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-cta {
-    transition: none;
-  }
 }
 </style>

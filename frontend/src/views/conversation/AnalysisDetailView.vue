@@ -25,11 +25,9 @@ import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
-import ResayPracticeDialog from '@/components/conversation/ResayPracticeDialog.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import TopHabitHero from '@/components/conversation/TopHabitHero.vue'
 import type {
-  ActionCard,
   AnalysisItem,
   ChineseExpressionItem,
   ConversationAnalysisDetail,
@@ -137,19 +135,17 @@ async function onRetryMint() {
 
 // rank 1 已由 topHabit 独占展示为 Hero，面板只需 rank>1，避免重复
 const actionCards = computed(() => (detail.value?.actionCards ?? []).filter((card) => card.rank > 1))
-
-const practiceVisible = ref(false)
-const practiceCard = ref<ActionCard | null>(null)
-const practicePrompt = computed(() => practiceCard.value?.practicePrompt ?? null)
-
-function onPractice(card: ActionCard) {
-  practiceCard.value = card
-  practiceVisible.value = true
-}
+const hasHabitFocus = computed(() => Boolean(topHabit.value || actionCards.value.length))
 
 async function onHabitCardGenerated() {
   asideTab.value = 'cards'
+  const beforeCount = growthCards.value.length
   await refreshDetailSilent()
+  await nextTick()
+  await nextTick()
+  if ((detail.value?.growthCards?.length ?? 0) > beforeCount) {
+    await growthFanRef.value?.playInsertRestore()
+  }
 }
 
 interface FilterChip {
@@ -215,9 +211,10 @@ function growthCardTypeLabel(type: string): string {
   return type === 'habit' ? '习惯' : type === 'vocab' ? '词汇' : type
 }
 
-/** 复用知识卡片 Fan：把成长卡映射为正反面闪卡 */
+/** 复用知识卡片 Fan：把成长卡映射为正反面闪卡（新卡在上，便于插入动画） */
 const growthFanItems = computed((): ChineseExpressionItem[] =>
-    growthCards.value.map((card, index) => ({
+    [...growthCards.value].reverse().map((card, index) => ({
+      cardKey: card.cardId,
       originalIndex: index,
       originalSentence: card.front,
       focusPhrase: card.type === 'vocab' ? card.front : undefined,
@@ -225,6 +222,8 @@ const growthFanItems = computed((): ChineseExpressionItem[] =>
       kindLabel: growthCardTypeLabel(card.type),
     })),
 )
+
+const growthFanRef = ref<{playInsertRestore: () => Promise<void>} | null>(null)
 
 const englishPracticeCount = computed(() => {
   const total = overallStats.value?.totalSentences ?? sortedItems.value.length + chineseExpressionCount.value
@@ -355,7 +354,6 @@ onBeforeUnmount(clearMintPoll)
             <TopHabitHero
                 v-if="topHabit"
                 :card="topHabit"
-                @practice="onPractice"
                 @locate="locate"
             />
 
@@ -410,7 +408,6 @@ onBeforeUnmount(clearMintPoll)
                   :key="item.sentenceId ?? item.originalSentence"
                   :item="item"
                   :index="idx"
-                  :analysis-id="analysisId"
               />
             </div>
           </details>
@@ -550,7 +547,7 @@ onBeforeUnmount(clearMintPoll)
               </section>
 
               <section
-                  v-if="summaryReport?.overallSummary?.levelSummary"
+                  v-if="summaryReport?.overallSummary?.levelSummary && !hasHabitFocus"
                   class="summary-block"
                   aria-label="整体总结"
               >
@@ -617,6 +614,7 @@ onBeforeUnmount(clearMintPoll)
             />
             <template v-else>
               <ChineseExpressionFan
+                  ref="growthFanRef"
                   layout="aside"
                   variant="growth"
                   heading="成长卡"
@@ -631,11 +629,6 @@ onBeforeUnmount(clearMintPoll)
         </aside>
       </div>
 
-      <ResayPracticeDialog
-          v-model="practiceVisible"
-          :prompt="practicePrompt"
-          :action-hint="practiceCard?.actionHintZh"
-      />
     </template>
   </div>
 </template>
@@ -649,13 +642,12 @@ onBeforeUnmount(clearMintPoll)
   font-family: var(--kk-font-body);
   color: var(--kk-color-text);
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 0.45s var(--kk-ease-out), transform 0.45s var(--kk-ease-out);
+  /* 不用 transform：会破坏侧栏 position:sticky */
+  transition: opacity 0.45s var(--kk-ease-out);
 }
 
 .detail-page--ready {
   opacity: 1;
-  transform: translateY(0);
 }
 
 .detail-topbar {
@@ -736,6 +728,7 @@ onBeforeUnmount(clearMintPoll)
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  min-width: 0;
 }
 
 .aside-tabs {
@@ -821,7 +814,14 @@ onBeforeUnmount(clearMintPoll)
   .detail-aside {
     order: 0;
     position: sticky;
-    top: 5.5rem;
+    top: calc(var(--kk-navbar-offset) + 0.65rem);
+    max-height: calc(100dvh - var(--kk-navbar-offset) - 1.25rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 5;
+    align-self: start;
+    padding-bottom: 0.25rem;
   }
 }
 

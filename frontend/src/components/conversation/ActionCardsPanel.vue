@@ -3,7 +3,7 @@ import {ArrowRight, MagicStick} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {ref} from 'vue'
 
-import {collectGrowthCard} from '@/api/growthCard'
+import {mintHabitGrowthCard} from '@/api/growthCard'
 import type {ActionCard, ActionCardExample, PointChannel} from '@/types/conversation'
 import {getErrorMessage} from '@/utils/error'
 
@@ -47,42 +47,22 @@ function cardKey(card: ActionCard): string {
   return card.habitKey || card.pointId
 }
 
-function resolveFront(card: ActionCard): string {
-  return (card.headlineZh || card.titleZh || '').trim()
-}
-
-function resolveBack(card: ActionCard): string {
-  const fromPractice = card.practicePrompt?.targetSentence?.trim()
-  if (fromPractice) {
-    return fromPractice
-  }
-  const fromExample = card.examples?.find((ex) => ex.suggestion?.trim())?.suggestion?.trim()
-  if (fromExample) {
-    return fromExample
-  }
-  return (card.whyZh || card.actionHintZh || '').trim()
+function displayTitle(card: ActionCard): string {
+  return (card.headlineZh || card.titleZh || '').replace(/^本次最该改：/, '').trim()
 }
 
 async function onGenerate(card: ActionCard) {
   if (!props.analysisId || mintingKey.value) {
     return
   }
-  const front = resolveFront(card)
-  const back = resolveBack(card)
-  if (!front || !back) {
+  const key = cardKey(card)
+  if (!key) {
     ElMessage.warning('暂无可生成的卡片内容')
     return
   }
-  const key = cardKey(card)
   mintingKey.value = key
   try {
-    await collectGrowthCard({
-      analysisId: props.analysisId,
-      type: 'habit',
-      front,
-      back,
-      sourceRef: `habit:${key}`,
-    })
+    await mintHabitGrowthCard(props.analysisId, key)
     ElMessage.success('已生成成长卡')
     emit('generated', card)
   } catch (error) {
@@ -107,7 +87,7 @@ async function onGenerate(card: ActionCard) {
           <span class="rank-mark-label">TOP</span>
           <span class="rank-mark-num">{{ card.rank }}</span>
         </span>
-        <span class="ac-title">{{ card.titleZh }}</span>
+        <span class="ac-title">{{ displayTitle(card) }}</span>
         <span class="ac-channel-tag">{{ channelLabel(card.channel) }}</span>
         <span class="ac-count">{{ card.errorCount }} 句</span>
       </summary>
