@@ -338,10 +338,10 @@ onMounted(() => {
             <span class="stat-kicker">CARDS</span>
             <p>成长卡状态</p>
           </div>
-          <div class="growth-load">
+          <button type="button" class="growth-load growth-load--link" @click="router.push('/review/cards')">
             <span class="growth-load-value">{{ growthDueCount }}</span>
-            <span class="growth-load-copy">今日待复习</span>
-          </div>
+            <span class="growth-load-copy">今日待复习 · 去练习</span>
+          </button>
           <div class="growth-stack" aria-hidden="true">
             <span
                 v-for="status in growthStatusBreakdown"
@@ -574,14 +574,14 @@ onMounted(() => {
 
 .stats-layout {
   display: grid;
-  grid-template-columns: minmax(16rem, 0.92fr) minmax(0, 1.55fr);
+  grid-template-columns: minmax(16rem, 0.92fr) minmax(0, 0.775fr) minmax(0, 0.775fr);
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
 
 .dashboard-analytics {
   display: grid;
-  grid-template-columns: minmax(16rem, 1fr) minmax(15rem, 0.9fr) minmax(15rem, 0.95fr);
+  grid-template-columns: minmax(16rem, 0.92fr) minmax(0, 0.775fr) minmax(0, 0.775fr);
   gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
@@ -771,6 +771,7 @@ onMounted(() => {
 }
 
 .stat-grid {
+  grid-column: 2 / 4;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
@@ -859,6 +860,20 @@ onMounted(() => {
 
 .analytics-card--donut {
   animation-delay: 320ms;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.analytics-card--donut .analytics-card-head {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.analytics-card--donut .donut-row {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: center;
 }
 
 .analytics-card--rank {
@@ -873,14 +888,38 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  gap: 0.7rem;
 }
 
 .analytics-card--rank .github-heatmap-grid {
-  flex: 1;
+  flex: 0 0 auto;
 }
 
 .analytics-card--growth {
   animation-delay: 440ms;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  gap: 0.55rem;
+}
+
+.analytics-card--growth .analytics-card-head {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.analytics-card--growth .growth-load {
+  margin-top: 0.15rem;
+}
+
+.analytics-card--growth .growth-stack {
+  margin-top: auto;
+  height: 0.9rem;
+}
+
+.analytics-card--growth .growth-legend {
+  margin-top: 0;
 }
 
 .analytics-card-head {
@@ -910,13 +949,14 @@ onMounted(() => {
 
 .donut-row {
   display: grid;
-  grid-template-columns: 5.4rem minmax(0, 1fr);
+  grid-template-columns: minmax(5.8rem, 6.6rem) minmax(0, 1fr);
   align-items: center;
-  gap: 0.8rem;
+  gap: 0.9rem;
 }
 
 .problem-donut {
-  width: 5.4rem;
+  width: 100%;
+  max-width: 6.6rem;
   aspect-ratio: 1;
   border-radius: 50%;
   display: grid;
@@ -930,7 +970,7 @@ onMounted(() => {
 .problem-donut::after {
   content: '';
   position: absolute;
-  inset: 1rem;
+  inset: 18%;
   border-radius: 50%;
   background: #fff;
   box-shadow: inset 0 2px 8px rgba(11, 26, 125, 0.08);
@@ -945,7 +985,7 @@ onMounted(() => {
 .problem-donut span {
   align-self: end;
   font-family: var(--kk-font-display);
-  font-size: 1.2rem;
+  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
   font-weight: 800;
   line-height: 1;
   color: var(--kk-color-primary);
@@ -954,14 +994,14 @@ onMounted(() => {
 .problem-donut small {
   align-self: start;
   margin-top: 0.12rem;
-  font-size: 0.62rem;
+  font-size: 0.64rem;
   font-weight: 700;
   color: var(--kk-color-text-subtle);
 }
 
 .donut-legend {
   display: grid;
-  gap: 0.32rem;
+  gap: 0.42rem;
   min-width: 0;
 }
 
@@ -1044,19 +1084,18 @@ onMounted(() => {
 
 .github-heatmap-grid {
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  grid-template-rows: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: auto;
   grid-auto-flow: row;
-  gap: 3px;
+  gap: 5px;
   width: 100%;
-  min-height: 4.75rem;
   min-width: 0;
 }
 
 .github-heat-cell {
   min-width: 0;
-  min-height: 0;
-  border-radius: 3px;
+  aspect-ratio: 2.15 / 1;
+  border-radius: 4px;
   background: color-mix(in srgb, var(--kk-color-primary) 8%, #ffffff);
   box-shadow: inset 0 0 0 1px rgba(11, 26, 125, 0.045);
 }
@@ -1095,6 +1134,7 @@ onMounted(() => {
   flex: 0 0 auto;
   width: 0.62rem;
   height: 0.62rem;
+  aspect-ratio: auto;
 }
 
 .growth-load {
@@ -1104,9 +1144,22 @@ onMounted(() => {
   margin-top: 0.1rem;
 }
 
+.growth-load--link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.growth-load--link:hover .growth-load-copy {
+  color: var(--kk-color-primary);
+}
+
 .growth-load-value {
   font-family: var(--kk-font-display);
-  font-size: 1.8rem;
+  font-size: clamp(1.9rem, 2.6vw, 2.35rem);
   font-weight: 800;
   line-height: 1;
   color: var(--kk-color-primary);
@@ -1115,7 +1168,7 @@ onMounted(() => {
 
 .growth-load-copy {
   color: var(--kk-color-text-muted);
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 700;
 }
 
@@ -1289,8 +1342,13 @@ onMounted(() => {
 
 
 @media (max-width: 1200px) {
+  .stats-layout,
   .dashboard-analytics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-grid {
+    grid-column: 1 / -1;
   }
 
   .analytics-card--growth {
@@ -1301,6 +1359,10 @@ onMounted(() => {
 @media (max-width: 992px) {
   .stats-layout {
     grid-template-columns: 1fr;
+  }
+
+  .stat-grid {
+    grid-column: auto;
   }
 
   .dashboard-panels {
@@ -1332,11 +1394,11 @@ onMounted(() => {
   }
 
   .donut-row {
-    grid-template-columns: 4.8rem minmax(0, 1fr);
+    grid-template-columns: minmax(4.8rem, 5.4rem) minmax(0, 1fr);
   }
 
   .problem-donut {
-    width: 4.8rem;
+    max-width: 5.4rem;
   }
 
   .github-heatmap-meta {

@@ -86,6 +86,16 @@ const router = createRouter({
           },
       },
       {
+          path: '/review/cards',
+          name: 'review-cards',
+          component: () => import('@/views/review/ReviewCardsView.vue'),
+          meta: {
+            title: '成长卡复习',
+            requiresAuth: true,
+            robots: 'noindex, nofollow',
+          },
+      },
+      {
           path: '/conversation/grammar-rag',
           name: 'conversation-grammar-rag',
           redirect: {path: '/review', query: {chat: '1'}},

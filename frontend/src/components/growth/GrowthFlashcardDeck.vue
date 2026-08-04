@@ -12,12 +12,23 @@ const props = withDefaults(
       cards: GrowthCard[]
       /** 首页等嵌入场景：顶对齐、略紧凑 */
       compact?: boolean
+      /** 独立复习页：卡片更大、垂直居中 */
+      page?: boolean
+      emptyTodayText?: string
+      emptyDoneText?: string
     }>(),
-    {compact: false},
+    {
+      compact: false,
+      page: false,
+      emptyTodayText: '今天没有待复习的成长卡',
+      emptyDoneText: '本轮卡片已练完',
+    },
 )
 
 interface DeckExpose {
   reset: (options?: {animate?: boolean; delay?: number}) => void | Promise<void>
+  swipeLeft: () => void
+  swipeRight: () => void
 }
 
 const rootRef = ref<HTMLElement | null>(null)
@@ -43,9 +54,9 @@ const count = computed(() => queue.value.length)
 
 const emptyMessage = computed(() => {
   if (initialCount.value > 0 && queue.value.length === 0) {
-    return '今日成长卡已练完'
+    return props.emptyDoneText
   }
-  return '今天没有待复习的成长卡'
+  return props.emptyTodayText
 })
 
 function asCard(item: Record<string, unknown>): GrowthCard {
@@ -78,6 +89,16 @@ watch(count, () => {
   isFlipped.value = false
 })
 
+function gradeSwipeDirection(grade: GrowthGrade): 'left' | 'right' {
+  return grade === 'again' || grade === 'hard' || grade === 'fuzzy' ? 'left' : 'right'
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 async function submitGrade(grade: GrowthGrade) {
   const current = queue.value[0]
   if (!current || grading.value) {
@@ -89,8 +110,15 @@ async function submitGrade(grade: GrowthGrade) {
   }
 
   grading.value = true
+  const direction = gradeSwipeDirection(grade)
   try {
     await gradeGrowthCard(current.cardId, grade)
+    if (direction === 'left') {
+      deckRef.value?.swipeLeft()
+    } else {
+      deckRef.value?.swipeRight()
+    }
+    await wait(380)
     queue.value = queue.value.filter((card) => card.cardId !== current.cardId)
     isFlipped.value = false
     await nextTick()
@@ -107,8 +135,11 @@ async function submitGrade(grade: GrowthGrade) {
   <div
       ref="rootRef"
       class="growth-deck"
-      :class="{'growth-deck--compact': compact}"
-      aria-label="今日成长卡"
+      :class="{
+        'growth-deck--compact': compact,
+        'growth-deck--page': page,
+      }"
+      aria-label="成长卡复习"
   >
     <FlashCards
         v-if="count > 0"
@@ -121,6 +152,9 @@ async function submitGrade(grade: GrowthGrade) {
         stack-direction="top"
         :stack-offset="14"
         :stack-scale="0.02"
+        swipe-direction="horizontal"
+        :disable-drag="true"
+        :wait-animation-end="true"
         :a11y="{ enabled: true, keyboard: false, manageFocus: false }"
     >
       <template #default="{ item: rawItem }">
@@ -163,7 +197,7 @@ async function submitGrade(grade: GrowthGrade) {
     </div>
 
     <div v-if="count > 0" class="growth-actions">
-      <p class="growth-actions-hint">点击卡片翻面后，选择掌握程度</p>
+      <p class="growth-actions-hint">点击卡片翻面后评分</p>
       <div class="growth-grade-row">
         <button
             type="button"
@@ -171,15 +205,17 @@ async function submitGrade(grade: GrowthGrade) {
             :disabled="grading || !isFlipped"
             @click="submitGrade('again')"
         >
-          不会
+          <span class="growth-grade-label">Again</span>
+          <span class="growth-grade-sub">不会 · 1天</span>
         </button>
         <button
             type="button"
-            class="growth-grade-btn growth-grade-btn--fuzzy"
+            class="growth-grade-btn growth-grade-btn--hard"
             :disabled="grading || !isFlipped"
-            @click="submitGrade('fuzzy')"
+            @click="submitGrade('hard')"
         >
-          模糊
+          <span class="growth-grade-label">Hard</span>
+          <span class="growth-grade-sub">困难 · 2天</span>
         </button>
         <button
             type="button"
@@ -187,7 +223,17 @@ async function submitGrade(grade: GrowthGrade) {
             :disabled="grading || !isFlipped"
             @click="submitGrade('good')"
         >
-          会了
+          <span class="growth-grade-label">Good</span>
+          <span class="growth-grade-sub">良好 · 4天</span>
+        </button>
+        <button
+            type="button"
+            class="growth-grade-btn growth-grade-btn--easy"
+            :disabled="grading || !isFlipped"
+            @click="submitGrade('easy')"
+        >
+          <span class="growth-grade-label">Easy</span>
+          <span class="growth-grade-sub">简单 · 掌握</span>
         </button>
       </div>
     </div>
@@ -252,6 +298,59 @@ async function submitGrade(grade: GrowthGrade) {
 .growth-deck :deep(.flip-card__front),
 .growth-deck :deep(.flip-card__back) {
   height: 100%;
+}
+
+/*
+ * page 模式：对齐 ChineseExpressionFan 的 17.25rem，再 +20% → 20.7rem。
+ * 必须放在基础高度之后，并用 !important 压过 vue3-flashcards 的 inline height。
+ * flashcards 用 content-box，padding-top 叠在卡片高度之外（与 Fan 一致）。
+ */
+.growth-deck--page {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 1rem;
+  width: min(100%, 36rem);
+  margin: 0 auto;
+}
+
+.growth-deck--page :deep(.flashcards) {
+  padding-top: 2.75rem !important;
+  min-height: 20.7rem !important;
+  height: 20.7rem !important;
+  max-height: none !important;
+  box-sizing: content-box !important;
+  overflow: visible;
+}
+
+.growth-deck--page :deep(.flashcards__stack),
+.growth-deck--page :deep(.flashcards__cards),
+.growth-deck--page :deep(.flashcards__card-wrapper) {
+  min-height: 20.7rem !important;
+  height: 20.7rem !important;
+  max-height: none !important;
+}
+
+.growth-deck--page :deep(.flip-card),
+.growth-deck--page :deep(.flip-card__inner) {
+  height: 20.7rem !important;
+  max-height: none !important;
+}
+
+.growth-deck--page .growth-empty {
+  min-height: 20.7rem;
+}
+
+.growth-deck--page .growth-face {
+  padding: 0.75rem 0.9rem 0.8rem;
+  box-shadow: var(--kk-shadow-card);
+}
+
+.growth-deck--page .growth-main {
+  font-size: clamp(1.1rem, 2.4vw, 1.45rem);
+}
+
+.growth-deck--page .growth-main--back {
+  font-size: clamp(0.98rem, 2vw, 1.2rem);
 }
 
 .growth-flip {
@@ -372,29 +471,45 @@ async function submitGrade(grade: GrowthGrade) {
 
 .growth-grade-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.35rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
 }
 
 .growth-grade-btn {
-  padding: 0.38rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  min-height: 2.85rem;
+  padding: 0.42rem 0.3rem;
   border-radius: var(--kk-radius-sm);
   border: 1px solid var(--kk-color-border);
   background: var(--kk-color-surface-solid);
   color: var(--kk-color-text-secondary);
   font-family: var(--kk-font-body);
-  font-size: 0.72rem;
-  font-weight: 600;
   cursor: pointer;
   transition:
       background var(--kk-duration-normal) var(--kk-ease-out),
       border-color var(--kk-duration-normal) var(--kk-ease-out),
-      color var(--kk-duration-normal) var(--kk-ease-out);
+      color var(--kk-duration-normal) var(--kk-ease-out),
+      transform var(--kk-duration-normal) var(--kk-ease-out);
+}
+
+.growth-grade-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.growth-grade-sub {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.88;
 }
 
 .growth-grade-btn:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--kk-color-primary) 24%, var(--kk-color-border));
-  color: var(--kk-color-primary);
+  transform: translateY(-1px);
 }
 
 .growth-grade-btn:disabled {
@@ -408,15 +523,27 @@ async function submitGrade(grade: GrowthGrade) {
   border-color: color-mix(in srgb, var(--kk-color-danger) 18%, transparent);
 }
 
-.growth-grade-btn--fuzzy {
+.growth-grade-btn--hard {
   color: var(--kk-color-warn);
   background: var(--kk-color-warn-bg);
   border-color: color-mix(in srgb, var(--kk-color-warn) 18%, transparent);
 }
 
 .growth-grade-btn--good {
+  color: var(--kk-color-link);
+  background: color-mix(in srgb, var(--kk-color-link) 10%, #ffffff);
+  border-color: color-mix(in srgb, var(--kk-color-link) 18%, transparent);
+}
+
+.growth-grade-btn--easy {
   color: var(--kk-color-success);
   background: var(--kk-color-success-bg);
   border-color: color-mix(in srgb, var(--kk-color-success) 18%, transparent);
+}
+
+@media (max-width: 560px) {
+  .growth-grade-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

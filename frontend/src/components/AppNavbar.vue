@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ChatDotRound, Clock, Collection, DataAnalysis, House, Message, SwitchButton, User, VideoPlay,} from '@element-plus/icons-vue'
+import {ChatDotRound, Clock, Collection, DataAnalysis, House, Message, SwitchButton, Tickets, User, VideoPlay,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {storeToRefs} from 'pinia'
 import {ref} from 'vue'
@@ -20,7 +20,11 @@ function isActive(path: string) {
 }
 
 function isReviewActive() {
-  return route.path === '/review' || route.path.startsWith('/review/')
+  return route.path === '/review'
+}
+
+function isReviewCardsActive() {
+  return route.path === '/review/cards' || route.path.startsWith('/review/cards/')
 }
 
 function isAnalysisActive() {
@@ -79,16 +83,6 @@ async function onLogout() {
             首页
           </router-link>
 
-          <router-link
-              to="/review"
-              class="nav-link"
-              :class="{ active: isReviewActive() }"
-              @click="mobileOpen = false"
-          >
-            <el-icon><DataAnalysis /></el-icon>
-            复盘中心
-          </router-link>
-
           <el-dropdown
             trigger="hover"
             placement="bottom-start"
@@ -119,6 +113,26 @@ async function onLogout() {
               </el-dropdown-menu>
             </template>
           </el-dropdown>
+
+          <router-link
+              to="/review"
+              class="nav-link"
+              :class="{ active: isReviewActive() }"
+              @click="mobileOpen = false"
+          >
+            <el-icon><DataAnalysis /></el-icon>
+            复盘中心
+          </router-link>
+
+          <router-link
+              to="/review/cards"
+              class="nav-link"
+              :class="{ active: isReviewCardsActive() }"
+              @click="mobileOpen = false"
+          >
+            <el-icon><Tickets /></el-icon>
+            成长卡
+          </router-link>
 
           <a class="nav-link" href="#" @click.prevent="onPending('句子笔记本')">
             <el-icon><Collection /></el-icon>

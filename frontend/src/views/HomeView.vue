@@ -7,6 +7,7 @@ import {FlashCards, FlipCard} from 'vue3-flashcards'
 
 import PillarMark from '@/components/home/PillarMark.vue'
 import {useAuthStore} from '@/stores/auth'
+import type {DailyPracticeStat} from '@/types/home'
 import {signalPrerenderReady} from '@/utils/prerender'
 
 const router = useRouter()
@@ -88,10 +89,57 @@ const dimStates = ref(
     })),
 )
 
-const RAG_ANSWER =
-    '近 30 天共记录 47 处优化点。出现最多的是冠词（18），其次是时态（12）和主谓一致（9）。冠词问题多半出在可数名词前漏加 a / an，下次开口前可以先自查一遍。主谓一致则多在 everyone / each 后误用 are。'
-const ragStreamed = ref('')
-const ragStreaming = ref(false)
+interface HeatCell extends DailyPracticeStat {
+  level: number
+}
+
+/** Fixed deterministic counts for the home pillar mock (30 days). */
+const MONTH_HEATMAP_DAYS = 30
+const MOCK_MONTH_HEATMAP_COUNTS = [
+  0, 0, 1, 0, 2, 3, 2, 0, 0, 0,
+  0, 1, 0, 0, 4, 3, 2, 4, 3, 1,
+  0, 0, 0, 2, 3, 1, 0, 0, 1, 2,
+] as const
+
+const monthHeatmap = ref<HeatCell[]>(buildMockMonthHeatmap())
+
+const monthHeatmapTotal = computed(() =>
+    monthHeatmap.value.reduce((sum, day) => sum + day.count, 0),
+)
+
+function padDatePart(value: number): string {
+  return String(value).padStart(2, '0')
+}
+
+function buildHeatmapDays(counts: readonly number[]): HeatCell[] {
+  const today = new Date()
+  const cells: HeatCell[] = []
+  for (let i = 0; i < counts.length; i += 1) {
+    const offset = counts.length - 1 - i
+    const day = new Date(today)
+    day.setDate(today.getDate() - offset)
+    cells.push({
+      date: `${day.getFullYear()}-${padDatePart(day.getMonth() + 1)}-${padDatePart(day.getDate())}`,
+      label: `${day.getMonth() + 1}/${day.getDate()}`,
+      count: counts[i] ?? 0,
+      level: 0,
+    })
+  }
+  return toHeatmapCells(cells)
+}
+
+function toHeatmapCells(items: DailyPracticeStat[]): HeatCell[] {
+  const max = Math.max(...items.map((item) => item.count), 1)
+  return items.map((item) => {
+    const ratio = item.count / max
+    const level = item.count === 0 ? 0 : Math.min(4, Math.max(1, Math.ceil(ratio * 4)))
+    return {...item, level}
+  })
+}
+
+function buildMockMonthHeatmap(): HeatCell[] {
+  return buildHeatmapDays(MOCK_MONTH_HEATMAP_COUNTS.slice(0, MONTH_HEATMAP_DAYS))
+}
 
 const quotes = [
   {text: '面试前连续复盘两周，开口明显稳了不少。', cite: '远哥'},
@@ -275,31 +323,6 @@ function startScoreAnimation() {
   })
 }
 
-function startRagStream() {
-  ragStreamed.value = ''
-  ragStreaming.value = false
-
-  if (prefersReducedMotion()) {
-    ragStreamed.value = RAG_ANSWER
-    return
-  }
-
-  schedule(() => {
-    ragStreaming.value = true
-    let i = 0
-    const step = () => {
-      if (i > RAG_ANSWER.length) {
-        ragStreaming.value = false
-        return
-      }
-      ragStreamed.value = RAG_ANSWER.slice(0, i)
-      i += 1
-      schedule(step, 24 + Math.floor(Math.random() * 20))
-    }
-    step()
-  }, 550)
-}
-
 function startQuoteReveal() {
   visibleQuoteCount.value = 0
   if (prefersReducedMotion()) {
@@ -317,7 +340,6 @@ function startPillarAnimations() {
   clearAllTimers()
   startScoreAnimation()
   startFlashcardAuto()
-  startRagStream()
   startQuoteReveal()
 }
 
@@ -363,7 +385,7 @@ onUnmounted(() => {
             <span class="hero-title-accent">语境进化之路</span>
           </h1>
           <p class="hero-desc">
-            粘贴你与 AI 的英文对话，系统会标出可优化表达并给出更地道的改写建议。
+            让 AI 对话练习真正变得有效。
           </p>
           <div class="hero-actions">
             <button type="button" class="btn-primary" @click="router.push('/conversation/analyze')">
@@ -415,10 +437,10 @@ onUnmounted(() => {
         <article class="pillar">
           <header class="pillar-head">
             <PillarMark kind="analyze"/>
-            <h3 class="pillar-heading">智能 AI 语境助手</h3>
+            <h3 class="pillar-heading">Khan AI 分析助手</h3>
           </header>
           <p class="pillar-body">
-            逐句分析对话字幕，定位语法与表达可优化点，给出可直接复用的改写建议。
+            Khan Kiddo 通过三段式分析流水线，逐句解析对话字幕，定位语法与表达中的可优化点，并给出可直接复用的改写建议。同时结合 Khan 规则引擎，对整段对话进行多维评分。
           </p>
           <div class="pillar-foot">
             <div class="score-showcase" aria-label="表现评分示意">
@@ -428,7 +450,7 @@ onUnmounted(() => {
                 </div>
                 <div class="score-showcase-meta">
                   <span class="score-showcase-lbl">综合自然度</span>
-                  <span class="score-showcase-hint">四维诊断 · 即时可见</span>
+                  <span class="score-showcase-hint">四维诊断 · 分数可追溯</span>
                 </div>
               </div>
               <ul class="score-showcase-dims">
@@ -453,13 +475,62 @@ onUnmounted(() => {
           </div>
         </article>
 
+        <article
+            class="pillar pillar--link"
+            role="link"
+            tabindex="0"
+            @click="goToReviewCenter"
+            @keydown.enter.prevent="goToReviewCenter"
+            @keydown.space.prevent="goToReviewCenter"
+        >
+          <header class="pillar-head">
+            <PillarMark kind="review"/>
+            <h3 class="pillar-heading pillar-heading--teal">复盘中心</h3>
+          </header>
+          <p class="pillar-body">
+            在复盘中心看趋势，还能追问过往分析：常见错误、例句与改进方向。把零散纠正收成重点，下次开口知道先练什么、怎么改，并形成持续提升路径与学习节奏。
+          </p>
+          <div class="pillar-foot">
+            <div class="month-heatmap" aria-label="近 30 天优化热力图">
+              <div class="month-heatmap-meta">
+                <div class="month-heatmap-summary">
+                  <strong>{{ monthHeatmapTotal }}</strong>
+                  <span>近 30 天优化点</span>
+                </div>
+                <div class="month-heatmap-scale" aria-hidden="true">
+                  <span>少</span>
+                  <span class="github-heat-cell"/>
+                  <span class="github-heat-cell github-heat-cell--1"/>
+                  <span class="github-heat-cell github-heat-cell--2"/>
+                  <span class="github-heat-cell github-heat-cell--3"/>
+                  <span class="github-heat-cell github-heat-cell--4"/>
+                  <span>多</span>
+                </div>
+              </div>
+              <div
+                  class="month-heatmap-grid"
+                  role="img"
+                  :aria-label="`近 30 天共 ${monthHeatmapTotal} 个优化点`"
+              >
+                <span
+                    v-for="day in monthHeatmap"
+                    :key="day.date"
+                    class="github-heat-cell"
+                    :class="day.level ? `github-heat-cell--${day.level}` : undefined"
+                    :title="`${day.label} · ${day.count}`"
+                />
+              </div>
+            </div>
+          </div>
+        </article>
+
         <article class="pillar">
           <header class="pillar-head">
             <PillarMark kind="cards"/>
-            <h3 class="pillar-heading">自动生成知识卡片</h3>
+            <h3 class="pillar-heading">自动生成成长卡片</h3>
           </header>
           <p class="pillar-body">
-            分析结束后自动抽出可练表达，生成正反面知识卡片；先看中文场景，再翻出地道英文。
+            分析完成后，自动将表达缺口整理成复习卡片，也支持自定义制卡，让每一次练习都能持续积累、随时复习，提升学习效率与记忆效果，并形成长期记忆闭环体系。
           </p>
           <div class="pillar-foot">
             <div
@@ -527,44 +598,13 @@ onUnmounted(() => {
           </div>
         </article>
 
-        <article
-            class="pillar pillar--link"
-            role="link"
-            tabindex="0"
-            @click="goToReviewCenter"
-            @keydown.enter.prevent="goToReviewCenter"
-            @keydown.space.prevent="goToReviewCenter"
-        >
-          <header class="pillar-head">
-            <PillarMark kind="review"/>
-            <h3 class="pillar-heading pillar-heading--teal">复盘中心</h3>
-          </header>
-          <p class="pillar-body">
-            用自然语言追问你的历史分析：常见错误、典型例句与改进方向。把零散纠正收成清晰重点，下次开口知道先练什么、怎么改。
-          </p>
-          <div class="pillar-foot">
-            <div class="rag-snippet" aria-label="复盘问答示意">
-              <p class="rag-q">我最近常犯哪些语法错误？</p>
-              <div class="rag-a">
-                <p class="rag-a-stream">
-                  {{ ragStreamed }}<span
-                    v-if="ragStreaming"
-                    class="rag-cursor"
-                    aria-hidden="true"
-                />
-                </p>
-              </div>
-            </div>
-          </div>
-        </article>
-
         <article class="pillar pillar--learners">
           <header class="pillar-head">
             <PillarMark kind="learners"/>
             <h3 class="pillar-heading pillar-heading--gold">致力于深度进阶的学习</h3>
           </header>
           <p class="pillar-body">
-            适合已有基础、希望说得更准更自然的学习者： 备考、面试或跨国协作，都能通过复盘转化表达优势。
+            适合已有一定英语基础、希望表达更准确、更自然的学习者。无论是备考、面试还是跨国协作，都能通过持续复盘，把问题转化为可见的表达优势，并提升长期表达自信力。
           </p>
           <div class="pillar-foot">
             <TransitionGroup name="quote" tag="div" class="quote-list">
@@ -1039,6 +1079,11 @@ onUnmounted(() => {
   border-top: 1px solid rgba(11, 26, 125, 0.06);
 }
 
+.pillar--link .pillar-foot {
+  justify-content: stretch;
+  padding-bottom: 0.15rem;
+}
+
 .score-showcase {
   margin: 0;
   padding: 0;
@@ -1388,65 +1433,109 @@ onUnmounted(() => {
   color: var(--kk-color-text-muted);
 }
 
-/* 复盘助手：流式输出 */
-.rag-snippet {
-  margin-top: 0;
+/* 复盘中心：近 30 天热力图（色阶与复盘中心一致） */
+.month-heatmap {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 0.7rem;
-  min-height: 100%;
-}
-
-.rag-q {
-  margin: 0;
-  font-size: 0.8rem;
-  line-height: 1.58;
-  font-style: italic;
-  color: var(--kk-color-text-subtle);
-}
-
-.rag-q::before {
-  content: '你 · ';
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.rag-a {
+  gap: 0.55rem;
   flex: 1 1 auto;
-  min-height: 4.6rem;
-  padding-left: 0.82rem;
-  border-left: 2px solid rgba(26, 92, 92, 0.32);
+  min-height: 0;
+  height: 100%;
 }
 
-.rag-a-stream {
-  margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.72;
-  color: var(--kk-color-text-secondary);
-  white-space: pre-wrap;
+.month-heatmap-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.rag-cursor {
-  display: inline-block;
-  width: 0.45em;
-  height: 1em;
-  margin-left: 1px;
-  vertical-align: -0.12em;
-  background: #1a5c5c;
-  animation: rag-blink 0.85s steps(1) infinite;
+.month-heatmap-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
-@keyframes rag-blink {
-  0%,
-  45% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
+.month-heatmap-summary strong {
+  font-family: var(--kk-font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--kk-color-success);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-heatmap-summary span {
+  color: var(--kk-color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.month-heatmap-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: var(--kk-color-text-subtle);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.month-heatmap-scale .github-heat-cell {
+  display: block;
+  flex: 0 0 auto;
+  width: 0.58rem;
+  height: 0.58rem;
+  aspect-ratio: auto;
+}
+
+.month-heatmap-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  gap: 0.28rem;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.month-heatmap-grid > .github-heat-cell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 4px;
+}
+
+.github-heat-cell {
+  background: color-mix(in srgb, var(--kk-color-primary) 8%, #ffffff);
+  box-shadow: inset 0 0 0 1px rgba(11, 26, 125, 0.045);
+}
+
+.github-heat-cell--1 {
+  background: color-mix(in srgb, var(--kk-color-success) 28%, #ffffff);
+  box-shadow: none;
+}
+
+.github-heat-cell--2 {
+  background: color-mix(in srgb, var(--kk-color-success) 48%, #ffffff);
+  box-shadow: none;
+}
+
+.github-heat-cell--3 {
+  background: color-mix(in srgb, var(--kk-color-success) 72%, #1a4d38);
+  box-shadow: none;
+}
+
+.github-heat-cell--4 {
+  background: var(--kk-color-success);
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1457,11 +1546,6 @@ onUnmounted(() => {
 
   .quote-enter-active {
     transition: none;
-  }
-
-  .rag-cursor {
-    animation: none;
-    opacity: 0;
   }
 }
 

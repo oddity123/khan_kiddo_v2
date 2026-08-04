@@ -87,7 +87,7 @@ class GrowthCardReviewServiceTest {
     @Test
     void grade_shouldApplySchedulerAndUpdateStore() {
         GrowthCardGradeRequest request = new GrowthCardGradeRequest();
-        request.setGrade("good");
+        request.setGrade("easy");
 
         GrowthCard updated = GrowthCard.builder()
                 .cardId("card-1")

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -27,6 +28,11 @@ public class GrowthCardController {
     @GetMapping("/today")
     public List<GrowthCardDto> today() {
         return reviewService.listToday();
+    }
+
+    @GetMapping("/random")
+    public List<GrowthCardDto> random(@RequestParam(defaultValue = "5") int limit) {
+        return reviewService.listRandom(limit);
     }
 
     @PostMapping("/{cardId}/grade")

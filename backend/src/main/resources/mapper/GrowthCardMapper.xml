@@ -59,6 +59,16 @@
         ORDER BY next_due_at ASC
     </select>
 
+    <select id="findRandomByUserId" resultMap="GrowthCardResultMap">
+        SELECT
+        <include refid="GrowthCardColumns"/>
+        FROM growth_card
+        WHERE user_id = #{userId}
+          AND status &lt;&gt; 'mastered'
+        ORDER BY RAND()
+        LIMIT #{limit}
+    </select>
+
     <select id="countDueByUserId" resultType="long">
         SELECT COUNT(*)
         FROM growth_card

@@ -5,6 +5,10 @@ export function fetchTodayGrowthCards() {
   return http.get<GrowthCard[]>('/api/growth-cards/today')
 }
 
+export function fetchRandomGrowthCards(limit = 5) {
+  return http.get<GrowthCard[]>('/api/growth-cards/random', {params: {limit}})
+}
+
 export function gradeGrowthCard(cardId: string, grade: GrowthGrade) {
   return http.post<GrowthCard>(`/api/growth-cards/${cardId}/grade`, {grade})
 }

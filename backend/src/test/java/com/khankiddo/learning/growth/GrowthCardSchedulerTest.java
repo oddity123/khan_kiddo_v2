@@ -22,16 +22,32 @@ class GrowthCardSchedulerTest {
     }
 
     @Test
-    void fuzzy_shouldSetFuzzyAndDueInThreeDays() {
-        GrowthCardScheduler.ReviewResult result = scheduler.apply("fuzzy", today);
+    void hard_shouldSetFuzzyAndDueInTwoDays() {
+        GrowthCardScheduler.ReviewResult result = scheduler.apply("hard", today);
 
         assertEquals("fuzzy", result.status());
-        assertEquals(today.plusDays(3), result.nextDueAt());
+        assertEquals(today.plusDays(2), result.nextDueAt());
     }
 
     @Test
-    void good_shouldSetMasteredWithNoDueDate() {
+    void fuzzyAlias_shouldBehaveLikeHard() {
+        GrowthCardScheduler.ReviewResult result = scheduler.apply("fuzzy", today);
+
+        assertEquals("fuzzy", result.status());
+        assertEquals(today.plusDays(2), result.nextDueAt());
+    }
+
+    @Test
+    void good_shouldSetFuzzyAndDueInFourDays() {
         GrowthCardScheduler.ReviewResult result = scheduler.apply("good", today);
+
+        assertEquals("fuzzy", result.status());
+        assertEquals(today.plusDays(4), result.nextDueAt());
+    }
+
+    @Test
+    void easy_shouldSetMasteredWithNoDueDate() {
+        GrowthCardScheduler.ReviewResult result = scheduler.apply("easy", today);
 
         assertEquals("mastered", result.status());
         assertNull(result.nextDueAt());

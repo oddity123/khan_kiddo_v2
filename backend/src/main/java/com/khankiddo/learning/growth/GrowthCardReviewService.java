@@ -30,6 +30,14 @@ public class GrowthCardReviewService {
                 .toList();
     }
 
+    public List<GrowthCardDto> listRandom(int limit) {
+        Long userId = SecurityUtils.requireUserId();
+        int size = Math.min(Math.max(limit, 1), 20);
+        return store.listRandom(userId, size).stream()
+                .map(this::toDto)
+                .toList();
+    }
+
     public GrowthCardDto grade(String cardId, GrowthCardGradeRequest request) {
         Long userId = SecurityUtils.requireUserId();
         GrowthCardScheduler.ReviewResult result = scheduler.apply(request.getGrade(), LocalDate.now());

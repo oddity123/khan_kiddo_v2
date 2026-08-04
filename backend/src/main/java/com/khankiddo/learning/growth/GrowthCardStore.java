@@ -53,6 +53,10 @@ public class GrowthCardStore {
         return mapper.findDueByUserId(userId, today);
     }
 
+    public List<GrowthCard> listRandom(long userId, int limit) {
+        return mapper.findRandomByUserId(userId, limit);
+    }
+
     public Optional<GrowthCard> findOwned(String cardId, long userId) {
         return mapper.findByCardIdAndUserId(cardId, userId);
     }

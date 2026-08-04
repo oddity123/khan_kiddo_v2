@@ -25,6 +25,9 @@ public interface GrowthCardMapper {
     List<GrowthCard> findDueByUserId(@Param("userId") Long userId,
                                      @Param("today") LocalDate today);
 
+    List<GrowthCard> findRandomByUserId(@Param("userId") Long userId,
+                                        @Param("limit") int limit);
+
     long countDueByUserId(@Param("userId") Long userId,
                           @Param("today") LocalDate today);
 
