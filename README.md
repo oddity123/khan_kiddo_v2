@@ -8,6 +8,8 @@
 
 技术栈：**Java 21 + Spring Boot 3.5 + LangChain4j + MyBatis-Plus + MySQL 8 + Qdrant** ｜ **Vue 3 + Vite + TypeScript** ｜ **Chrome MV3 扩展**
 
+<img width="1536" height="1024" alt="khan-kiddo-product-infographic-fog-desk-v5-landscape-locked" src="https://github.com/user-attachments/assets/98e3fde6-8bd8-41e2-bd0a-9b66a19f02de" />
+
 ---
 
 ## 核心亮点
@@ -28,7 +30,7 @@ flowchart LR
     G --> H["MySQL 持久化 + Qdrant 索引"]
 ```
 
-
+<img width="2400" alt="wechat_longscreenshot_2026-08-01_124452_816" src="https://github.com/user-attachments/assets/72be6ba9-43ea-4562-93ea-a76cb72fda5d" />
 
 
 | 阶段        | 职责                                  | 模型                                    | 设计要点                                      |
@@ -45,6 +47,8 @@ Stage 2/3 可选 `doubao-seed` / `qwen-plus` / `glm-5.2`（`app.llm.models`）�
 
 综合自然度得分由 `conversation/scoring/WeightedNaturalnessPerformanceScorer.java` 按 `resources/scoring/performance-scoring.yml` 的权重本地计算。LLM 只负责发现问题与写解释，**数字部分完全确定、可复现、可审计**。
 
+
+
 ### 3. 个人错句 RAG 复盘助手
 
 每次分析产生的错句会异步向量化写入 Qdrant（通义 `text-embedding-v3`，1024 维），按 `userId` 隔离。`/conversation/grammar-rag` 页面是一个 Agentic RAG 助手（LangChain4j AiService + Tools）：
@@ -55,11 +59,16 @@ Stage 2/3 可选 `doubao-seed` / `qwen-plus` / `glm-5.2`（`app.llm.models`）�
 
 **未配置 Qdrant 也能用**：语义检索工具优雅降级为"未启用"提示，数据库统计工具照常工作。
 
+<img width="1274" height="778" alt="image" src="https://github.com/user-attachments/assets/2c09c599-24f7-440e-bfbb-dcf0f6b2130f" />
+
+
 ### 4. Chrome 扩展一键导入 ChatGPT 字幕
 
 `extension/` 是一个 MV3 扩展，在 ChatGPT 公开分享页注入浮动按钮，直接抓取 Voice 转写字幕（`parts[].content_type === "audio_transcription"`）导入到分析页。
 
 关键设计：**扩展不接触后端**。它调用 `GET https://chatgpt.com/backend-api/share/{id}` 走用户本机网络，把格式化文本写入前端 `sessionStorage`，最终由用户在页面上点「开始分析」才发起请求 —— 扩展无需任何 Khan Kiddo 凭证。
+
+beta版本, 插件暂未上架商店
 
 ### 5. 免标注的"分析漂移"评测
 
@@ -259,20 +268,6 @@ export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' ../.env | grep -v '&' | xargs)
 
 报告输出到 `backend/target/drift-report/drift-<时间戳>.md`。语料放在 `backend/src/test/resources/eval/drift/conversations/*.txt`，详见该目录的 [README](backend/src/test/resources/eval/drift/README.md)。
 
-## 部署
-
-一键打包与上传：
-
-```bash
-./package.sh                 # 并行打前后端，前端另产出 frontend/dist.zip
-./deploy.sh                  # 打包 + 上传到 ECS/宝塔（配置见 deploy.env.example）
-```
-
-完整部署流程、Nginx 配置、上线检查清单见 **[DEPLOY.md](DEPLOY.md)**。
-
-## 与 v1 的关系
-
-v1（`khan_kiddo`）是 Java 8 + Thymeleaf 单体，v2 重写为 Java 21 + SPA + JWT，可同机共存。v2 **尚未迁移**：文章生成、用户词库（`user_vocabulary`）、有道查词（`stardict`）。差异对照表见 DEPLOY.md。
 
 ## 相关文档
 
