@@ -145,6 +145,25 @@ class GrowthCardStoreTest {
     }
 
     @Test
+    void deleteOwned_shouldDeleteOwnedCard() {
+        when(mapper.deleteByCardIdAndUserId("card-1", 1L)).thenReturn(1);
+
+        store.deleteOwned("card-1", 1L);
+
+        verify(mapper).deleteByCardIdAndUserId("card-1", 1L);
+    }
+
+    @Test
+    void deleteOwned_shouldThrowWhenCardMissing() {
+        when(mapper.deleteByCardIdAndUserId("missing", 1L)).thenReturn(0);
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> store.deleteOwned("missing", 1L));
+
+        assertEquals("成长卡不存在", ex.getMessage());
+    }
+
+    @Test
     void listDue_shouldDelegateToMapper() {
         LocalDate today = LocalDate.of(2026, 8, 2);
         GrowthCard due = GrowthCard.builder().cardId("due-1").build();

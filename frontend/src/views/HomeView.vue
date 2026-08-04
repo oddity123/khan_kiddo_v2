@@ -6,7 +6,11 @@ import {useRouter} from 'vue-router'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
 import PillarMark from '@/components/home/PillarMark.vue'
+import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
+import {fetchTodayGrowthCards, gradeGrowthCard} from '@/api/growthCard'
 import {fetchHomePage} from '@/api/home'
+import type {ChineseExpressionItem} from '@/types/conversation'
+import type {GrowthCard, GrowthGrade} from '@/types/growthCard'
 import type {HomePageResponse} from '@/types/home'
 import {getErrorMessage} from '@/utils/error'
 import {signalPrerenderReady} from '@/utils/prerender'
@@ -15,6 +19,8 @@ const router = useRouter()
 const loading = ref(true)
 const home = ref<HomePageResponse | null>(null)
 const revealed = ref(false)
+const todayCards = ref<GrowthCard[]>([])
+const todayCardsLoading = ref(false)
 
 const DEMO_CARDS = [
   {
@@ -107,6 +113,25 @@ const visibleQuotes = computed(() => quotes.slice(0, visibleQuoteCount.value))
 const recentSentences = computed(
     () => home.value?.analysisStats?.recentSentences ?? [],
 )
+
+function growthCardTypeLabel(type: GrowthCard['type']): string {
+  return type === 'habit' ? '习惯' : '词汇'
+}
+
+const todayFanItems = computed((): ChineseExpressionItem[] =>
+    todayCards.value.map((card, index) => ({
+      cardKey: card.cardId,
+      originalIndex: index,
+      originalSentence: card.front,
+      focusPhrase: card.type === 'vocab' ? card.front : undefined,
+      suggestion: card.back,
+      kindLabel: growthCardTypeLabel(card.type),
+    })),
+)
+
+async function onReviewGrowthCard(cardId: string, grade: Extract<GrowthGrade, 'again' | 'good'>) {
+  await gradeGrowthCard(cardId, grade)
+}
 
 const prefersReducedMotion = () =>
     typeof window !== 'undefined' &&
@@ -326,13 +351,31 @@ function startPillarAnimations() {
   startQuoteReveal()
 }
 
+async function loadTodayCards() {
+  todayCardsLoading.value = true
+  try {
+    const {data} = await fetchTodayGrowthCards()
+    todayCards.value = data ?? []
+  } catch {
+    todayCards.value = []
+  } finally {
+    todayCardsLoading.value = false
+  }
+}
+
 async function loadHome() {
   loading.value = true
   try {
     const {data} = await fetchHomePage()
     home.value = data
+    if (data?.authenticated) {
+      void loadTodayCards()
+    } else {
+      todayCards.value = []
+    }
   } catch (error) {
     home.value = null
+    todayCards.value = []
     ElMessage.error(getErrorMessage(error, '加载首页数据失败'))
   } finally {
     loading.value = false
@@ -618,29 +661,52 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <template v-if="recentSentences.length">
-        <h3 class="recent-head">最近复盘</h3>
-        <article
-            v-for="(item, idx) in recentSentences"
-            :key="idx"
-            class="recent-item"
-            :style="{ '--item-delay': `${idx * 60}ms` }"
-        >
-          <p class="recent-original">{{ item.originalSentence }}</p>
-          <p v-if="item.suggestion" class="recent-suggestion">
-            <span class="recent-arrow" aria-hidden="true">→</span>
-            {{ item.suggestion }}
-          </p>
-          <div v-if="item.problemTypeTags?.length" class="recent-tags">
-            <span v-for="tag in item.problemTypeTags.slice(0, 3)" :key="tag">{{ tag }}</span>
+      <div class="dashboard-panels">
+        <section class="dashboard-panel dashboard-panel--review" aria-label="今日复习">
+          <div v-loading="todayCardsLoading" class="review-fan-wrap">
+            <ChineseExpressionFan
+                v-if="todayFanItems.length"
+                layout="aside"
+                variant="growth"
+                heading="今日复习"
+                :show-hint="false"
+                :items="todayFanItems"
+                :review-card="onReviewGrowthCard"
+            />
+            <div v-else-if="!todayCardsLoading" class="review-empty kk-glass kk-glass--panel">
+              <p class="review-empty-title">今日复习</p>
+              <p class="review-empty-text">今天没有待复习的成长卡</p>
+            </div>
           </div>
-        </article>
-      </template>
-      <div v-else class="dashboard-empty">
-        <p class="dashboard-empty-text">近 7 天还没有分析记录</p>
-        <button type="button" class="btn-primary" @click="router.push('/conversation/analyze')">
-          开始分析
-        </button>
+        </section>
+
+        <section class="dashboard-panel dashboard-panel--recent" aria-labelledby="recent-review-title">
+          <template v-if="recentSentences.length">
+            <h3 id="recent-review-title" class="recent-head">最近复盘</h3>
+            <article
+                v-for="(item, idx) in recentSentences"
+                :key="idx"
+                class="recent-item"
+                :style="{ '--item-delay': `${idx * 60}ms` }"
+            >
+              <p class="recent-original">{{ item.originalSentence }}</p>
+              <p v-if="item.suggestion" class="recent-suggestion">
+                <span class="recent-arrow" aria-hidden="true">→</span>
+                {{ item.suggestion }}
+              </p>
+              <div v-if="item.problemTypeTags?.length" class="recent-tags">
+                <span v-for="tag in item.problemTypeTags.slice(0, 3)" :key="tag">{{ tag }}</span>
+              </div>
+            </article>
+          </template>
+          <div v-else class="dashboard-empty">
+            <h3 id="recent-review-title" class="recent-head">最近复盘</h3>
+            <p class="dashboard-empty-text">近 7 天还没有分析记录</p>
+            <button type="button" class="btn-primary" @click="router.push('/conversation/analyze')">
+              开始分析
+            </button>
+          </div>
+        </section>
       </div>
     </section>
   </div>
@@ -1593,6 +1659,74 @@ onUnmounted(() => {
   margin-bottom: 1.5rem;
 }
 
+.dashboard-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1.25rem 1.5rem;
+  align-items: start;
+  padding-top: 1.35rem;
+  border-top: 1px solid var(--kk-color-border);
+}
+
+.dashboard-panel--review {
+  min-width: 0;
+}
+
+.dashboard-panel--recent {
+  min-width: 0;
+  padding-top: 0.15rem;
+}
+
+@media (min-width: 993px) {
+  .dashboard-panel--recent {
+    padding-left: 1.5rem;
+    border-left: 1px solid var(--kk-color-border);
+  }
+}
+
+.review-fan-wrap {
+  min-height: 12rem;
+}
+
+.review-fan-wrap :deep(.cn-fan) {
+  height: 100%;
+}
+
+.review-empty {
+  padding: 0.85rem 1rem 1.15rem;
+  min-height: 12rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.review-empty-title {
+  margin: 0 0 0.45rem;
+  font-family: var(--kk-font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--kk-color-primary);
+}
+
+.review-empty-text {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--kk-color-text-muted);
+}
+
+.dashboard-panel--recent .recent-head {
+  margin-bottom: 0.75rem;
+}
+
+.dashboard-panel--recent .dashboard-empty {
+  padding-top: 0;
+}
+
+.dashboard-panel--recent .dashboard-empty .recent-head {
+  margin-bottom: 0.65rem;
+}
+
 .stat-hero {
   position: relative;
   padding: 1.35rem 1.25rem 1.2rem;
@@ -1821,6 +1955,11 @@ onUnmounted(() => {
 
   .stats-layout {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-panels {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
   }
 
   .stat-side {

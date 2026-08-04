@@ -66,6 +66,13 @@ public class GrowthCardStore {
         return card;
     }
 
+    public void deleteOwned(String cardId, long userId) {
+        int deleted = mapper.deleteByCardIdAndUserId(cardId, userId);
+        if (deleted == 0) {
+            throw new BadRequestException("成长卡不存在");
+        }
+    }
+
     public Optional<GrowthCard> findHabitByAnalysis(long userId, String analysisId) {
         return mapper.findHabitByAnalysis(userId, analysisId);
     }

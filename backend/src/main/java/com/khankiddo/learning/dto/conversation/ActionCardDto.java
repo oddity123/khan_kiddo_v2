@@ -41,6 +41,7 @@ public class ActionCardDto {
 
     private String titleZh;
     private String whyZh;
+    private String diagnosisZh;
 
     /** 本场计入该习惯的证据条数 */
     private int errorCount;

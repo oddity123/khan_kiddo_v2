@@ -29,6 +29,7 @@ public class EducationalSummaryParser {
     private static final Pattern MARKDOWN_SUMMARY_SECTION = Pattern.compile(
             "(?m)^#{2,3}\\s*整体总结\\s*\\r?\\n([\\s\\S]*)",
             Pattern.MULTILINE);
+    private static final int DIAGNOSIS_MAX_LEN = 140;
 
     private final ObjectMapper objectMapper;
     private final PerformanceScorer performanceScorer;
@@ -60,6 +61,25 @@ public class EducationalSummaryParser {
         }
         return buildReport(grammar, totalIssues, userSentenceCount, englishPracticeCount,
                 chineseExpressionCount, mainCategory, levelSummary.trim());
+    }
+
+    public EducationalSummaryDto parseActionCardDiagnosisSummary(
+            ActionCardDiagnosisResultDto diagnosisResult,
+            GrammarAnalysisResult grammar,
+            int userSentenceCount,
+            int englishPracticeCount,
+            int chineseExpressionCount,
+            List<ActionCardDto> actionCards) {
+        EducationalSummaryDto report = buildReport(
+                grammar,
+                countIssues(grammar),
+                userSentenceCount,
+                englishPracticeCount,
+                chineseExpressionCount,
+                computeMainCategory(grammar),
+                defaultLevelSummary(actionCards));
+        report.setActionCardDiagnoses(normalizeActionCardDiagnoses(diagnosisResult, actionCards));
+        return report;
     }
 
     public EducationalSummaryDto defaultReport(
@@ -131,6 +151,7 @@ public class EducationalSummaryParser {
                         .overallSummary(report.getOverallSummary())
                         .build())
                 .chineseExpressions(summaryRoot.getChineseExpressions())
+                .actionCardDiagnoses(summaryRoot.getActionCardDiagnoses())
                 .build();
     }
 
@@ -187,6 +208,50 @@ public class EducationalSummaryParser {
                         .build())
                 .build();
         return EducationalSummaryDto.builder().report(report).build();
+    }
+
+    private List<ActionCardDiagnosisDto> normalizeActionCardDiagnoses(
+            ActionCardDiagnosisResultDto diagnosisResult,
+            List<ActionCardDto> actionCards) {
+        if (ObjectUtils.isEmpty(diagnosisResult)
+                || CollectionUtils.isEmpty(diagnosisResult.getCards())
+                || CollectionUtils.isEmpty(actionCards)) {
+            return List.of();
+        }
+        List<ActionCardDiagnosisDto> diagnoses = new ArrayList<>();
+        List<ActionCardDiagnosisDto> rawDiagnoses = diagnosisResult.getCards();
+        for (int i = 0; i < rawDiagnoses.size() && i < actionCards.size(); i++) {
+            ActionCardDiagnosisDto raw = rawDiagnoses.get(i);
+            ActionCardDto source = actionCards.get(i);
+            if (ObjectUtils.isEmpty(raw)) {
+                continue;
+            }
+            String diagnosis = trimToLength(raw.getDiagnosisZh(), DIAGNOSIS_MAX_LEN);
+            if (!StringUtils.hasText(diagnosis)) {
+                continue;
+            }
+            diagnoses.add(ActionCardDiagnosisDto.builder()
+                    .rank(raw.getRank() != null ? raw.getRank() : source.getRank())
+                    .habitKey(StringUtils.hasText(raw.getHabitKey()) ? raw.getHabitKey().trim() : source.getHabitKey())
+                    .pointId(StringUtils.hasText(raw.getPointId()) ? raw.getPointId().trim() : source.getPointId())
+                    .diagnosisZh(diagnosis)
+                    .build());
+        }
+        return diagnoses;
+    }
+
+    private static String trimToLength(String value, int maxLen) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String trimmed = value.replaceAll("\\s+", " ").trim();
+        return trimmed.length() <= maxLen ? trimmed : trimmed.substring(0, maxLen);
+    }
+
+    private static String defaultLevelSummary(List<ActionCardDto> actionCards) {
+        return CollectionUtils.isEmpty(actionCards)
+                ? "本次没有形成稳定的 Top 习惯，请以句子级证据为准。"
+                : "本次已生成 Top 习惯诊断，请以左侧优先改卡片为准。";
     }
 
     private static EducationalSummaryStatsDto mergeScores(
@@ -277,5 +342,44 @@ public class EducationalSummaryParser {
             }
         }
         return lines.isEmpty() ? "无错误。" : String.join("\n", lines);
+    }
+
+    public String formatActionCardsForDiagnosis(List<ActionCardDto> actionCards) {
+        if (CollectionUtils.isEmpty(actionCards)) {
+            return "无稳定 Top 习惯。";
+        }
+        List<String> blocks = new ArrayList<>();
+        for (ActionCardDto card : actionCards) {
+            StringBuilder block = new StringBuilder();
+            block.append("TOP ").append(card.getRank()).append("\n");
+            block.append("habitKey: ").append(card.getHabitKey()).append("\n");
+            block.append("pointId: ").append(card.getPointId()).append("\n");
+            block.append("标题: ").append(displayTitle(card)).append("\n");
+            block.append("命中: ").append(card.getErrorCount()).append(" 句\n");
+            if (StringUtils.hasText(card.getWhyZh())) {
+                block.append("字典说明: ").append(card.getWhyZh()).append("\n");
+            }
+            if (!CollectionUtils.isEmpty(card.getExamples())) {
+                block.append("证据:\n");
+                for (ActionCardDto.ExampleDto example : card.getExamples().stream().limit(3).toList()) {
+                    block.append("- 原句: ").append(example.getOriginalSentence()).append("\n");
+                    if (StringUtils.hasText(example.getErrorPoint())) {
+                        block.append("  错点: ").append(example.getErrorPoint()).append("\n");
+                    }
+                    if (StringUtils.hasText(example.getSuggestion())) {
+                        block.append("  改写: ").append(example.getSuggestion()).append("\n");
+                    }
+                }
+            }
+            blocks.add(block.toString().trim());
+        }
+        return String.join("\n\n", blocks);
+    }
+
+    private static String displayTitle(ActionCardDto card) {
+        if (StringUtils.hasText(card.getHeadlineZh())) {
+            return card.getHeadlineZh().replaceFirst("^本次最该改：", "").trim();
+        }
+        return card.getTitleZh();
     }
 }

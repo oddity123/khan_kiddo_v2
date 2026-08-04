@@ -29,6 +29,9 @@ public interface GrowthCardMapper {
                      @Param("status") String status,
                      @Param("nextDueAt") LocalDate nextDueAt);
 
+    int deleteByCardIdAndUserId(@Param("cardId") String cardId,
+                                @Param("userId") Long userId);
+
     Optional<GrowthCard> findHabitByAnalysis(@Param("userId") Long userId,
                                                @Param("analysisId") String analysisId);
 

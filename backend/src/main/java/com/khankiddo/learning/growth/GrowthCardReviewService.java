@@ -37,6 +37,10 @@ public class GrowthCardReviewService {
         return toDto(card);
     }
 
+    public void delete(String cardId) {
+        store.deleteOwned(cardId, SecurityUtils.requireUserId());
+    }
+
     public GrowthCardDto collect(CollectGrowthCardRequest request) {
         Long userId = SecurityUtils.requireUserId();
         String type = StringUtils.hasText(request.getType()) ? request.getType().trim() : "habit";
@@ -94,6 +98,8 @@ public class GrowthCardReviewService {
                 .front(card.getFront())
                 .back(card.getBack())
                 .sourceAnalysisId(card.getSourceAnalysisId())
+                .sourceRef(card.getSourceRef())
+                .createdAt(card.getCreatedAt())
                 .build();
     }
 }

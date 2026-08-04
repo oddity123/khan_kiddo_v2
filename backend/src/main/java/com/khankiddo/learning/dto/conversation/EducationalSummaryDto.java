@@ -23,4 +23,7 @@ public class EducationalSummaryDto {
 
     /** 含中文的用户句（表达缺口，不计入语法错误） */
     private List<ChineseExpressionDto> chineseExpressions;
+
+    /** Stage 3 生成的 Top 行动卡本场诊断文案。 */
+    private List<ActionCardDiagnosisDto> actionCardDiagnoses;
 }

@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import {ArrowRight, MagicStick} from '@element-plus/icons-vue'
+import {ArrowRight, CircleCheck, MagicStick} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
-import {ref} from 'vue'
+import {computed, ref} from 'vue'
 
 import {mintHabitGrowthCard} from '@/api/growthCard'
 import type {ActionCard, ActionCardExample, PointChannel} from '@/types/conversation'
+import type {GrowthCard} from '@/types/growthCard'
 import {getErrorMessage} from '@/utils/error'
 
 const props = withDefaults(
     defineProps<{
       cards: ActionCard[]
       analysisId?: string
+      /** 本场已生成成长卡，用于置灰「已生成」 */
+      growthCards?: GrowthCard[]
     }>(),
-    {cards: () => []},
+    {cards: () => [], growthCards: () => []},
 )
 
 const emit = defineEmits<{
@@ -28,6 +31,16 @@ const CHANNEL_LABEL: Record<PointChannel, string> = {
 }
 
 const mintingKey = ref<string | null>(null)
+
+const generatedHabitRefs = computed(() => {
+  const refs = new Set<string>()
+  for (const card of props.growthCards) {
+    if (card.type === 'habit' && card.sourceRef) {
+      refs.add(card.sourceRef)
+    }
+  }
+  return refs
+})
 
 function channelLabel(channel: PointChannel): string {
   return CHANNEL_LABEL[channel] ?? '其它'
@@ -47,12 +60,26 @@ function cardKey(card: ActionCard): string {
   return card.habitKey || card.pointId
 }
 
+function habitSourceRef(card: ActionCard): string | null {
+  const key = cardKey(card)
+  return key ? `habit:${key}` : null
+}
+
+function isGenerated(card: ActionCard): boolean {
+  const ref = habitSourceRef(card)
+  return Boolean(ref && generatedHabitRefs.value.has(ref))
+}
+
 function displayTitle(card: ActionCard): string {
   return (card.headlineZh || card.titleZh || '').replace(/^本次最该改：/, '').trim()
 }
 
+function displayDiagnosis(card: ActionCard): string {
+  return (card.diagnosisZh || card.whyZh || '').trim()
+}
+
 async function onGenerate(card: ActionCard) {
-  if (!props.analysisId || mintingKey.value) {
+  if (!props.analysisId || mintingKey.value || isGenerated(card)) {
     return
   }
   const key = cardKey(card)
@@ -93,7 +120,7 @@ async function onGenerate(card: ActionCard) {
       </summary>
 
       <div class="ac-body">
-        <p v-if="card.whyZh" class="ac-why">{{ card.whyZh }}</p>
+        <p v-if="displayDiagnosis(card)" class="ac-why">{{ displayDiagnosis(card) }}</p>
 
         <div v-if="previewExamples(card).length" class="ac-examples">
           <div
@@ -118,11 +145,15 @@ async function onGenerate(card: ActionCard) {
           <button
               type="button"
               class="ac-cta"
-              :disabled="!analysisId || mintingKey === cardKey(card)"
+              :class="{ 'ac-cta--done': isGenerated(card) }"
+              :disabled="!analysisId || mintingKey === cardKey(card) || isGenerated(card)"
               @click="onGenerate(card)"
           >
-            <el-icon><MagicStick/></el-icon>
-            {{ mintingKey === cardKey(card) ? '生成中…' : '生成卡片' }}
+            <el-icon v-if="isGenerated(card)"><CircleCheck/></el-icon>
+            <el-icon v-else><MagicStick/></el-icon>
+            <template v-if="isGenerated(card)">已生成</template>
+            <template v-else-if="mintingKey === cardKey(card)">制卡中…</template>
+            <template v-else>让khankiddo制卡</template>
           </button>
         </div>
       </div>
@@ -325,6 +356,16 @@ async function onGenerate(card: ActionCard) {
 .ac-cta:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.ac-cta--done,
+.ac-cta--done:disabled {
+  opacity: 1;
+  color: var(--kk-color-success);
+  background: var(--kk-color-success-bg);
+  border: 1px solid color-mix(in srgb, var(--kk-color-success) 22%, transparent);
+  box-shadow: none;
+  cursor: default;
 }
 
 @media (max-width: 640px) {

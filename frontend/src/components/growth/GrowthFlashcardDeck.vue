@@ -7,9 +7,14 @@ import {gradeGrowthCard} from '@/api/growthCard'
 import type {GrowthCard, GrowthGrade} from '@/types/growthCard'
 import {getErrorMessage} from '@/utils/error'
 
-const props = defineProps<{
-  cards: GrowthCard[]
-}>()
+const props = withDefaults(
+    defineProps<{
+      cards: GrowthCard[]
+      /** 首页等嵌入场景：顶对齐、略紧凑 */
+      compact?: boolean
+    }>(),
+    {compact: false},
+)
 
 interface DeckExpose {
   reset: (options?: {animate?: boolean; delay?: number}) => void | Promise<void>
@@ -99,7 +104,12 @@ async function submitGrade(grade: GrowthGrade) {
 </script>
 
 <template>
-  <div ref="rootRef" class="growth-deck" aria-label="今日成长卡">
+  <div
+      ref="rootRef"
+      class="growth-deck"
+      :class="{'growth-deck--compact': compact}"
+      aria-label="今日成长卡"
+  >
     <FlashCards
         v-if="count > 0"
         ref="deckRef"
@@ -192,6 +202,25 @@ async function submitGrade(grade: GrowthGrade) {
   justify-content: flex-end;
   min-height: 0;
   gap: 0.55rem;
+}
+
+.growth-deck--compact {
+  justify-content: flex-start;
+  gap: 0.45rem;
+}
+
+.growth-deck--compact :deep(.flashcards) {
+  padding-top: 1.15rem;
+}
+
+.growth-deck--compact :deep(.flip-card),
+.growth-deck--compact :deep(.flip-card__inner) {
+  height: 10.5rem;
+}
+
+.growth-deck--compact .growth-empty {
+  min-height: 10.5rem;
+  background: transparent;
 }
 
 .growth-deck :deep(.flashcards),

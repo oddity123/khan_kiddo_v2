@@ -20,7 +20,7 @@ import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
-import {retryMintGrowthCards} from '@/api/growthCard'
+import {deleteGrowthCard, retryMintGrowthCards} from '@/api/growthCard'
 import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
@@ -61,7 +61,7 @@ const growthCards = computed((): GrowthCard[] => detail.value?.growthCards ?? []
 const asideTab = ref<'summary' | 'cards'>('summary')
 const growthCardCountLabel = computed(() => {
   const n = growthCards.value.length
-  return n > 0 ? `已生成的卡片 · ${n}` : '已生成的卡片'
+  return n > 0 ? `卡片库 · ${n}` : '卡片库'
 })
 
 const MINT_POLL_INTERVAL_MS = 1500
@@ -139,13 +139,50 @@ const hasHabitFocus = computed(() => Boolean(topHabit.value || actionCards.value
 
 async function onHabitCardGenerated() {
   asideTab.value = 'cards'
-  const beforeCount = growthCards.value.length
+  const beforeIds = new Set(growthCards.value.map((card) => card.cardId))
+  const insertAt = growthFanRef.value?.getActiveIndex?.() ?? 0
   await refreshDetailSilent()
   await nextTick()
-  await nextTick()
-  if ((detail.value?.growthCards?.length ?? 0) > beforeCount) {
-    await growthFanRef.value?.playInsertRestore()
+  const added = (detail.value?.growthCards ?? []).filter((card) => !beforeIds.has(card.cardId))
+  if (!added.length) {
+    return
   }
+  // watch 可能已把新卡 append 到末尾；再挪到当前复习位之上
+  let order = fanOrderIds.value.filter((id) =>
+      (detail.value?.growthCards ?? []).some((card) => card.cardId === id),
+  )
+  for (const card of added) {
+    order = order.filter((id) => id !== card.cardId)
+    order.splice(Math.min(insertAt, order.length), 0, card.cardId)
+  }
+  fanOrderIds.value = order
+  await nextTick()
+  await nextTick()
+  // 现有「滑出再飞回」动画，表现新卡落到当前顶位
+  await growthFanRef.value?.playInsertRestore()
+}
+
+async function onDeleteGrowthCard(cardId: string) {
+  await deleteGrowthCard(cardId)
+  if (!detail.value) {
+    return
+  }
+  const remaining = (detail.value.growthCards ?? []).filter((card) => card.cardId !== cardId)
+  const habitLeft = remaining.find((card) => card.type === 'habit')
+  if (fanOrderIds.value.length) {
+    fanOrderIds.value = fanOrderIds.value.filter((id) => id !== cardId)
+  }
+  detail.value = {
+    ...detail.value,
+    growthCards: remaining,
+    habitGrowthCard: habitLeft,
+    habitGrowthMintStatus: habitLeft
+        ? 'ready'
+        : detail.value.topHabit
+            ? 'failed'
+            : 'none',
+  }
+  ElMessage.success('已删除成长卡')
 }
 
 interface FilterChip {
@@ -211,19 +248,69 @@ function growthCardTypeLabel(type: string): string {
   return type === 'habit' ? '习惯' : type === 'vocab' ? '词汇' : type
 }
 
-/** 复用知识卡片 Fan：把成长卡映射为正反面闪卡（新卡在上，便于插入动画） */
-const growthFanItems = computed((): ChineseExpressionItem[] =>
-    [...growthCards.value].reverse().map((card, index) => ({
-      cardKey: card.cardId,
-      originalIndex: index,
-      originalSentence: card.front,
-      focusPhrase: card.type === 'vocab' ? card.front : undefined,
-      suggestion: card.back,
-      kindLabel: growthCardTypeLabel(card.type),
-    })),
+/** 侧栏牌序：新制卡插到当前卡之上；默认按创建时间新→旧 */
+const fanOrderIds = ref<string[]>([])
+
+function sortGrowthCardsNewestFirst(cards: GrowthCard[]): GrowthCard[] {
+  return [...cards].sort((a, b) => {
+    const ta = a.createdAt ? Date.parse(a.createdAt) : 0
+    const tb = b.createdAt ? Date.parse(b.createdAt) : 0
+    if (tb !== ta) {
+      return tb - ta
+    }
+    return b.cardId.localeCompare(a.cardId)
+  })
+}
+
+function syncFanOrderFromCards(cards: GrowthCard[]) {
+  const ids = cards.map((card) => card.cardId)
+  const idSet = new Set(ids)
+  if (fanOrderIds.value.length === 0) {
+    fanOrderIds.value = sortGrowthCardsNewestFirst(cards).map((card) => card.cardId)
+    return
+  }
+  const kept = fanOrderIds.value.filter((id) => idSet.has(id))
+  const known = new Set(kept)
+  for (const id of sortGrowthCardsNewestFirst(cards).map((card) => card.cardId)) {
+    if (!known.has(id)) {
+      kept.push(id)
+    }
+  }
+  fanOrderIds.value = kept
+}
+
+watch(
+    growthCards,
+    (cards) => {
+      syncFanOrderFromCards(cards)
+    },
+    {immediate: true},
 )
 
-const growthFanRef = ref<{playInsertRestore: () => Promise<void>} | null>(null)
+/** 复用知识卡片 Fan：按 fanOrder 排列（新卡可插在当前卡之上） */
+const growthFanItems = computed((): ChineseExpressionItem[] => {
+  const cards = growthCards.value
+  const byId = new Map(cards.map((card) => [card.cardId, card]))
+  const order = fanOrderIds.value.length
+      ? fanOrderIds.value
+      : sortGrowthCardsNewestFirst(cards).map((card) => card.cardId)
+  return order
+      .map((id) => byId.get(id))
+      .filter((card): card is GrowthCard => Boolean(card))
+      .map((card, index) => ({
+        cardKey: card.cardId,
+        originalIndex: index,
+        originalSentence: card.front,
+        focusPhrase: card.type === 'vocab' ? card.front : undefined,
+        suggestion: card.back,
+        kindLabel: growthCardTypeLabel(card.type),
+      }))
+})
+
+const growthFanRef = ref<{
+  playInsertRestore: () => Promise<void>
+  getActiveIndex: () => number
+} | null>(null)
 
 const englishPracticeCount = computed(() => {
   const total = overallStats.value?.totalSentences ?? sortedItems.value.length + chineseExpressionCount.value
@@ -267,10 +354,12 @@ async function loadDetail() {
   }
   loading.value = true
   pageReady.value = false
+  fanOrderIds.value = []
   clearMintPoll()
   try {
     const {data} = await getConversationAnalysisDetail(analysisId.value)
     detail.value = data
+    fanOrderIds.value = sortGrowthCardsNewestFirst(data.growthCards ?? []).map((card) => card.cardId)
     requestAnimationFrame(() => {
       pageReady.value = true
     })
@@ -354,12 +443,15 @@ onBeforeUnmount(clearMintPoll)
             <TopHabitHero
                 v-if="topHabit"
                 :card="topHabit"
+                :mint-status="habitGrowthMintStatus"
                 @locate="locate"
+                @open-cards="asideTab = 'cards'"
             />
 
             <ActionCardsPanel
                 :cards="actionCards"
                 :analysis-id="analysisId"
+                :growth-cards="growthCards"
                 @locate="locate"
                 @generated="onHabitCardGenerated"
             />
@@ -583,7 +675,7 @@ onBeforeUnmount(clearMintPoll)
               v-show="asideTab === 'cards'"
               class="growth-cards-tab"
               role="tabpanel"
-              aria-label="已生成的卡片"
+              aria-label="卡片库"
           >
             <div
                 v-if="habitGrowthMintStatus === 'pending'"
@@ -619,11 +711,10 @@ onBeforeUnmount(clearMintPoll)
                   variant="growth"
                   heading="成长卡"
                   :show-hint="false"
+                  :deletable="true"
                   :items="growthFanItems"
+                  :remove-card="onDeleteGrowthCard"
               />
-              <router-link to="/" class="growth-cards-home-link">
-                去首页复习今日成长卡
-              </router-link>
             </template>
           </section>
         </aside>
@@ -792,20 +883,6 @@ onBeforeUnmount(clearMintPoll)
   color: var(--kk-color-danger);
 }
 
-.growth-cards-home-link {
-  align-self: flex-start;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--kk-color-primary);
-  text-decoration: none;
-  padding: 0 0.15rem;
-}
-
-.growth-cards-home-link:hover {
-  color: var(--kk-color-accent-text);
-  text-decoration: underline;
-}
-
 @media (min-width: 1024px) {
   .detail-grid {
     grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
@@ -821,7 +898,27 @@ onBeforeUnmount(clearMintPoll)
     overscroll-behavior: contain;
     z-index: 5;
     align-self: start;
-    padding-bottom: 0.25rem;
+    /* 给面板外阴影留空，避免 overflow 裁成底部硬边黑条 */
+    padding: 0.15rem 0.4rem 1.85rem;
+    margin-inline: -0.4rem;
+  }
+
+  /* 卡片滑走时放开裁切，让飞出层盖过侧栏与主栏 */
+  .detail-aside:has(.cn-fan--lift) {
+    overflow: visible;
+    z-index: 60;
+  }
+
+  .detail-page:has(.cn-fan--lift) {
+    position: relative;
+    z-index: 50;
+  }
+
+  /* 侧栏内减弱外阴影：大模糊在 sticky + overflow 下仍易被裁切成脏边 */
+  .detail-aside .kk-glass--panel {
+    box-shadow:
+      0 6px 18px color-mix(in srgb, var(--kk-color-primary) 7%, transparent),
+      inset 0 1px 0 var(--kk-glass-highlight);
   }
 }
 

@@ -1,21 +1,41 @@
 <script setup lang="ts">
+import {CircleCheck} from '@element-plus/icons-vue'
 import {computed} from 'vue'
 
 import type {ActionCard, ActionCardExample} from '@/types/conversation'
 
-const props = defineProps<{
-  card: ActionCard
-}>()
+const props = withDefaults(
+    defineProps<{
+      card: ActionCard
+      /** Top1 习惯卡铸卡状态 */
+      mintStatus?: 'pending' | 'ready' | 'failed' | 'none'
+    }>(),
+    {mintStatus: 'none'},
+)
 
 const emit = defineEmits<{
   locate: [sentenceId: string | number]
+  openCards: []
 }>()
 
-const headline = computed(() => props.card.headlineZh || `本次最该改：${props.card.titleZh}`)
+const headline = computed(() =>
+    (props.card.headlineZh || props.card.titleZh || '').replace(/^本次最该改：/, '').trim(),
+)
+const diagnosis = computed(() => props.card.diagnosisZh || props.card.whyZh)
 
 const previewExamples = computed((): ActionCardExample[] =>
     (props.card.examples ?? []).slice(0, 2),
 )
+
+const mintHint = computed(() => {
+  if (props.mintStatus === 'ready') {
+    return 'khankiddo已帮您自动生成卡片'
+  }
+  if (props.mintStatus === 'pending') {
+    return '成长卡生成中…'
+  }
+  return ''
+})
 
 function onLocate(example: ActionCardExample) {
   if (example.sentenceId != null) {
@@ -35,8 +55,29 @@ function onLocate(example: ActionCardExample) {
       <div class="hero-body">
         <p class="hero-eyebrow">本场最该先改</p>
         <h3 class="hero-headline">{{ headline }}</h3>
-        <p v-if="card.whyZh" class="hero-why">{{ card.whyZh }}</p>
-        <span v-if="card.errorCount" class="hero-count">命中 {{ card.errorCount }} 句</span>
+        <p v-if="diagnosis" class="hero-why">{{ diagnosis }}</p>
+        <div class="hero-meta">
+          <span v-if="card.errorCount" class="hero-count">命中 {{ card.errorCount }} 句</span>
+          <p
+              v-if="mintHint"
+              class="hero-mint-hint"
+              :class="{
+                'hero-mint-hint--ready': mintStatus === 'ready',
+                'hero-mint-hint--pending': mintStatus === 'pending',
+              }"
+          >
+            <el-icon v-if="mintStatus === 'ready'" aria-hidden="true"><CircleCheck/></el-icon>
+            <span>{{ mintHint }}</span>
+            <button
+                v-if="mintStatus === 'ready'"
+                type="button"
+                class="hero-mint-link"
+                @click="emit('openCards')"
+            >
+              查看
+            </button>
+          </p>
+        </div>
       </div>
     </div>
 
@@ -163,6 +204,55 @@ function onLocate(example: ActionCardExample) {
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--kk-color-text-subtle);
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  margin-top: 0.1rem;
+}
+
+.hero-mint-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0.14rem 0.55rem;
+  border-radius: var(--kk-radius-pill);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.hero-mint-hint--ready {
+  color: var(--kk-color-success);
+  background: var(--kk-color-success-bg);
+  border: 1px solid color-mix(in srgb, var(--kk-color-success) 20%, transparent);
+}
+
+.hero-mint-hint--pending {
+  color: var(--kk-color-text-muted);
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid var(--kk-glass-inner-border);
+}
+
+.hero-mint-link {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+  cursor: pointer;
+}
+
+.hero-mint-link:hover {
+  opacity: 0.85;
 }
 
 .hero-examples {

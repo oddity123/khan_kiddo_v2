@@ -20,4 +20,7 @@ public class GrowthCardDto {
     private String front;
     private String back;
     private String sourceAnalysisId;
+    /** 如 habit:{habitKey}，用于判断某行动卡是否已铸卡 */
+    private String sourceRef;
+    private java.time.LocalDateTime createdAt;
 }

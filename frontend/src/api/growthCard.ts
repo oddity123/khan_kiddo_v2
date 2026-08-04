@@ -9,6 +9,10 @@ export function gradeGrowthCard(cardId: string, grade: GrowthGrade) {
   return http.post<GrowthCard>(`/api/growth-cards/${cardId}/grade`, {grade})
 }
 
+export function deleteGrowthCard(cardId: string) {
+  return http.delete<void>(`/api/growth-cards/${cardId}`)
+}
+
 export function collectGrowthCard(body: CollectGrowthCardRequest) {
   return http.post<GrowthCard>('/api/growth-cards/collect', body)
 }

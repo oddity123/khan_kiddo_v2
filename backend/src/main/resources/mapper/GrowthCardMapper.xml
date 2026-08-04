@@ -67,6 +67,12 @@
           AND user_id = #{userId}
     </update>
 
+    <delete id="deleteByCardIdAndUserId">
+        DELETE FROM growth_card
+        WHERE card_id = #{cardId}
+          AND user_id = #{userId}
+    </delete>
+
     <select id="findHabitByAnalysis" resultMap="GrowthCardResultMap">
         SELECT
         <include refid="GrowthCardColumns"/>

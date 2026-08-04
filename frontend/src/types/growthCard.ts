@@ -10,6 +10,9 @@ export interface GrowthCard {
   front: string
   back: string
   sourceAnalysisId?: string | null
+  /** 如 habit:{habitKey}，用于判断行动卡是否已铸卡 */
+  sourceRef?: string | null
+  createdAt?: string | null
 }
 
 export interface CollectGrowthCardRequest {

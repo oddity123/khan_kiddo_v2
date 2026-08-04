@@ -119,6 +119,7 @@ class GrowthCardReviewServiceTest {
                 .front("hello")
                 .back("world")
                 .sourceAnalysisId("analysis-2")
+                .sourceRef("habit:tense")
                 .build();
 
         var dto = reviewService.toDto(card);
@@ -130,5 +131,6 @@ class GrowthCardReviewServiceTest {
         assertEquals("hello", dto.getFront());
         assertEquals("world", dto.getBack());
         assertEquals("analysis-2", dto.getSourceAnalysisId());
+        assertEquals("habit:tense", dto.getSourceRef());
     }
 }

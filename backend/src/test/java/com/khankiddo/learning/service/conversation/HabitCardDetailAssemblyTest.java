@@ -1,5 +1,6 @@
 package com.khankiddo.learning.service.conversation;
 
+import com.khankiddo.learning.dto.conversation.ActionCardDiagnosisDto;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.PointDictionary;
@@ -116,7 +117,7 @@ class HabitCardDetailAssemblyTest {
     }
 
     @Test
-    void levelSummaryIsDistributedIntoActionCardCopy() {
+    void diagnosisIsMergedIntoActionCardByHabitKey() {
         List<ConversationAnalysisItem> rows = List.of(
                 row(1L, "ARTICLE_A_AN", "Article", "a apple", "an apple"),
                 row(2L, "ARTICLE_A_AN", "Article", "a hour", "an hour")
@@ -125,12 +126,17 @@ class HabitCardDetailAssemblyTest {
         HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(
                 rows,
                 List.of(),
-                "整体错误集中在冠词和句式结构，说明名词短语边界不够稳。词形问题也有出现。");
+                List.of(ActionCardDiagnosisDto.builder()
+                        .rank(1)
+                        .habitKey("FAM_ARTICLE")
+                        .pointId("ARTICLE_A_AN")
+                        .diagnosisZh("这次冠词问题集中在 a/an 的读音判断，说明单数名词前的冠词选择还不够稳定。")
+                        .build()));
 
-        assertEquals("冠词容易用错", result.topHabit().getTitleZh());
-        assertTrue(result.topHabit().getWhyZh().contains("本场命中 2 句"));
-        assertTrue(result.topHabit().getWhyZh().contains("整体错误集中在冠词和句式结构"));
-        assertTrue(result.topHabit().getWhyZh().contains("下一步：用纠正句重说一句"));
+        assertEquals("冠词", result.topHabit().getTitleZh());
+        assertEquals("这次冠词问题集中在 a/an 的读音判断，说明单数名词前的冠词选择还不够稳定。",
+                result.topHabit().getDiagnosisZh());
+        assertTrue(result.topHabit().getWhyZh().contains("其中可先练"));
     }
 
     private static ConversationAnalysisItem row(

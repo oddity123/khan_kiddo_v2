@@ -7,6 +7,7 @@ import com.khankiddo.learning.dto.growth.MintHabitGrowthCardRequest;
 import com.khankiddo.learning.growth.GrowthCardReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,6 +33,11 @@ public class GrowthCardController {
     public GrowthCardDto grade(@PathVariable String cardId,
                                @Valid @RequestBody GrowthCardGradeRequest request) {
         return reviewService.grade(cardId, request);
+    }
+
+    @DeleteMapping("/{cardId}")
+    public void delete(@PathVariable String cardId) {
+        reviewService.delete(cardId);
     }
 
     @PostMapping("/collect")

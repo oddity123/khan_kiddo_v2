@@ -73,6 +73,14 @@ export interface ChineseExpressionItem {
 export interface EducationalSummaryRoot {
   report?: EducationalSummaryReport
   chineseExpressions?: ChineseExpressionItem[]
+  actionCardDiagnoses?: ActionCardDiagnosis[]
+}
+
+export interface ActionCardDiagnosis {
+  rank?: number
+  habitKey?: string
+  pointId?: string
+  diagnosisZh?: string
 }
 
 export interface EducationalSummaryReport {
@@ -225,6 +233,8 @@ export interface ActionCard {
     headlineZh?: string
     titleZh: string
     whyZh?: string
+    /** Stage 3 生成的本场专属诊断，不包含练习建议 */
+    diagnosisZh?: string
     /** 本场计入该习惯的证据条数 */
     errorCount: number
     score?: number
