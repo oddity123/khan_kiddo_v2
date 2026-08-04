@@ -76,15 +76,19 @@ const router = createRouter({
           },
       },
       {
-          path: '/conversation/grammar-rag',
-          name: 'conversation-grammar-rag',
-          component: () => import('@/views/conversation/GrammarRagView.vue'),
+          path: '/review',
+          name: 'review-center',
+          component: () => import('@/views/review/ReviewCenterView.vue'),
           meta: {
-            title: '复盘助手',
+            title: '复盘中心',
             requiresAuth: true,
-            immersive: true,
             robots: 'noindex, nofollow',
           },
+      },
+      {
+          path: '/conversation/grammar-rag',
+          name: 'conversation-grammar-rag',
+          redirect: {path: '/review', query: {chat: '1'}},
       },
   ],
 })

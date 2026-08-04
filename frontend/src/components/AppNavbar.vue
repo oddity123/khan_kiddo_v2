@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ChatDotRound, Clock, Collection, House, Message, SwitchButton, User, VideoPlay,} from '@element-plus/icons-vue'
+import {ChatDotRound, Clock, Collection, DataAnalysis, House, Message, SwitchButton, User, VideoPlay,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {storeToRefs} from 'pinia'
 import {ref} from 'vue'
@@ -19,6 +19,14 @@ function isActive(path: string) {
   return route.path === path
 }
 
+function isReviewActive() {
+  return route.path === '/review' || route.path.startsWith('/review/')
+}
+
+function isAnalysisActive() {
+  return route.path.startsWith('/conversation/')
+}
+
 function onPending(feature: string) {
   ElMessage.info(`${feature}功能迁移中，敬请期待`)
   mobileOpen.value = false
@@ -30,8 +38,6 @@ function onAnalysisCommand(command: string) {
     router.push('/conversation/analyze')
   } else if (command === 'history') {
     router.push('/conversation/analyses')
-  } else if (command === 'grammar-rag') {
-    router.push('/conversation/grammar-rag')
   }
 }
 
@@ -73,6 +79,16 @@ async function onLogout() {
             首页
           </router-link>
 
+          <router-link
+              to="/review"
+              class="nav-link"
+              :class="{ active: isReviewActive() }"
+              @click="mobileOpen = false"
+          >
+            <el-icon><DataAnalysis /></el-icon>
+            复盘中心
+          </router-link>
+
           <el-dropdown
             trigger="hover"
             placement="bottom-start"
@@ -84,7 +100,7 @@ async function onLogout() {
           >
             <span
               class="nav-link nav-link--dropdown"
-              :class="{ 'nav-link--open': analysisDropdownOpen }"
+              :class="{ 'nav-link--open': analysisDropdownOpen, active: isAnalysisActive() }"
             >
               <el-icon><ChatDotRound /></el-icon>
               对话分析
@@ -99,10 +115,6 @@ async function onLogout() {
                 <el-dropdown-item divided command="history">
                   <el-icon><Clock /></el-icon>
                   查看历史记录
-                </el-dropdown-item>
-                <el-dropdown-item command="grammar-rag">
-                  <el-icon><Collection /></el-icon>
-                  复盘助手
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>

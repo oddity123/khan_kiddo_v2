@@ -125,8 +125,8 @@ onMounted(loadList)
         <p class="page-desc">查看已保存的对话分析记录，点击可进入详情。</p>
       </div>
       <div class="page-actions">
-        <router-link to="/conversation/grammar-rag">
-          <el-button>复盘助手</el-button>
+        <router-link to="/review">
+          <el-button>复盘中心</el-button>
         </router-link>
         <router-link to="/conversation/analyze">
           <el-button type="primary">开始分析</el-button>
