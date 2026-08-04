@@ -17,6 +17,8 @@ const props = withDefaults(
       heading?: string
       /** expression=中文表达知识卡；growth=成长卡（标签改为提示/答案） */
       variant?: 'expression' | 'growth'
+      /** 首页复盘区使用的紧凑牌组 */
+      compact?: boolean
       showHint?: boolean
       /** 成长卡可删除：对勾右侧显示垃圾桶 */
       deletable?: boolean
@@ -32,6 +34,7 @@ const props = withDefaults(
       layout: 'main',
       heading: '知识卡片',
       variant: 'expression',
+      compact: false,
       showHint: undefined,
       deletable: false,
     },
@@ -53,9 +56,9 @@ const resolvedHint = computed(() =>
 )
 
 /** aside 只要三张叠层样式（库的 stack=n 会露出 n+1 层，故用 2） */
-const stackDepth = computed(() => (props.layout === 'aside' ? 2 : 3))
-const stackOffset = computed(() => (props.layout === 'aside' ? 12 : 16))
-const stackScale = computed(() => (props.layout === 'aside' ? 0.025 : 0.02))
+const stackDepth = computed(() => (props.layout === 'aside' ? (props.compact ? 1 : 2) : 3))
+const stackOffset = computed(() => (props.layout === 'aside' ? (props.compact ? 8 : 12) : 16))
+const stackScale = computed(() => (props.layout === 'aside' ? (props.compact ? 0.018 : 0.025) : 0.02))
 
 type SwipeDir = 'left' | 'right'
 
@@ -85,7 +88,7 @@ const feedbackCardId = ref<string | null>(null)
 const hotkeysArmed = ref(false)
 /** 驱动 canRestore / isStart 在脚本侧刷新 */
 const uiTick = ref(0)
-let liftHoldTimer: ReturnType<typeof setTimeout> | null = null
+let liftHoldTimer: number | null = null
 
 const deckLifted = computed(() => swiping.value || dragging.value || deleting.value)
 
@@ -482,7 +485,10 @@ onBeforeUnmount(() => {
       :class="[
         `cn-fan--${layout}`,
         `cn-fan--${variant}`,
-        { 'cn-fan--lift': deckLifted },
+        {
+          'cn-fan--compact': compact,
+          'cn-fan--lift': deckLifted,
+        },
       ]"
       :aria-label="heading"
       @mouseenter="armHotkeys"
@@ -775,6 +781,68 @@ onBeforeUnmount(() => {
 
 .cn-fan--aside .cn-actions {
   margin-top: 0.75rem;
+}
+
+.cn-fan--compact.cn-fan--aside {
+  padding: 0.35rem 0.65rem 0.55rem;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-stage {
+  width: min(100%, 24rem);
+  margin-top: 0;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck {
+  min-height: 11.3rem;
+  max-height: 11.3rem;
+  margin-bottom: 0;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards) {
+  min-height: 10.35rem !important;
+  height: 10.35rem !important;
+  max-height: 10.35rem !important;
+  padding-top: 0.75rem;
+  box-sizing: border-box;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards__stack),
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards__cards),
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards__card-wrapper) {
+  min-height: 9.6rem !important;
+  height: 9.6rem !important;
+  max-height: 9.6rem !important;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flip-card),
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flip-card__inner) {
+  height: 9.6rem !important;
+}
+
+.cn-fan--compact .cn-card {
+  padding: 0.55rem 0.7rem 0.62rem;
+}
+
+.cn-fan--compact .pane-improved--center {
+  font-size: 0.95rem;
+  line-height: 1.36;
+  -webkit-line-clamp: 4;
+}
+
+.cn-fan--compact .pane-improved--term {
+  font-size: 1.18rem;
+  line-height: 1.25;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-actions {
+  gap: 0.62rem;
+  margin-top: 0.4rem;
+  padding-top: 0;
+}
+
+.cn-fan--compact .cn-action-btn {
+  width: 2.32rem;
+  height: 2.32rem;
 }
 
 .cn-fan--main .cn-fan-title,

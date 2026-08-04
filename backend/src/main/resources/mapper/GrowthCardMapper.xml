@@ -59,6 +59,24 @@
         ORDER BY next_due_at ASC
     </select>
 
+    <select id="countDueByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM growth_card
+        WHERE user_id = #{userId}
+          AND status &lt;&gt; 'mastered'
+          AND next_due_at IS NOT NULL
+          AND next_due_at &lt;= #{today}
+    </select>
+
+    <select id="countStatusByUserId" resultType="com.khankiddo.learning.model.GrowthCardStatusCount">
+        SELECT status AS status,
+               COUNT(*) AS count
+        FROM growth_card
+        WHERE user_id = #{userId}
+        GROUP BY status
+        ORDER BY count DESC
+    </select>
+
     <update id="updateReview">
         UPDATE growth_card
         SET status       = #{status},
