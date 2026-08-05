@@ -343,12 +343,24 @@ function startPillarAnimations() {
   startQuoteReveal()
 }
 
-function goToReviewCenter() {
-  if (isAuthenticated.value) {
-    void router.push('/review')
+function goToPath(path: string, options?: {requireAuth?: boolean}) {
+  if (options?.requireAuth && !isAuthenticated.value) {
+    void router.push({path: '/login', query: {redirect: path}})
     return
   }
-  void router.push({path: '/login', query: {redirect: '/review'}})
+  void router.push(path)
+}
+
+function goToAnalyze() {
+  goToPath('/conversation/analyze')
+}
+
+function goToReviewCenter() {
+  goToPath('/review', {requireAuth: true})
+}
+
+function goToGrowthCards() {
+  goToPath('/review/cards', {requireAuth: true})
 }
 
 watch(revealed, (on) => {
@@ -434,7 +446,14 @@ onUnmounted(() => {
 
     <section class="pillars reveal" style="--reveal-delay: 200ms">
       <div class="pillars-panel">
-        <article class="pillar">
+        <article
+            class="pillar pillar--link"
+            role="link"
+            tabindex="0"
+            @click="goToAnalyze"
+            @keydown.enter.prevent="goToAnalyze"
+            @keydown.space.prevent="goToAnalyze"
+        >
           <header class="pillar-head">
             <PillarMark kind="analyze"/>
             <h3 class="pillar-heading">Khan AI 分析助手</h3>
@@ -524,7 +543,14 @@ onUnmounted(() => {
           </div>
         </article>
 
-        <article class="pillar">
+        <article
+            class="pillar pillar--link"
+            role="link"
+            tabindex="0"
+            @click="goToGrowthCards"
+            @keydown.enter.prevent="goToGrowthCards"
+            @keydown.space.prevent="goToGrowthCards"
+        >
           <header class="pillar-head">
             <PillarMark kind="cards"/>
             <h3 class="pillar-heading">自动生成成长卡片</h3>
@@ -1027,6 +1053,11 @@ onUnmounted(() => {
 .pillar--link:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--kk-color-primary) 45%, transparent);
   outline-offset: 2px;
+}
+
+/* 演示区不拦截点击，整卡跳转 */
+.pillar--link .flashcard-deck {
+  pointer-events: none;
 }
 
 .pillar-head {
