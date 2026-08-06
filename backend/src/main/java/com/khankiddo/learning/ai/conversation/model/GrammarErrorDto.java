@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class GrammarErrorDto {
 
-    private String type;
+    private String pointId;
     private String point;
 }

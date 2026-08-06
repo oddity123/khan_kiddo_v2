@@ -8,6 +8,7 @@
         <result column="sentence_id" property="sentenceId"/>
         <result column="original_sentence" property="originalSentence"/>
         <result column="problem_types" property="problemTypes"/>
+        <result column="point_id" property="pointId"/>
         <result column="error_point" property="errorPoint"/>
         <result column="suggestion" property="suggestion"/>
         <result column="created_at" property="createdAt"/>
@@ -55,12 +56,47 @@
           AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL 7 DAY)
     </select>
 
+    <select id="countDistinctSentencesBetweenDaysAgo" resultType="long">
+        SELECT COUNT(DISTINCT cai.analysis_id, cai.sentence_id)
+        FROM conversation_analysis_item cai
+                 INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+          AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{fromDaysAgo} DAY)
+          AND cai.created_at &lt; DATE_SUB(NOW(), INTERVAL #{toDaysAgo} DAY)
+    </select>
+
+    <select id="countDailyDistinctSentencesByUserIdAndDays" resultType="com.khankiddo.learning.model.DailyCount">
+        SELECT DATE_FORMAT(cai.created_at, '%Y-%m-%d') AS day,
+               COUNT(DISTINCT cai.analysis_id, cai.sentence_id) AS count
+        FROM conversation_analysis_item cai
+                 INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+          AND cai.created_at &gt;= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        GROUP BY DATE(cai.created_at)
+        ORDER BY day ASC
+    </select>
+
+    <select id="countDailyIssuesByUserIdAndDays" resultType="com.khankiddo.learning.model.DailyCount">
+        SELECT DATE_FORMAT(cai.created_at, '%Y-%m-%d') AS day,
+               COUNT(*) AS count
+        FROM conversation_analysis_item cai
+                 INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+          AND cai.created_at &gt;= DATE_SUB(CURDATE(), INTERVAL #{days} DAY)
+        GROUP BY DATE(cai.created_at)
+        ORDER BY day ASC
+    </select>
+
     <select id="findRecentSentencesByUserId" resultMap="ConversationAnalysisItemResultMap">
         SELECT cai.id,
                cai.analysis_id,
                cai.sentence_id,
                cai.original_sentence,
                cai.problem_types,
+               cai.point_id,
                cai.error_point,
                cai.suggestion,
                cai.created_at
@@ -84,6 +120,7 @@
                sentence_id,
                original_sentence,
                problem_types,
+               point_id,
                error_point,
                suggestion,
                created_at
@@ -99,6 +136,7 @@
                sentence_id,
                original_sentence,
                problem_types,
+               point_id,
                error_point,
                suggestion,
                created_at
@@ -139,6 +177,7 @@
         cai.sentence_id,
         cai.original_sentence,
         cai.problem_types,
+        cai.point_id,
         cai.error_point,
         cai.suggestion,
         cai.created_at
@@ -185,12 +224,12 @@
     </select>
 
     <insert id="batchInsert">
-        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, error_point,
-        suggestion, created_at)
+        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, problem_types, point_id,
+        error_point, suggestion, created_at)
         VALUES
         <foreach collection="items" item="item" separator=",">
-            (#{item.analysisId}, #{item.sentenceId}, #{item.originalSentence}, #{item.problemTypes}, #{item.errorPoint},
-            #{item.suggestion}, NOW())
+            (#{item.analysisId}, #{item.sentenceId}, #{item.originalSentence}, #{item.problemTypes}, #{item.pointId},
+            #{item.errorPoint}, #{item.suggestion}, NOW())
         </foreach>
     </insert>
 

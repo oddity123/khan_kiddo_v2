@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     `sentence_id`       BIGINT       NOT NULL COMMENT '句子ID（同一个句子的不同错误使用相同的sentenceId）',
     `original_sentence` TEXT         NOT NULL COMMENT '用户原句',
     `problem_types`     VARCHAR(100) NOT NULL COMMENT '问题类型，如 "Tense"',
+    `point_id`          VARCHAR(48)  NULL COMMENT '知识点叶子 pointId',
     `error_point`       VARCHAR(500) NOT NULL COMMENT '错误点描述',
     `suggestion`        TEXT         NOT NULL COMMENT '修改建议或正确英文表达',
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -56,6 +57,10 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     INDEX `idx_analysis_sentence` (`analysis_id`, `sentence_id`),
     INDEX `idx_problem_types` (`problem_types`) COMMENT '问题类型索引，用于查询特定问题类型'
 ) ENGINE = InnoDB COMMENT = '对话分析明细表';
+
+-- 已存在数据库需手动执行（新建库通过上面的 CREATE TABLE IF NOT EXISTS 已包含该列）：
+-- ALTER TABLE conversation_analysis_item
+--   ADD COLUMN point_id VARCHAR(48) NULL COMMENT '知识点叶子 pointId' AFTER problem_types;
 
 -- 用户反馈/留言表
 CREATE TABLE IF NOT EXISTS `user_feedback`
@@ -69,3 +74,24 @@ CREATE TABLE IF NOT EXISTS `user_feedback`
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_created_at` (`created_at`)
 ) ENGINE = InnoDB COMMENT = '用户反馈/留言表';
+
+-- 成长卡
+CREATE TABLE IF NOT EXISTS `growth_card`
+(
+    `id`                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `card_id`             VARCHAR(64)  NOT NULL,
+    `user_id`             BIGINT       NOT NULL,
+    `type`                VARCHAR(16)  NOT NULL COMMENT 'habit|vocab',
+    `status`              VARCHAR(16)  NOT NULL COMMENT 'unfamiliar|fuzzy|mastered',
+    `next_due_at`         DATE                  DEFAULT NULL,
+    `front`               TEXT         NOT NULL,
+    `back`                TEXT         NOT NULL,
+    `source_analysis_id`  VARCHAR(64)           DEFAULT NULL,
+    `source_ref`          VARCHAR(128) NOT NULL,
+    `evidence_json`       TEXT                  DEFAULT NULL,
+    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_card_id` (`card_id`),
+    UNIQUE KEY `uk_user_source` (`user_id`, `source_analysis_id`, `type`, `source_ref`),
+    INDEX `idx_user_due` (`user_id`, `status`, `next_due_at`)
+) ENGINE = InnoDB COMMENT ='成长卡';

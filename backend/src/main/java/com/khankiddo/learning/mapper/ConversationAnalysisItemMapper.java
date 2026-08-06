@@ -1,6 +1,7 @@
 package com.khankiddo.learning.mapper;
 
 import com.khankiddo.learning.model.ConversationAnalysisItem;
+import com.khankiddo.learning.model.DailyCount;
 import com.khankiddo.learning.model.ProblemTypeCount;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -19,6 +20,16 @@ public interface ConversationAnalysisItemMapper {
     Map<String, Object> getMostCommonProblemTypeByUserId(@Param("userId") Long userId);
 
     long countDistinctSentencesInLast7DaysByUserId(@Param("userId") Long userId);
+
+    long countDistinctSentencesBetweenDaysAgo(@Param("userId") Long userId,
+                                              @Param("fromDaysAgo") int fromDaysAgo,
+                                              @Param("toDaysAgo") int toDaysAgo);
+
+    List<DailyCount> countDailyDistinctSentencesByUserIdAndDays(@Param("userId") Long userId,
+                                                                @Param("days") int days);
+
+    List<DailyCount> countDailyIssuesByUserIdAndDays(@Param("userId") Long userId,
+                                                     @Param("days") int days);
 
     List<ConversationAnalysisItem> findRecentSentencesByUserId(@Param("userId") Long userId,
                                                                @Param("limit") int limit);

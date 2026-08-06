@@ -3,6 +3,7 @@ import {computed} from 'vue'
 import {RouterView, useRoute} from 'vue-router'
 
 import AppNavbar from '@/components/AppNavbar.vue'
+import GrammarRagFloatingChat from '@/components/review/GrammarRagFloatingChat.vue'
 import SiteBeian from '@/components/SiteBeian.vue'
 
 const route = useRoute()
@@ -21,6 +22,7 @@ const isImmersive = computed(() => Boolean(route.meta.immersive))
     <footer class="page-footer">
       <SiteBeian variant="footer" />
     </footer>
+    <GrammarRagFloatingChat/>
   </div>
 </template>
 

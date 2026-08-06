@@ -5,11 +5,16 @@ import com.khankiddo.learning.ai.conversation.model.*;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.knowledge.HabitCardScorer;
+import com.khankiddo.learning.knowledge.HabitScoreInput;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.llm.ChineseExpressionReviewClient;
 import com.khankiddo.learning.llm.EducationalSummaryClient;
 import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
+import com.khankiddo.learning.model.enums.ErrorLevel;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +49,8 @@ public class ConversationAnalysisPipeline {
     private final GrammarAnalysisSanitizer grammarAnalysisSanitizer;
     private final UtteranceRouter utteranceRouter;
     private final ChineseExpressionReviewClient chineseExpressionReviewClient;
+    private final PointDictionary pointDictionary;
+    private final HabitCardScorer habitCardScorer;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -71,6 +78,8 @@ public class ConversationAnalysisPipeline {
         grammar = grammarAnalysisSanitizer.sanitize(grammar);
         List<AnalysisItemDto> items = toDisplayItems(grammar);
         List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
+        HabitCardScorer.HabitScoreResult habitScoreResult =
+                buildHabitScoreResult(grammar, chineseExpressions);
 
         int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());
         SummaryOutcome summaryOutcome = buildEducationalSummary(
@@ -79,6 +88,7 @@ public class ConversationAnalysisPipeline {
                 englishPracticeCount,
                 routed.chineseCount(),
                 chineseExpressions,
+                habitScoreResult.actionCards(),
                 selectedModel,
                 onProgress);
 
@@ -178,28 +188,31 @@ public class ConversationAnalysisPipeline {
                                                     int englishPracticeCount,
                                                     int chineseExpressionCount,
                                                     List<ChineseExpressionDto> chineseExpressions,
+                                                    List<ActionCardDto> actionCards,
                                                     ResolvedLlmModel model,
                                                     Consumer<ConversationAnalysisProgress> onProgress) {
         onProgress.accept(ConversationAnalysisProgress.of(
-                ConversationAnalysisProgress.STATUS_SUMMARIZING, "正在生成学习诊断概要..."));
+                ConversationAnalysisProgress.STATUS_SUMMARIZING, "正在生成 Top 习惯诊断..."));
         try {
             String summaryTemplate = promptLoader.getEducationalSummaryTemplate();
-            String summaryPrompt = promptLoader.fillTemplate(summaryTemplate, "itemsSummary",
+            String summaryPrompt = promptLoader.fillTemplate(summaryTemplate, "topCardsSummary",
+                    summaryParser.formatActionCardsForDiagnosis(actionCards));
+            summaryPrompt = promptLoader.fillTemplate(summaryPrompt, "itemsSummary",
                     summaryParser.formatItemsForSummary(grammar));
-            String markdown = summaryClient.summarize(
+            ActionCardDiagnosisResultDto diagnosisResult = summaryClient.diagnose(
                     promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, model);
-            EducationalSummaryDto report = summaryParser.parseMarkdownSummary(
-                    markdown, grammar, userCount, englishPracticeCount, chineseExpressionCount);
+            EducationalSummaryDto report = summaryParser.parseActionCardDiagnosisSummary(
+                    diagnosisResult, grammar, userCount, englishPracticeCount, chineseExpressionCount, actionCards);
             report.setChineseExpressions(chineseExpressions);
             return new SummaryOutcome(report, false, null);
         } catch (RuntimeException ex) {
-            log.warn("教育总结生成失败，使用默认总结: {}", ex.getMessage(), ex);
+            log.warn("Top 习惯诊断生成失败，使用默认总结: {}", ex.getMessage(), ex);
             String reason = StringUtils.hasText(ex.getMessage())
                     ? ex.getMessage()
                     : ex.getClass().getSimpleName();
             onProgress.accept(ConversationAnalysisProgress.builder()
                     .status(ConversationAnalysisProgress.STATUS_SUMMARIZING)
-                    .message("学习诊断概要生成失败，已使用默认总结")
+                    .message("Top 习惯诊断生成失败，已使用默认总结")
                     .build());
             EducationalSummaryDto report = summaryParser.defaultReport(
                     grammar, userCount, englishPracticeCount, chineseExpressionCount);
@@ -283,15 +296,7 @@ public class ConversationAnalysisPipeline {
             List<AnalysisErrorDto> errors = new ArrayList<>();
             if (!CollectionUtils.isEmpty(raw.getErrors())) {
                 for (GrammarErrorDto error : raw.getErrors()) {
-                    String englishType = StringUtils.hasText(error.getType()) ? error.getType().trim() : "Other";
-                    ProblemType problemType = ProblemType.fromEnglishName(englishType);
-                    String displayType = problemType != null ? problemType.getChineseName() : englishType;
-                    String level = problemType != null ? problemType.getErrorLevel().name() : "STYLE";
-                    errors.add(AnalysisErrorDto.builder()
-                            .type(displayType)
-                            .point(error.getPoint())
-                            .errorLevel(level)
-                            .build());
+                    errors.add(toAnalysisErrorDto(error));
                 }
             }
             items.add(AnalysisItemDto.builder()
@@ -304,6 +309,30 @@ public class ConversationAnalysisPipeline {
         return items;
     }
 
+    private AnalysisErrorDto toAnalysisErrorDto(GrammarErrorDto error) {
+        PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+        ErrorLevel level = resolveErrorLevel(definition.errorLevel());
+        return AnalysisErrorDto.builder()
+                .pointId(definition.pointId())
+                .type(ProblemType.translate(definition.problemType()))
+                .point(error.getPoint())
+                .errorLevel(level.name())
+                .familyId(definition.familyId())
+                .channel(definition.channel().getJsonValue())
+                .build();
+    }
+
+    private static ErrorLevel resolveErrorLevel(String rawLevel) {
+        if (!StringUtils.hasText(rawLevel)) {
+            return ErrorLevel.STYLE;
+        }
+        try {
+            return ErrorLevel.valueOf(rawLevel.trim());
+        } catch (IllegalArgumentException ex) {
+            return ErrorLevel.STYLE;
+        }
+    }
+
     private List<ErrorTypeDistributionDto> buildDistribution(GrammarAnalysisResult grammar) {
         Map<String, Integer> counts = new HashMap<>();
         if (grammar != null && !CollectionUtils.isEmpty(grammar.getItems())) {
@@ -312,10 +341,8 @@ public class ConversationAnalysisPipeline {
                     continue;
                 }
                 for (GrammarErrorDto error : item.getErrors()) {
-                    if (!StringUtils.hasText(error.getType())) {
-                        continue;
-                    }
-                    String label = ProblemType.translate(error.getType());
+                    PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+                    String label = ProblemType.translate(definition.problemType());
                     counts.merge(label, 1, Integer::sum);
                 }
             }
@@ -324,6 +351,32 @@ public class ConversationAnalysisPipeline {
                 .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
                 .map(entry -> ErrorTypeDistributionDto.builder().type(entry.getKey()).count(entry.getValue()).build())
                 .toList();
+    }
+
+    private HabitCardScorer.HabitScoreResult buildHabitScoreResult(
+            GrammarAnalysisResult grammar,
+            List<ChineseExpressionDto> chineseExpressions) {
+        if (grammar == null || CollectionUtils.isEmpty(grammar.getItems())) {
+            return habitCardScorer.score(new HabitScoreInput(List.of(), chineseExpressions));
+        }
+        List<HabitScoreInput.ErrorHit> hits = new ArrayList<>();
+        long sentenceId = 1;
+        for (GrammarSentenceItemDto item : grammar.getItems()) {
+            if (!CollectionUtils.isEmpty(item.getErrors())) {
+                for (GrammarErrorDto error : item.getErrors()) {
+                    PointDefinition point = pointDictionary.resolveOrFallback(error.getPointId());
+                    hits.add(new HabitScoreInput.ErrorHit(
+                            point.pointId(),
+                            String.valueOf(sentenceId),
+                            item.getOriginalSentence(),
+                            error.getPoint(),
+                            item.getSuggestion(),
+                            point.errorLevel()));
+                }
+            }
+            sentenceId++;
+        }
+        return habitCardScorer.score(new HabitScoreInput(hits, chineseExpressions));
     }
 
     private int countErrors(GrammarAnalysisResult grammar) {

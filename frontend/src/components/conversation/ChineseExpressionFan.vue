@@ -1,17 +1,43 @@
 <script setup lang="ts">
-import {ChatLineSquare, Check, CloseBold, Refresh, RefreshLeft,} from '@element-plus/icons-vue'
+import {ChatLineSquare, Check, CloseBold, Delete, Refresh, RefreshLeft,} from '@element-plus/icons-vue'
 import confetti from 'canvas-confetti'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {computed, nextTick, onBeforeUnmount, onMounted, ref} from 'vue'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
 import type {ChineseExpressionItem} from '@/types/conversation'
+import type {GrowthGrade} from '@/types/growthCard'
+import {getErrorMessage} from '@/utils/error'
 
 const props = withDefaults(
     defineProps<{
       items: ChineseExpressionItem[]
       layout?: 'main' | 'aside'
+      /** 标题文案；成长卡侧栏可传「成长卡」 */
+      heading?: string
+      /** expression=中文表达知识卡；growth=成长卡（标签改为提示/答案） */
+      variant?: 'expression' | 'growth'
+      /** 首页复盘区使用的紧凑牌组 */
+      compact?: boolean
+      showHint?: boolean
+      /** 成长卡可删除：对勾右侧显示垃圾桶 */
+      deletable?: boolean
+      /** 确认后真正删除；抛错则保留卡片 */
+      removeCard?: (cardId: string) => Promise<void>
+      /**
+       * 首页今日复习：滑出时自评落库。
+       * ← again / → good；开启后禁用撤回与「再复习一遍」（避免已评分卡回炉）。
+       */
+      reviewCard?: (cardId: string, grade: Extract<GrowthGrade, 'again' | 'good'>) => Promise<void>
     }>(),
-    {layout: 'main'},
+    {
+      layout: 'main',
+      heading: '知识卡片',
+      variant: 'expression',
+      compact: false,
+      showHint: undefined,
+      deletable: false,
+    },
 )
 
 interface FlashCardItem {
@@ -20,8 +46,19 @@ interface FlashCardItem {
   originalSentence: string
   focusPhrase?: string
   suggestion?: string
+  kindLabel?: string
+  cardKey?: string
   [key: string]: unknown
 }
+
+const resolvedHint = computed(() =>
+    props.showHint ?? props.layout !== 'aside',
+)
+
+/** aside 只要三张叠层样式（库的 stack=n 会露出 n+1 层，故用 2） */
+const stackDepth = computed(() => (props.layout === 'aside' ? (props.compact ? 1 : 2) : 3))
+const stackOffset = computed(() => (props.layout === 'aside' ? (props.compact ? 8 : 12) : 16))
+const stackScale = computed(() => (props.layout === 'aside' ? (props.compact ? 0.018 : 0.025) : 0.02))
 
 type SwipeDir = 'left' | 'right'
 
@@ -39,6 +76,9 @@ const rootRef = ref<HTMLElement | null>(null)
 const deckRef = ref<DeckExpose | null>(null)
 const resetting = ref(false)
 const swiping = ref(false)
+const dragging = ref(false)
+const deleting = ref(false)
+const deleteAnimatingId = ref<string | null>(null)
 const reviewed = ref(0)
 const celebrated = ref(false)
 /** 按钮/键盘滑出时叠在卡片上的对勾/叉（不 peek，避免抽动） */
@@ -48,16 +88,93 @@ const feedbackCardId = ref<string | null>(null)
 const hotkeysArmed = ref(false)
 /** 驱动 canRestore / isStart 在脚本侧刷新 */
 const uiTick = ref(0)
+let liftHoldTimer: number | null = null
+
+const deckLifted = computed(() => swiping.value || dragging.value || deleting.value)
+
+function clearLiftHold() {
+  if (liftHoldTimer) {
+    clearTimeout(liftHoldTimer)
+    liftHoldTimer = null
+  }
+}
+
+/** 飞出动画期间保持抬层，避免毛玻璃圆角裁切 */
+function holdLift(ms = 480) {
+  clearLiftHold()
+  swiping.value = true
+  liftHoldTimer = window.setTimeout(() => {
+    swiping.value = false
+    liftHoldTimer = null
+  }, ms)
+}
+
+function onDragStart() {
+  dragging.value = true
+}
+
+function onDragEnd() {
+  dragging.value = false
+}
+
+function onSwipe() {
+  reviewed.value = Math.min(count.value, reviewed.value + 1)
+  dragging.value = false
+  holdLift(480)
+  refreshUi()
+  if (!suppressCelebrate.value && reviewed.value >= count.value) {
+    nextTick(() => celebrate())
+  }
+}
+
+const reviewMode = computed(() => Boolean(props.reviewCard))
+
+function onSwipeLeft() {
+  void settleSwipe('left')
+}
+
+function onSwipeRight() {
+  void settleSwipe('right')
+}
+
+async function settleSwipe(direction: SwipeDir) {
+  const card = deckItems.value[reviewed.value]
+  onSwipe()
+  if (!props.reviewCard || !card?.cardKey) {
+    return
+  }
+  try {
+    await props.reviewCard(card.cardKey, direction === 'right' ? 'good' : 'again')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '评分失败，请稍后重试'))
+  }
+}
 
 const deckItems = computed((): FlashCardItem[] =>
     props.items.map((item, index) => ({
-      id: `cn-expr-${item.originalIndex ?? index}`,
+      id: item.cardKey ? `cn-expr-${item.cardKey}` : `cn-expr-${item.originalIndex ?? index}`,
       originalIndex: item.originalIndex,
       originalSentence: item.originalSentence,
       focusPhrase: item.focusPhrase,
       suggestion: item.suggestion,
+      kindLabel: item.kindLabel,
+      cardKey: item.cardKey,
     })),
 )
+
+function frontPaneTag(item: FlashCardItem): string {
+  if (props.variant === 'growth') {
+    return isVocabFocus(item) ? '中文' : '提示'
+  }
+  return isVocabFocus(item) ? '目标词' : '原句'
+}
+
+function backPaneTag(item: FlashCardItem): string {
+  if (props.variant === 'growth') {
+    return isVocabFocus(item) ? '英文' : '答案'
+  }
+  return isVocabFocus(item) ? '英文' : '英文建议'
+}
 
 const count = computed(() => deckItems.value.length)
 
@@ -148,13 +265,50 @@ function celebrate() {
   }, 220)
 }
 
-function onSwipe() {
-  reviewed.value = Math.min(count.value, reviewed.value + 1)
-  refreshUi()
-  if (reviewed.value >= count.value) {
-    nextTick(() => celebrate())
+/** 插入动画期间抑制滑出庆祝 */
+const suppressCelebrate = ref(false)
+
+/**
+ * 用「撤回上一张」同款 restore 动画表现新卡插入：
+ * 先轻推走当前顶卡再 restore 飞回（不 reset 整副牌）。
+ */
+async function playInsertRestore() {
+  if (resetting.value || swiping.value || deleting.value || count.value === 0) {
+    return
+  }
+  await nextTick()
+  const deck = deckRef.value
+  if (!deck) {
+    return
+  }
+  const keepReviewed = reviewed.value
+  suppressCelebrate.value = true
+  celebrated.value = false
+  feedbackDir.value = null
+  feedbackCardId.value = null
+  holdLift(520)
+  swiping.value = true
+  try {
+    deck.swipeLeft()
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 360)
+    })
+    deck.restore()
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 80)
+    })
+  } finally {
+    swiping.value = false
+    suppressCelebrate.value = false
+    reviewed.value = keepReviewed
+    refreshUi()
   }
 }
+
+defineExpose({
+  playInsertRestore,
+  getActiveIndex: () => reviewed.value,
+})
 
 function onRestore() {
   reviewed.value = Math.max(0, reviewed.value - 1)
@@ -167,7 +321,7 @@ function onRestore() {
 
 /** 叠层显示对勾/叉，直接滑出（不再 peek，避免先位移再飞出的抽动） */
 async function swipeWithFeedback(direction: SwipeDir) {
-  if (isComplete.value || resetting.value || swiping.value || !deckRef.value) {
+  if (isComplete.value || resetting.value || swiping.value || deleting.value || !deckRef.value) {
     return
   }
   const card = deckItems.value[reviewed.value]
@@ -188,7 +342,10 @@ async function swipeWithFeedback(direction: SwipeDir) {
     window.setTimeout(() => {
       feedbackDir.value = null
       feedbackCardId.value = null
-      swiping.value = false
+      // onSwipe 会 holdLift；若未触发则兜底落下
+      if (!liftHoldTimer) {
+        swiping.value = false
+      }
     }, 420)
   }
 }
@@ -206,14 +363,56 @@ function swipeRight() {
 }
 
 function restore() {
-  if (resetting.value) {
+  if (resetting.value || deleting.value) {
     return
   }
   deckRef.value?.restore()
 }
 
+async function deleteCurrent() {
+  if (!props.deletable || !props.removeCard || isComplete.value || resetting.value || swiping.value || deleting.value) {
+    return
+  }
+  const card = deckItems.value[reviewed.value]
+  if (!card?.cardKey) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('确定删除这张成长卡？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
+  deleting.value = true
+  deleteAnimatingId.value = card.id
+  const keepIndex = reviewed.value
+  try {
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 320)
+    })
+    await props.removeCard(card.cardKey)
+    celebrated.value = false
+    // 删的是当前张：列表收缩后同一 index 即下一张，勿 reset 回第一张
+    reviewed.value = Math.min(keepIndex, Math.max(0, props.items.length))
+    feedbackDir.value = null
+    feedbackCardId.value = null
+    await nextTick()
+    refreshUi()
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '删除失败，请稍后重试'))
+  } finally {
+    deleteAnimatingId.value = null
+    deleting.value = false
+  }
+}
+
 async function resetToFirst(resetFn?: DeckExpose['reset']) {
-  if (resetting.value) {
+  if (resetting.value || deleting.value) {
     return
   }
   if (isStart.value && !isComplete.value) {
@@ -274,6 +473,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown)
+  clearLiftHold()
   confetti.reset()
 })
 </script>
@@ -282,24 +482,38 @@ onBeforeUnmount(() => {
   <section
       ref="rootRef"
       class="cn-fan kk-glass kk-glass--panel"
-      :class="`cn-fan--${layout}`"
-      aria-label="知识卡片"
+      :class="[
+        `cn-fan--${layout}`,
+        `cn-fan--${variant}`,
+        {
+          'cn-fan--compact': compact,
+          'cn-fan--lift': deckLifted,
+        },
+      ]"
+      :aria-label="heading"
       @mouseenter="armHotkeys"
       @mouseleave="disarmHotkeys()"
   >
     <header class="cn-fan-head">
       <span class="cn-fan-title">
         <el-icon aria-hidden="true"><ChatLineSquare/></el-icon>
-        知识卡片
+        {{ heading }}
       </span>
       <span class="cn-fan-count">总计 {{ count }} 张卡片</span>
     </header>
-    <p class="cn-fan-hint">
+    <p v-if="resolvedHint" class="cn-fan-hint">
       鼠标移入本区后：
       <kbd>空格</kbd> 翻面 ·
-      <kbd>←</kbd> 略过 ·
-      <kbd>→</kbd> 掌握 ·
-      也可滑动或点击卡片 · 不计入语法错误
+      <template v-if="reviewMode">
+        <kbd>←</kbd> 不会 ·
+        <kbd>→</kbd> 会了 ·
+      </template>
+      <template v-else>
+        <kbd>←</kbd> 略过 ·
+        <kbd>→</kbd> 掌握 ·
+      </template>
+      也可滑动或点击卡片
+      <template v-if="variant === 'expression'"> · 不计入语法错误</template>
     </p>
 
     <div class="cn-fan-stage">
@@ -310,43 +524,53 @@ onBeforeUnmount(() => {
             :items="deckItems"
             item-key="id"
             :loop="false"
-            :stack="3"
+            :stack="stackDepth"
             stack-direction="top"
-            :stack-offset="16"
-            :stack-scale="0.02"
+            :stack-offset="stackOffset"
+            :stack-scale="stackScale"
             swipe-direction="horizontal"
             :wait-animation-end="true"
             :a11y="{ enabled: true, keyboard: false, manageFocus: false }"
-            @swipe-left="onSwipe"
-            @swipe-right="onSwipe"
+            @swipe-left="onSwipeLeft"
+            @swipe-right="onSwipeRight"
             @restore="onRestore"
+            @dragstart="onDragStart"
+            @dragend="onDragEnd"
         >
           <template #default="{ item: rawItem }">
             <template v-for="item in [asCard(rawItem)]" :key="item.id">
-              <div class="cn-flip-wrap">
+              <div
+                  class="cn-flip-wrap"
+                  :class="{ 'cn-flip-wrap--deleting': deleteAnimatingId === item.id }"
+              >
                 <FlipCard class="cn-flip" flip-axis="y">
                   <template #front>
                     <article class="cn-card cn-card--front">
                       <header class="cn-card-head">
-                        <span class="cn-badge">正面</span>
+                        <span class="cn-badge">{{ item.kindLabel || '正面' }}</span>
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
                       <section class="cn-pane cn-pane--back">
-                        <template v-if="isVocabFocus(item)">
+                        <template v-if="isVocabFocus(item) || variant === 'growth'">
                           <div class="cn-suggest-block cn-suggest-block--solo">
-                            <span class="pane-tag">目标词</span>
+                            <span class="pane-tag">{{ frontPaneTag(item) }}</span>
                             <p
-                                class="pane-improved pane-improved--center pane-improved--term"
+                                class="pane-improved pane-improved--center"
+                                :class="{ 'pane-improved--term': isVocabFocus(item) }"
                                 :title="cardFrontText(item)"
                             >{{ cardFrontText(item) }}</p>
                           </div>
-                          <p class="cn-orig-mini" :title="item.originalSentence">
+                          <p
+                              v-if="variant === 'expression' && isVocabFocus(item)"
+                              class="cn-orig-mini"
+                              :title="item.originalSentence"
+                          >
                             原句：{{ item.originalSentence }}
                           </p>
                         </template>
                         <template v-else>
                           <div class="cn-suggest-block cn-suggest-block--solo">
-                            <span class="pane-tag">原句</span>
+                            <span class="pane-tag">{{ frontPaneTag(item) }}</span>
                             <p
                                 class="pane-improved pane-improved--center"
                                 :title="item.originalSentence"
@@ -360,21 +584,25 @@ onBeforeUnmount(() => {
                   <template #back>
                     <article class="cn-card cn-card--back">
                       <header class="cn-card-head">
-                        <span class="cn-badge cn-badge--back">反面</span>
+                        <span class="cn-badge cn-badge--back">{{ item.kindLabel || '反面' }}</span>
                         <span class="cn-card-index">{{ cardOrdinal(item) }}/{{ count }}</span>
                       </header>
                       <section class="cn-pane cn-pane--back">
-                        <template v-if="isVocabFocus(item)">
+                        <template v-if="isVocabFocus(item) || variant === 'growth'">
                           <div class="cn-suggest-block cn-suggest-block--solo">
-                            <span class="pane-tag">英文</span>
+                            <span class="pane-tag">{{ backPaneTag(item) }}</span>
                             <p
                                 v-if="item.suggestion"
                                 class="pane-improved pane-improved--center"
                                 :title="item.suggestion"
                             >{{ item.suggestion }}</p>
-                            <p v-else class="cn-empty-hint">暂未生成英文对应</p>
+                            <p v-else class="cn-empty-hint">暂未生成对应内容</p>
                           </div>
-                          <p class="cn-orig-mini" :title="item.originalSentence">
+                          <p
+                              v-if="variant === 'expression' && isVocabFocus(item)"
+                              class="cn-orig-mini"
+                              :title="item.originalSentence"
+                          >
                             原句：{{ item.originalSentence }}
                           </p>
                         </template>
@@ -384,7 +612,7 @@ onBeforeUnmount(() => {
                             <p class="pane-orig" :title="item.originalSentence">{{ item.originalSentence }}</p>
                           </div>
                           <div class="cn-suggest-block">
-                            <span class="pane-tag">英文建议</span>
+                            <span class="pane-tag">{{ backPaneTag(item) }}</span>
                             <p
                                 v-if="item.suggestion"
                                 class="pane-improved"
@@ -424,13 +652,14 @@ onBeforeUnmount(() => {
           <template #empty="{ reset }">
             <div class="cn-done" role="status">
               <p class="cn-done-title">复习完成</p>
-              <p class="cn-done-desc">本轮知识卡片已看完</p>
+              <p class="cn-done-desc">{{ reviewMode ? '今日成长卡已练完' : '已复习完' }}</p>
               <button
+                  v-if="!reviewMode"
                   type="button"
                   class="cn-done-btn"
                   @click="resetToFirst(reset)"
               >
-                再看一遍
+                再复习一遍
               </button>
             </div>
           </template>
@@ -442,7 +671,7 @@ onBeforeUnmount(() => {
             type="button"
             class="cn-action-btn"
             data-tip="重置到第一张"
-            :disabled="isStart || resetting"
+            :disabled="reviewMode || isStart || resetting || deleting"
             :class="{ 'cn-action-btn--spin': resetting }"
             aria-label="重置到第一张"
             @click="resetToFirst()"
@@ -453,7 +682,7 @@ onBeforeUnmount(() => {
             type="button"
             class="cn-action-btn"
             data-tip="撤回上一张"
-            :disabled="!canRestore || resetting"
+            :disabled="reviewMode || !canRestore || resetting || deleting"
             aria-label="撤回上一张"
             @click="restore"
         >
@@ -462,9 +691,9 @@ onBeforeUnmount(() => {
         <button
             type="button"
             class="cn-action-btn cn-action-btn--no"
-            data-tip="略过 ←"
-            :disabled="resetting || swiping"
-            aria-label="略过"
+            :data-tip="reviewMode ? '不会 ←' : '略过 ←'"
+            :disabled="resetting || swiping || deleting"
+            :aria-label="reviewMode ? '不会' : '略过'"
             @click="swipeLeft"
         >
           <el-icon><CloseBold/></el-icon>
@@ -472,26 +701,23 @@ onBeforeUnmount(() => {
         <button
             type="button"
             class="cn-action-btn cn-action-btn--yes"
-            data-tip="掌握 →"
-            :disabled="resetting || swiping"
-            aria-label="掌握"
+            :data-tip="reviewMode ? '会了 →' : '掌握 →'"
+            :disabled="resetting || swiping || deleting"
+            :aria-label="reviewMode ? '会了' : '掌握'"
             @click="swipeRight"
         >
           <el-icon><Check/></el-icon>
         </button>
-      </div>
-
-      <div v-else class="cn-actions cn-actions--done">
         <button
+            v-if="deletable"
             type="button"
-            class="cn-action-btn"
-            data-tip="再看一遍"
-            :disabled="resetting"
-            :class="{ 'cn-action-btn--spin': resetting }"
-            aria-label="再看一遍"
-            @click="resetToFirst()"
+            class="cn-action-btn cn-action-btn--delete"
+            data-tip="删除"
+            :disabled="resetting || swiping || deleting || !deckItems[reviewed]?.cardKey"
+            aria-label="删除成长卡"
+            @click="deleteCurrent"
         >
-          <el-icon><Refresh/></el-icon>
+          <el-icon><Delete/></el-icon>
         </button>
       </div>
     </div>
@@ -503,6 +729,16 @@ onBeforeUnmount(() => {
   padding: 0.7rem 0.9rem 0.95rem;
   margin-bottom: 1.1rem;
   outline: none;
+}
+
+/* 滑走/拖拽/删除时抬到最前，并关掉毛玻璃裁切（backdrop-filter+圆角会裁子元素） */
+.cn-fan--lift {
+  position: relative;
+  z-index: 80;
+  overflow: visible;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--kk-color-surface-solid);
 }
 
 /* 去掉牌堆/卡片在聚焦时的浏览器默认黑框 */
@@ -521,12 +757,101 @@ onBeforeUnmount(() => {
   outline: none !important;
 }
 
-.cn-fan--main .cn-fan-title {
+.cn-fan--aside {
+  padding: 0.75rem 0.8rem 0.9rem;
+}
+
+.cn-fan--aside .cn-fan-stage {
+  width: 100%;
+  margin-top: 0.55rem;
+}
+
+.cn-fan--aside .cn-fan-deck {
+  min-height: calc(14.5rem + 1.75rem);
+}
+
+.cn-fan--aside .cn-fan-deck :deep(.flip-card),
+.cn-fan--aside .cn-fan-deck :deep(.flip-card__inner) {
+  height: 14.5rem;
+}
+
+.cn-fan--aside .cn-fan-deck :deep(.flashcards) {
+  padding-top: 1.5rem;
+}
+
+.cn-fan--aside .cn-actions {
+  margin-top: 0.75rem;
+}
+
+.cn-fan--compact.cn-fan--aside {
+  padding: 0.35rem 0.65rem 0.55rem;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-stage {
+  width: min(100%, 24rem);
+  margin-top: 0;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck {
+  min-height: 11.3rem;
+  max-height: 11.3rem;
+  margin-bottom: 0;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards) {
+  min-height: 10.35rem !important;
+  height: 10.35rem !important;
+  max-height: 10.35rem !important;
+  padding-top: 0.75rem;
+  box-sizing: border-box;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards__stack),
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards__cards),
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flashcards__card-wrapper) {
+  min-height: 9.6rem !important;
+  height: 9.6rem !important;
+  max-height: 9.6rem !important;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flip-card),
+.cn-fan--compact.cn-fan--aside .cn-fan-deck :deep(.flip-card__inner) {
+  height: 9.6rem !important;
+}
+
+.cn-fan--compact .cn-card {
+  padding: 0.55rem 0.7rem 0.62rem;
+}
+
+.cn-fan--compact .pane-improved--center {
+  font-size: 0.95rem;
+  line-height: 1.36;
+  -webkit-line-clamp: 4;
+}
+
+.cn-fan--compact .pane-improved--term {
+  font-size: 1.18rem;
+  line-height: 1.25;
+}
+
+.cn-fan--compact.cn-fan--aside .cn-actions {
+  gap: 0.62rem;
+  margin-top: 0.4rem;
+  padding-top: 0;
+}
+
+.cn-fan--compact .cn-action-btn {
+  width: 2.32rem;
+  height: 2.32rem;
+}
+
+.cn-fan--main .cn-fan-title,
+.cn-fan--aside .cn-fan-title {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   font-family: var(--kk-font-display);
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--kk-color-primary);
 }
@@ -575,6 +900,7 @@ onBeforeUnmount(() => {
 
 .cn-fan-deck {
   position: relative;
+  z-index: 6;
   width: 100%;
   min-height: calc(17.25rem + 3.25rem);
   margin-bottom: 0.25rem;
@@ -589,6 +915,17 @@ onBeforeUnmount(() => {
   width: 100%;
   padding-top: 3rem;
   box-sizing: content-box;
+  overflow: visible;
+  isolation: auto;
+}
+
+.cn-fan-deck :deep(.flashcards__card-wrapper) {
+  contain: none;
+}
+
+.cn-fan-deck :deep(.flashcards__card-wrapper--animating) {
+  z-index: 90 !important;
+  pointer-events: none;
 }
 
 .cn-flip {
@@ -599,6 +936,22 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   height: 100%;
+}
+
+.cn-flip-wrap--deleting {
+  animation: cn-card-delete 0.32s var(--kk-ease-out) forwards;
+  pointer-events: none;
+}
+
+@keyframes cn-card-delete {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.88) translateY(18px);
+  }
 }
 
 .cn-prog-indicator {
@@ -823,6 +1176,11 @@ onBeforeUnmount(() => {
   border: 1px dashed color-mix(in srgb, var(--kk-color-primary) 22%, transparent);
   background: var(--kk-glass-inner-bg-muted);
   text-align: center;
+  box-sizing: border-box;
+}
+
+.cn-fan--aside .cn-done {
+  min-height: 14.5rem;
 }
 
 .cn-done-title {
@@ -861,10 +1219,11 @@ onBeforeUnmount(() => {
 
 .cn-actions {
   position: relative;
-  z-index: 5;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.1rem;
   padding-top: 0.15rem;
@@ -963,6 +1322,24 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 22px color-mix(in srgb, #2f6b4f 36%, transparent);
 }
 
+.cn-action-btn--delete {
+  width: 2.15rem;
+  height: 2.15rem;
+  margin-left: 0.1rem;
+  color: var(--kk-color-text-subtle);
+  border-color: color-mix(in srgb, var(--kk-color-primary) 10%, transparent);
+  background: color-mix(in srgb, var(--kk-color-primary) 3%, white);
+  box-shadow: 0 2px 8px rgba(36, 39, 64, 0.05);
+  font-size: 0.85rem;
+}
+
+.cn-action-btn--delete:hover:not(:disabled) {
+  color: var(--kk-color-danger);
+  border-color: color-mix(in srgb, var(--kk-color-danger) 28%, transparent);
+  background: color-mix(in srgb, var(--kk-color-danger) 8%, white);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--kk-color-danger) 14%, transparent);
+}
+
 .cn-action-btn--spin .el-icon {
   animation: cn-reset-spin 0.7s linear infinite;
 }
@@ -986,6 +1363,11 @@ onBeforeUnmount(() => {
 
   .cn-prog-indicator {
     animation: none;
+  }
+
+  .cn-flip-wrap--deleting {
+    animation: none;
+    opacity: 0;
   }
 
   .cn-action-btn,

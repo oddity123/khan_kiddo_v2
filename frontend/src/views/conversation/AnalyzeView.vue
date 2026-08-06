@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import {Cpu, Document, RefreshRight, Upload} from '@element-plus/icons-vue'
+import type {InputInstance} from 'element-plus'
 import {ElMessage} from 'element-plus'
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 
 import {analyzeConversationStream, listConversationLlmModels} from '@/api/conversationAnalysis'
+import ImportMethodsPanel from '@/components/conversation/ImportMethodsPanel.vue'
 import type {ConversationAnalysisProgress, LlmModelOption} from '@/types/conversation'
 import {PROGRESS_STATUS} from '@/types/conversation'
 import {getErrorMessage} from '@/utils/error'
@@ -42,6 +44,13 @@ let lastStreamingCommitKey = ''
 
 const progressListRef = ref<HTMLElement | null>(null)
 const streamingScrollRef = ref<HTMLElement | null>(null)
+const contentInputRef = ref<InputInstance | null>(null)
+
+async function focusContentInput() {
+  await nextTick()
+  contentInputRef.value?.focus()
+  contentInputRef.value?.textarea?.scrollIntoView({behavior: 'smooth', block: 'center'})
+}
 
 function scrollPaneToBottom(el: HTMLElement | null) {
   if (!el) {
@@ -292,7 +301,9 @@ async function onAnalyze() {
   <div class="analyze-page">
     <header class="page-head">
       <h1 class="page-title">对话分析</h1>
-      <p class="page-desc">粘贴你与 AI 的英文对话字幕，系统将逐句标出可优化表达并给出改写建议。也可通过浏览器扩展从 ChatGPT 分享页一键导入。</p>
+      <p class="page-desc">
+        导入你与 AI 的英文对话，系统将逐句标出可优化表达并给出改写建议。右侧有三种导入方式可选。
+      </p>
       <p v-if="extensionImportHint" class="import-hint">{{ extensionImportHint }}</p>
     </header>
 
@@ -303,6 +314,7 @@ async function onAnalyze() {
           对话字幕
         </div>
         <el-input
+            ref="contentInputRef"
             v-model="content"
             type="textarea"
             :rows="14"
@@ -356,7 +368,13 @@ async function onAnalyze() {
         </div>
       </section>
 
-      <section v-if="showProgress" class="result-panel kk-glass kk-glass--panel">
+      <ImportMethodsPanel
+          v-if="!showProgress"
+          class="import-side"
+          @focus-input="focusContentInput"
+      />
+
+      <section v-else class="result-panel kk-glass kk-glass--panel">
         <div class="panel-label">分析进度</div>
         <p v-if="selectedModelLabel && analyzing" class="progress-model-hint">
           本次使用：{{ selectedModelLabel }}
@@ -479,6 +497,10 @@ async function onAnalyze() {
 .input-panel,
 .result-panel {
   padding: 1.25rem 1.35rem;
+}
+
+.import-side {
+  min-height: 0;
 }
 
 .result-panel {
@@ -739,8 +761,33 @@ async function onAnalyze() {
     grid-template-columns: 1fr;
   }
 
+  /* 移动端：先看导入引导，再填内容 */
+  .import-side {
+    order: -1;
+  }
+
   .result-panel {
     height: 32rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-desc {
+    max-width: none;
+  }
+
+  .input-actions {
+    gap: 0.5rem;
+  }
+
+  .input-actions :deep(.el-button) {
+    flex: 1 1 auto;
+  }
+
+  .link-history {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
   }
 }
 </style>

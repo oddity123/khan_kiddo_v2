@@ -4,6 +4,9 @@ import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.ai.conversation.model.GrammarErrorDto;
 import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
+import com.khankiddo.learning.knowledge.PointChannel;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -41,6 +44,7 @@ public class GrammarAnalysisSanitizer {
     private static final char[] ARROWS = {'\u2192', '\u21d2'};
 
     private final ConversationAnalysisProperties properties;
+    private final PointDictionary pointDictionary;
 
     public GrammarAnalysisResult sanitize(GrammarAnalysisResult grammar) {
         if (!properties.isSanitizerEnabled()
@@ -62,6 +66,7 @@ public class GrammarAnalysisSanitizer {
             if (!CollectionUtils.isEmpty(item.getErrors())) {
                 for (GrammarErrorDto error : item.getErrors()) {
                     if (shouldKeep(error, normalizedOriginal)) {
+                        error.setPointId(pointDictionary.resolveOrFallback(error.getPointId()).pointId());
                         kept.add(error);
                     } else {
                         droppedErrors++;
@@ -87,7 +92,8 @@ public class GrammarAnalysisSanitizer {
         if (error == null || !StringUtils.hasText(error.getPoint())) {
             return false;
         }
-        if (StringUtils.hasText(error.getType()) && "Chinese".equalsIgnoreCase(error.getType().trim())) {
+        PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+        if (definition.channel() == PointChannel.CHINESE) {
             return false;
         }
         if (!StringUtils.hasText(normalizedOriginal)) {

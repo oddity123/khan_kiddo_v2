@@ -19,30 +19,49 @@
             "items": {
               "type": "object",
               "properties": {
-                "type": {
+                "pointId": {
                   "type": "string",
                   "enum": [
-                    "Tense",
-                    "Agreement",
-                    "Plural",
-                    "Article",
-                    "Preposition",
-                    "Pronoun",
-                    "Structure",
-                    "Clause",
-                    "Word Form",
-                    "Comparison",
-                    "Word Choice",
-                    "Collocation",
-                    "Chinglish",
-                    "Redundancy",
-                    "Tone",
-                    "Unnatural",
-                    "Vocabulary",
-                    "Formal",
-                    "Incomplete"
+                    "ARTICLE_GENERIC_ZERO",
+                    "ARTICLE_FIRST_MENTION",
+                    "ARTICLE_A_AN",
+                    "PLURAL_COUNTABLE",
+                    "UNCOUNTABLE_NO_PLURAL",
+                    "SVA_THIRD_PERSON",
+                    "SVA_RELATIVE_CLAUSE",
+                    "PAST_SIMPLE_DONE",
+                    "PRESENT_PERFECT_FORM",
+                    "PRESENT_CONTINUOUS",
+                    "AUX_DID_BASE",
+                    "AUX_MODAL_BASE",
+                    "THERE_BE",
+                    "MISSING_SUBJECT_BE",
+                    "PREP_FIXED",
+                    "COLLOCATION",
+                    "FEEL_ED_ADJ",
+                    "GERUND_AS_SUBJECT",
+                    "GERUND_AFTER_PREP",
+                    "WORD_FORM_POS",
+                    "NOUN_CLAUSE_ORDER",
+                    "QUESTION_STRUCTURE",
+                    "SENTENCE_LOOSE_AND",
+                    "PRONOUN_NUMBER",
+                    "RELATIVE_NO_RESUMPTIVE",
+                    "FLUENCY_INCOMPLETE",
+                    "FLUENCY_REDUNDANCY",
+                    "LEXICAL_GAP",
+                    "CHINESE_CODE_SWITCH",
+                    "ARTICLE_OTHER",
+                    "NOUN_NUMBER_OTHER",
+                    "AGREEMENT_OTHER",
+                    "TENSE_OTHER",
+                    "VERB_PATTERN_OTHER",
+                    "PREPOSITION_OTHER",
+                    "WORD_FORM_OTHER",
+                    "STRUCTURE_OTHER",
+                    "PRONOUN_OTHER"
                   ],
-                  "description": "问题类型"
+                  "description": "知识点字典中的具体知识点 ID，用于反查问题类型/严重度/纠正策略。无法判断细粒度知识点时使用兜底 ID（如 STRUCTURE_OTHER）"
                 },
                 "point": {
                   "type": "string",
@@ -50,7 +69,7 @@
                 }
               },
               "required": [
-                "type",
+                "pointId",
                 "point"
               ],
               "additionalProperties": false

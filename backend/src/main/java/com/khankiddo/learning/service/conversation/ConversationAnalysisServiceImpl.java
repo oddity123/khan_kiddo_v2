@@ -5,11 +5,18 @@ import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.knowledge.HabitCardScorer;
+import com.khankiddo.learning.knowledge.HabitScoreInput;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.enums.ProblemType;
+import com.khankiddo.learning.dto.growth.GrowthCardDto;
+import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
+import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
 import com.khankiddo.learning.rag.grammar.GrammarErrorIndexedEvent;
 import com.khankiddo.learning.security.SecurityUtils;
@@ -39,6 +46,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final EducationalSummaryParser summaryParser;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final PointDictionary pointDictionary;
+    private final HabitCardScorer habitCardScorer;
+    private final GrowthCardReviewService growthCardReviewService;
 
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
@@ -124,6 +134,8 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             eventPublisher.publishEvent(new GrammarErrorIndexedEvent(userId, analysisId, dbItems));
         }
 
+        eventPublisher.publishEvent(new GrowthCardMintRequestedEvent(userId, analysisId));
+
         return ConversationAnalysisResultDto.builder()
                 .analysisId(analysisId)
                 .analyzedAt(analyzedAt)
@@ -152,13 +164,23 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 continue;
             }
             for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
-                String englishType = toEnglishProblemType(error.getType());
                 String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
+                String resolvedPointId;
+                String englishType;
+                if (StringUtils.hasText(error.getPointId())) {
+                    PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
+                    resolvedPointId = definition.pointId();
+                    englishType = definition.problemType();
+                } else {
+                    resolvedPointId = pointDictionary.resolveOrFallback(null).pointId();
+                    englishType = toEnglishProblemType(error.getType());
+                }
                 dbItems.add(ConversationAnalysisItem.builder()
                         .analysisId(analysisId)
                         .sentenceId(sentenceId)
                         .originalSentence(item.getOriginalSentence())
                         .problemTypes(englishType)
+                        .pointId(resolvedPointId)
                         .errorPoint(point)
                         .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
                         .build());
@@ -194,6 +216,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                             .map(err -> ConversationAnalysisSaveRequest.SaveError.builder()
                                     .type(err.getType())
                                     .point(err.getPoint())
+                                    .pointId(err.getPointId())
                                     .build())
                             .toList())
                     .build());
@@ -214,6 +237,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                                     .map(err -> AnalysisErrorDto.builder()
                                             .type(err.getType())
                                             .point(err.getPoint())
+                                            .pointId(err.getPointId())
                                             .build())
                                     .toList())
                             .build())
@@ -241,11 +265,25 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             if (CollectionUtils.isEmpty(item.getErrors())) {
                 item.setErrors(new ArrayList<>());
             }
-            ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
+            PointDefinition definition = StringUtils.hasText(row.getPointId())
+                    ? pointDictionary.resolveOrFallback(row.getPointId())
+                    : null;
+            ProblemType problemType = definition != null
+                    ? ProblemType.fromEnglishName(definition.problemType())
+                    : ProblemType.fromEnglishName(row.getProblemTypes());
+            String displayType = problemType != null
+                    ? problemType.getChineseName()
+                    : (definition != null ? definition.titleZh() : row.getProblemTypes());
+            String errorLevel = definition != null && StringUtils.hasText(definition.errorLevel())
+                    ? definition.errorLevel()
+                    : (problemType != null ? problemType.getErrorLevel().name() : "STYLE");
             item.getErrors().add(AnalysisErrorDto.builder()
-                    .type(problemType != null ? problemType.getChineseName() : row.getProblemTypes())
+                    .pointId(definition != null ? definition.pointId() : row.getPointId())
+                    .type(displayType)
                     .point(row.getErrorPoint())
-                    .errorLevel(problemType != null ? problemType.getErrorLevel().name() : "STYLE")
+                    .errorLevel(errorLevel)
+                    .familyId(definition != null ? definition.familyId() : null)
+                    .channel(definition != null ? definition.channel().getJsonValue() : null)
                     .build());
         }
 
@@ -266,6 +304,17 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 : summaryParser.enrichReportWithScores(
                         summaryRoot, items, resolveTotalSentences(summaryRoot, items.size()));
 
+        HabitCardScorer.HabitScoreResult habitScoreResult =
+                buildHabitScoreResult(
+                        rows,
+                        enrichedSummary.getChineseExpressions(),
+                        enrichedSummary.getActionCardDiagnoses());
+
+        Optional<GrowthCardDto> habitCard = growthCardReviewService.findHabitCardForAnalysis(analysisId);
+        String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(
+                habitScoreResult.topHabit(), analysis.getCreatedAt(), habitCard.isPresent());
+        List<GrowthCardDto> growthCards = growthCardReviewService.listByAnalysis(analysisId);
+
         return ConversationAnalysisDetailDto.builder()
                 .analysisId(analysis.getAnalysisId())
                 .conversationContent(analysis.getConversationContent())
@@ -280,7 +329,88 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .items(items)
                 .errorTypeDistribution(distribution)
                 .chineseExpressions(enrichedSummary.getChineseExpressions())
+                .topHabit(habitScoreResult.topHabit())
+                .actionCards(habitScoreResult.actionCards())
+                .familyDistribution(habitScoreResult.familyDistribution())
+                .habitGrowthMintStatus(habitGrowthMintStatus)
+                .habitGrowthCard(habitCard.orElse(null))
+                .growthCards(growthCards)
                 .build();
+    }
+
+    /**
+     * 由持久化的错误行（含 {@code pointId}）+ 中文表达组装打分器输入。旧数据（无 {@code pointId}）
+     * 整体跳过打分：{@code actionCards} 为空、{@code topHabit} 为 {@code null}，饼图交由调用方回退
+     * {@code errorTypeDistribution}。
+     */
+    HabitCardScorer.HabitScoreResult buildHabitScoreResult(
+            List<ConversationAnalysisItem> rows, List<ChineseExpressionDto> chineseExpressions) {
+        return buildHabitScoreResult(rows, chineseExpressions, List.of());
+    }
+
+    HabitCardScorer.HabitScoreResult buildHabitScoreResult(
+            List<ConversationAnalysisItem> rows,
+            List<ChineseExpressionDto> chineseExpressions,
+            List<ActionCardDiagnosisDto> diagnoses) {
+        boolean hasPointId = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
+        if (!hasPointId) {
+            return new HabitCardScorer.HabitScoreResult(null, List.of(), List.of());
+        }
+
+        List<HabitScoreInput.ErrorHit> errorHits = rows.stream()
+                .map(row -> new HabitScoreInput.ErrorHit(
+                        row.getPointId(),
+                        row.getSentenceId() != null ? String.valueOf(row.getSentenceId()) : null,
+                        row.getOriginalSentence(),
+                        row.getErrorPoint(),
+                        row.getSuggestion(),
+                        resolveErrorLevel(row.getProblemTypes())))
+                .toList();
+
+        HabitCardScorer.HabitScoreResult result =
+                habitCardScorer.score(new HabitScoreInput(errorHits, chineseExpressions));
+        return mergeActionCardDiagnoses(result, diagnoses);
+    }
+
+    private String resolveErrorLevel(String problemTypesEnglish) {
+        ProblemType problemType = ProblemType.fromEnglishName(problemTypesEnglish);
+        return problemType != null ? problemType.getErrorLevel().name() : null;
+    }
+
+    private HabitCardScorer.HabitScoreResult mergeActionCardDiagnoses(
+            HabitCardScorer.HabitScoreResult result,
+            List<ActionCardDiagnosisDto> diagnoses) {
+        if (ObjectUtils.isEmpty(result)
+                || CollectionUtils.isEmpty(result.actionCards())
+                || CollectionUtils.isEmpty(diagnoses)) {
+            return result;
+        }
+        Map<Integer, ActionCardDiagnosisDto> byRank = new HashMap<>();
+        Map<String, ActionCardDiagnosisDto> byHabitKey = new HashMap<>();
+        Map<String, ActionCardDiagnosisDto> byPointId = new HashMap<>();
+        for (ActionCardDiagnosisDto diagnosis : diagnoses) {
+            if (!StringUtils.hasText(diagnosis.getDiagnosisZh())) {
+                continue;
+            }
+            if (diagnosis.getRank() != null) {
+                byRank.put(diagnosis.getRank(), diagnosis);
+            }
+            if (StringUtils.hasText(diagnosis.getHabitKey())) {
+                byHabitKey.put(diagnosis.getHabitKey(), diagnosis);
+            }
+            if (StringUtils.hasText(diagnosis.getPointId())) {
+                byPointId.put(diagnosis.getPointId(), diagnosis);
+            }
+        }
+        for (ActionCardDto card : result.actionCards()) {
+            ActionCardDiagnosisDto diagnosis = Optional.ofNullable(byHabitKey.get(card.getHabitKey()))
+                    .orElseGet(() -> Optional.ofNullable(byPointId.get(card.getPointId()))
+                            .orElse(byRank.get(card.getRank())));
+            if (diagnosis != null && StringUtils.hasText(diagnosis.getDiagnosisZh())) {
+                card.setDiagnosisZh(diagnosis.getDiagnosisZh().trim());
+            }
+        }
+        return result;
     }
 
     private int resolveTotalSentences(EducationalSummaryDto summaryRoot, int fallbackFromItems) {

@@ -11,7 +11,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AnalysisErrorDto {
 
+    private String pointId;
     private String type;
     private String point;
     private String errorLevel;
+    private String familyId;
+    private String channel;
 }

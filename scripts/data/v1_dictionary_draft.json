@@ -342,7 +342,7 @@
       "errorLevel": "NATURAL",
       "problemType": "Word Form",
       "titleZh": "说『我感到…』要用 -ed，不用动词原形或 -ing",
-      "whyZh": "excited 是人的感受，exciting 是事物性质。优先于 WORD_FORM_POS。",
+      "whyZh": "excited 是人的感受，exciting 是事物性质。",
       "fixability": 0.9
     },
     {
@@ -355,7 +355,7 @@
       "errorLevel": "BASIC",
       "problemType": "Word Form",
       "titleZh": "动词做主语时要变成 -ing",
-      "whyZh": "Interrupting is bad，不是 Interrupt is bad。优先于 WORD_FORM_POS。",
+      "whyZh": "Interrupting is bad，不是 Interrupt is bad。",
       "fixability": 0.9
     },
     {
@@ -368,7 +368,7 @@
       "errorLevel": "BASIC",
       "problemType": "Word Form",
       "titleZh": "介词后面的动词要用 -ing",
-      "whyZh": "look forward to doing / about improving；to 若是介词不是不定式。优先于 WORD_FORM_POS。",
+      "whyZh": "look forward to doing / about improving；to 若是介词不是不定式。",
       "fixability": 0.9
     },
     {
@@ -380,10 +380,10 @@
       "estimatedCount": 24,
       "errorLevel": "BASIC",
       "problemType": "Word Form",
-      "titleZh": "其它词性错：名词位放名词，形容词位放形容词",
-      "whyZh": "细叶子（FEEL_ED_ADJ / GERUND_*）吃不下时才用本项。例如 the confident → the confidence。",
+      "titleZh": "名词、形容词、动词别放错位置",
+      "whyZh": "该用名词的地方不要放形容词，该用动词的地方不要放形容词。例如 the confident → the confidence；accurate → check。",
       "fixability": 0.85,
-      "note": "语义上接近家族兜底，但仍单独枚举以便统计；勿优先于细叶子"
+      "note": "语义上接近家族兜底，但仍单独枚举以便统计；勿优先于细叶子；展示层视为 catch-all"
     },
     {
       "pointId": "NOUN_CLAUSE_ORDER",

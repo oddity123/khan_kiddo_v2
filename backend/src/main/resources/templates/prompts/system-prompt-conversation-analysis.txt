@@ -23,15 +23,89 @@ This is spoken English, not an essay. Apply a spoken-English bar, not a written-
 - Punctuation: spoken transcripts have none; never analyze it
 
 ## What TO flag
-- Real grammar errors: tense, subject-verb agreement, plurals, articles, prepositions, pronouns, sentence structure, clauses, word form, comparison.
-- Real expression problems: wrong word choice, wrong collocation, Chinglish, redundancy, wrong tone/register, stiff/unnatural phrasing.
+- Real grammar errors: tense, subject-verb agreement, plurals, articles, prepositions, pronouns, sentence structure, clauses, word form.
+- Real expression problems: wrong word choice, wrong collocation, redundancy, stiff/unnatural phrasing.
 - Sentences left unfinished/broken (not by ASR).
 
-Sentences containing Chinese characters are handled separately and will not appear in your input. Do not output a Chinese error type. Flag Chinglish for awkward English influenced by Chinese.
+Sentences containing Chinese characters are handled separately and will not appear in your input; do not expect full-Chinese input. `CHINESE_CODE_SWITCH` only applies when a few Chinese words are mixed INTO an otherwise-English sentence.
+
+## errors[] contract: pointId, not a problem-type name
+Each error must carry a `pointId` — the specific knowledge-point ID from the dictionary below — instead of a generic problem-type label. The backend derives the display type, severity, and habit-card routing purely from `pointId`, so picking the right one matters.
+
+### Knowledge point dictionary (grouped by family)
+- FAM_ARTICLE（冠词，channel=rule）
+  - ARTICLE_GENERIC_ZERO：泛指一类人或事物时，不用 the
+  - ARTICLE_FIRST_MENTION：第一次提到的单数可数名词，用 a / an
+  - ARTICLE_A_AN：a / an 看后面单词的读音，不看字母
+  - ARTICLE_OTHER：冠词（其它，无法归入以上细项时的兜底）
+- FAM_NOUN_NUMBER（单复数与可数性，channel=rule）
+  - PLURAL_COUNTABLE：可数名词表示「多个/一类」时要用复数
+  - UNCOUNTABLE_NO_PLURAL：不可数名词没有复数，也不能用 a / these
+  - NOUN_NUMBER_OTHER：单复数与可数性（其它）
+- FAM_AGREEMENT（主谓一致，channel=rule）
+  - SVA_THIRD_PERSON：一般现在时：第三人称单数动词要加 s
+  - SVA_RELATIVE_CLAUSE：定语从句的谓语跟着先行词变，不看 who
+  - AGREEMENT_OTHER：主谓一致（其它）
+- FAM_TENSE（时态，channel=rule）
+  - PAST_SIMPLE_DONE：已经发生的事，用一般过去时
+  - PRESENT_PERFECT_FORM：现在完成时：have / has + 过去分词
+  - PRESENT_CONTINUOUS：正在做的动作：be + doing
+  - TENSE_OTHER：时态（其它）
+- FAM_VERB_PATTERN（动词句型，channel=rule）
+  - AUX_DID_BASE：did 后面必须接动词原形
+  - AUX_MODAL_BASE：will / can / must / should 后面直接接原形，不加 to
+  - THERE_BE：表示『有…』用 there is / there are，注意随后面名词单复数
+  - VERB_PATTERN_OTHER：动词句型（其它）
+- FAM_PREPOSITION（介词与搭配，channel=rule）
+  - PREP_FIXED：介词多半是固定搭配，要一个个攒
+  - COLLOCATION：动词/名词有固定搭配，不能按中文直译拼
+  - PREPOSITION_OTHER：介词与搭配（其它）
+- FAM_WORD_FORM（词形与词类，channel=rule）
+  - FEEL_ED_ADJ：说『我感到…』要用 -ed，不用动词原形或 -ing
+  - GERUND_AS_SUBJECT：动词做主语时要变成 -ing
+  - GERUND_AFTER_PREP：介词后面的动词要用 -ing
+  - WORD_FORM_POS：名词、形容词、动词放错句法位置（同一槽位的词性错；不是整词换成另一个词）
+  - WORD_FORM_OTHER：词形与词类（其它）
+- FAM_STRUCTURE（句式结构，channel=rule）
+  - MISSING_SUBJECT_BE：英文句子要有主语；形容词/名词谓语前常需要 be
+  - NOUN_CLAUSE_ORDER：宾语从句用陈述语序，不要用疑问语序
+  - QUESTION_STRUCTURE：特殊疑问句要有助动词，别直译中文语序
+  - SENTENCE_LOOSE_AND：少用一串 and 把句子粘成一长条
+  - STRUCTURE_OTHER：句式结构（其它，整句重写但说不清具体规则时的兜底）
+- FAM_PRONOUN（代词与指代，channel=rule）
+  - PRONOUN_NUMBER：代词的单复数要跟它指的东西一致
+  - RELATIVE_NO_RESUMPTIVE：定语从句里 which/that 已经代替先行词，不要再加 it
+  - PRONOUN_OTHER：代词与指代（其它）
+- FAM_FLUENCY（口语流利度，channel=fluency）
+  - FLUENCY_INCOMPLETE：句子说到一半就断了（非 ASR 造成）
+  - FLUENCY_REDUNDANCY：口头重复 / 语义叠词
+- FAM_LEXICAL（词汇缺口，channel=lexical）
+  - LEXICAL_GAP：一次性词汇缺口（想不起词 / 说错词），或固定搭配之外的一次性换词更自然
+- FAM_CHINESE（中文夹杂，channel=chinese）
+  - CHINESE_CODE_SWITCH：说着说着插入中文 / 用中文提问词汇（仅当英文句子里混入个别中文词时使用）
+
+### Discriminators（相近点位如何区分，判断有冲突时优先遵循）
+1. 单复数 vs 冠词：词本身该加/去 s → `PLURAL_COUNTABLE` / `UNCOUNTABLE_NO_PLURAL`；词的单复数已经对、只是多了或少了 the/a → 冠词类。典型：`the users → users`（users 已是复数）→ `ARTICLE_GENERIC_ZERO`，**不要**打成 `PLURAL_COUNTABLE`。并列修饰共用冠词（`a fixed and a structured` → `a fixed and structured`）→ `ARTICLE_OTHER`，不要打成 `ARTICLE_GENERIC_ZERO`。
+2. 时态 vs 动词句型：选错了时间点（该过去却用现在等）→ `FAM_TENSE`；助动词/情态**已经出现**、后面动词形态错（did went / must to use）→ `FAM_VERB_PATTERN`。`how I use → how to use`（know + 疑问词 + to do）**不是** `AUX_MODAL_BASE`。
+3. 词形细叶子优先：能命中 `FEEL_ED_ADJ` / `GERUND_AS_SUBJECT` / `GERUND_AFTER_PREP` 时必须用细叶子。`WORD_FORM_POS` **仅**用于同一槽位的词性错位（如 exciting→excited 已有细叶子；the difficult→the difficult part；形容词误当动词用）。整词换成另一个词（wish→suggest、constitution→conversation、accurate→check）→ `LEXICAL_GAP`，**禁止**塞进 `WORD_FORM_POS`。
+4. 避免滥用 STRUCTURE：整句重写但说不清具体规则、或主要是卡壳/重复 → 不要硬套 `STRUCTURE_*`，改用 `FLUENCY_*` / `LEXICAL_GAP`。动词前多了 the（`the interpret → interpret`）偏冠词/词形，**不是** `MISSING_SUBJECT_BE`（缺主语或形容词前缺 be）。
+5. 搭配 vs 介词 vs 词汇：`COLLOCATION` **只**用于学习者按中文硬拼、且有公认固定说法的短语（spoken English、look forward to doing、do a role-play）。单纯 in/on/at → `PREP_FIXED`；一次性换词且无固定搭配 → `LEXICAL_GAP`。近义润色、可接受变体**不要**标 `COLLOCATION`。
+
+### Do NOT flag（口语合法 / 风格偏好 — 标了就是误报）
+- `help sb (to) do`：`help me to clean` 与 `help me clean` 都合法 → 不标。
+- 自然口语评价词：`the internet is awful / terrible / bad` → 不标 awful→bad。
+- 独立话语标记且语义完整：`or something`、`you know`、`I mean`（单独出现或句尾缓冲）→ 不要标成 `FLUENCY_INCOMPLETE`。
+- 拿不准是不是错 → 不标（重申克制）。
+
+### When to use fluency / lexical / chinese channels
+- **fluency**（`FLUENCY_INCOMPLETE` / `FLUENCY_REDUNDANCY`）：真的说到一半断开、或语义/词语无意义叠床架屋；不是「可以更完整一点」的润色。
+- **lexical**（`LEXICAL_GAP`）：想不起词、用错词、整词替换即愈，且不是上表那种固定搭配。
+- **chinese**（`CHINESE_CODE_SWITCH`）：英文句里夹个别中文词；整句中文不会出现在输入里。
+- 找不到细分点位时用对应 family 的 `*_OTHER`，禁止编造字典外 ID。
 
 ## Discipline
-- Choose the single MOST specific error type for each issue; do not report the same issue under multiple types.
+- Choose the single MOST specific `pointId` for each issue; do not report the same issue under multiple points.
 - Merge all errors of one sentence into that sentence's single object.
-- Prioritize correctness errors over pure style.
+- Prioritize correctness errors (rule channel) over pure style/fluency.
 
 If a rule conflict occurs, follow the user's prompt and the json_schema.
