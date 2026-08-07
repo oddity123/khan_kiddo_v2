@@ -96,12 +96,10 @@ public class LlmChatModelFactory {
 
     /**
      * Stage2 语法分析：由结构化输出策略决定 response_format / strict / max_tokens 行为。
+     * {@code responseFormat} 可为 null（如千问仅靠 system prompt 约束 Schema），但仍需尊重 omitMaxTokens 等策略字段。
      */
     public StreamingChatModel streamingForGrammarAnalysis(ResolvedLlmModel model) {
         GrammarStreamingModelSpec spec = resolveGrammarStreamingSpec(model);
-        if (spec.getResponseFormat() == null) {
-            return streaming(model);
-        }
         String cacheKey = cacheKey(model) + spec.getCacheSuffix();
         return streamingCache.computeIfAbsent(
                 cacheKey, key -> buildStreamingModel(model.getConfig(), spec));

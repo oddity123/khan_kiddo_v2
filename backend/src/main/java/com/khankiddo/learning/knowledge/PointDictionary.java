@@ -87,6 +87,18 @@ public final class PointDictionary {
             throw new IllegalStateException("知识点字典缺少兜底 pointId: " + FALLBACK_POINT_ID);
         }
 
+        for (FamilyDefinition family : familiesById.values()) {
+            if (!StringUtils.hasText(family.otherPointId())) {
+                throw new IllegalStateException("知识点字典 familyId=" + family.familyId() + " 缺少 otherPointId");
+            }
+            String otherPointId = family.otherPointId().trim();
+            if (!pointsById.containsKey(otherPointId)) {
+                throw new IllegalStateException(
+                        "知识点字典 familyId=" + family.familyId()
+                                + " 的 otherPointId=" + otherPointId + " 不存在于 points");
+            }
+        }
+
         return new PointDictionary(document.version(), pointsById, familiesById);
     }
 

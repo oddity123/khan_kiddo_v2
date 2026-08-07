@@ -2,21 +2,19 @@ package com.khankiddo.learning.llm;
 
 import com.khankiddo.learning.config.LlmModelProperties;
 import com.khankiddo.learning.util.SchemaLoader;
-import dev.langchain4j.model.chat.request.ResponseFormat;
-import dev.langchain4j.model.chat.request.ResponseFormatType;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 /**
- * 千问模型：使用 JSON Mode（json_object）并省略 max_tokens，避免输出被截断。
+ * 千问 / DashScope：不走 API JSON Mode，把 Schema 写入 system prompt；省略 max_tokens，避免输出被截断。
  */
 @Component
 @Order(100)
 public class QwenGrammarStructuredOutputPolicy implements GrammarStructuredOutputPolicy {
 
     private static final String QWEN_PROVIDER = "qwen";
-    private static final String QWEN_JSON_OBJECT_SUFFIX = "|qwen-json-object";
+    private static final String QWEN_PROMPT_SCHEMA_SUFFIX = "|qwen-prompt-schema";
     private static final String DASHSCOPE_HOST = "dashscope.aliyuncs.com";
 
     private final SchemaLoader schemaLoader;
@@ -40,8 +38,8 @@ public class QwenGrammarStructuredOutputPolicy implements GrammarStructuredOutpu
     @Override
     public GrammarStreamingModelSpec buildSpec(ResolvedLlmModel model) {
         return GrammarStreamingModelSpec.builder()
-                .cacheSuffix(QWEN_JSON_OBJECT_SUFFIX)
-                .responseFormat(ResponseFormat.builder().type(ResponseFormatType.JSON).build())
+                .cacheSuffix(QWEN_PROMPT_SCHEMA_SUFFIX)
+                .responseFormat(null)
                 .strictJsonSchema(false)
                 .omitMaxTokens(true)
                 .build();
@@ -53,7 +51,7 @@ public class QwenGrammarStructuredOutputPolicy implements GrammarStructuredOutpu
         return basePrompt + """
 
                 ## JSON Schema（输出必须严格遵循）
-                千问 JSON Mode 需在 prompt 中明确 Schema。请仅输出符合下列 JSON Schema 的 JSON 对象：
+                请仅输出符合下列 JSON Schema 的 JSON 对象（由 prompt 约束，不设置 API response_format）：
                 - 不要 markdown 代码围栏、不要额外说明文字
                 - 所有 string 字段须合法 JSON 转义
                 - 仅包含有问题的句子；无问题句子不要出现在 items 中

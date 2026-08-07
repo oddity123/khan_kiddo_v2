@@ -10,7 +10,7 @@ public interface GrammarStructuredOutputPolicy {
     GrammarStreamingModelSpec buildSpec(ResolvedLlmModel model);
 
     /**
-     * 按厂商策略增强 Stage2 system prompt（千问 JSON Mode 需在 prompt 中描述 Schema）。
+     * 按厂商策略增强 Stage2 system prompt（千问 / DashScope 在 prompt 中注入 Schema，不依赖 API JSON Mode）。
      */
     default String composeSystemPrompt(String basePrompt) {
         return basePrompt;

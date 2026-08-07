@@ -53,6 +53,34 @@ class SchemaLoaderTest {
         assertThat(enumValues).containsExactlyInAnyOrderElementsOf(dictionary.allPointIds());
     }
 
+    @Test
+    void grammarItemContractRequiresSuggestionAndNonEmptyErrors() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode item = objectMapper.readTree(new SchemaLoader().getConversationAnalysisSchema())
+                .path("properties").path("items").path("items");
+
+        assertThat(toStringList(item.path("required")))
+                .containsExactlyInAnyOrder("originalSentence", "suggestion", "errors");
+        assertThat(item.path("properties").path("suggestion").path("minLength").asInt()).isEqualTo(1);
+        assertThat(item.path("properties").path("errors").path("minItems").asInt()).isEqualTo(1);
+        // items 本身允许空数组（无问题句）
+        assertThat(objectMapper.readTree(new SchemaLoader().getConversationAnalysisSchema())
+                .path("properties").path("items").has("minItems")).isFalse();
+    }
+
+    @Test
+    void everyFamilyOtherPointIdExistsInDictionaryAndSchemaEnum() throws Exception {
+        PointDictionary dictionary = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        List<String> enumValues = toStringList(
+                errorItemNode(new SchemaLoader()).path("properties").path("pointId").path("enum"));
+
+        dictionary.familiesById().values().forEach(family -> {
+            assertThat(family.otherPointId()).isNotBlank();
+            assertThat(dictionary.allPointIds()).contains(family.otherPointId());
+            assertThat(enumValues).contains(family.otherPointId());
+        });
+    }
+
     private static JsonNode errorItemNode(SchemaLoader loader) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode root = objectMapper.readTree(loader.getConversationAnalysisSchema());

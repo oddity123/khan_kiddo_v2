@@ -22,4 +22,13 @@ class PointDictionaryTest {
         PointDefinition p = dict.resolveOrFallback("NOT_A_REAL_POINT");
         assertEquals("STRUCTURE_OTHER", p.pointId());
     }
+
+    @Test
+    void everyFamilyOtherPointIdResolves() {
+        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        dict.familiesById().values().forEach(family -> {
+            PointDefinition other = dict.require(family.otherPointId());
+            assertEquals(family.familyId(), other.familyId());
+        });
+    }
 }

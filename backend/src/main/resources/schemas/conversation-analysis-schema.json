@@ -10,10 +10,12 @@
             "type": "string"
           },
           "suggestion": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1
           },
           "errors": {
             "type": "array",
+            "minItems": 1,
             "items": {
               "type": "object",
               "properties": {
@@ -47,6 +49,7 @@
                     "RELATIVE_NO_RESUMPTIVE",
                     "FLUENCY_INCOMPLETE",
                     "FLUENCY_REDUNDANCY",
+                    "FLUENCY_OTHER",
                     "LEXICAL_GAP",
                     "CHINESE_CODE_SWITCH",
                     "ARTICLE_OTHER",

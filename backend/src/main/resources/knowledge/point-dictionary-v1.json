@@ -566,6 +566,22 @@
       "actionHintZh": "按策略把这句再说一遍"
     },
     {
+      "pointId": "FLUENCY_OTHER",
+      "familyId": "FAM_FLUENCY",
+      "channel": "fluency",
+      "cardKind": "fluency_strategy",
+      "cardPolicy": "channel",
+      "habitUnit": "leaf",
+      "impactWeight": 1.15,
+      "fixability": null,
+      "errorLevel": "BASIC",
+      "problemType": "Incomplete",
+      "titleZh": "口语流利度（其它）",
+      "whyZh": "无法归入 incomplete / redundancy 细叶子时的流利度兜底。",
+      "topTitleZh": "口语流利度还有一些零散问题",
+      "actionHintZh": "按策略把这句再说一遍"
+    },
+    {
       "pointId": "LEXICAL_GAP",
       "familyId": "FAM_LEXICAL",
       "channel": "lexical",
