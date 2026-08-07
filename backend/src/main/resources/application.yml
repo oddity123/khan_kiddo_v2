@@ -74,6 +74,10 @@ app:
     analyze-rate-limit-enabled: true
     analyze-rate-limit-max-requests: 5
     analyze-rate-limit-window-minutes: 1
+    # 游客免登录免费分析次数（Cookie kk_guest_id，进程内计数）
+    guest-free-analyze-limit: 3
+    guest-cookie-name: kk_guest_id
+    guest-cookie-max-age-days: 365
   rag:
     embedding-model-name: text-embedding-v3
     embedding-max-segments-per-batch: 10

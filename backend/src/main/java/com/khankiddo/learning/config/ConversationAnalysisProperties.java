@@ -55,4 +55,13 @@ public class ConversationAnalysisProperties {
 
     /** 校验层：口语「先说错、紧接着改对」的自我修正剔除（如 It have It has） */
     private boolean sanitizerDropSelfCorrection = true;
+
+    /** 游客免登录可分析次数（按 guest Cookie，进程内计数） */
+    private int guestFreeAnalyzeLimit = 3;
+
+    /** 游客身份 Cookie 名 */
+    private String guestCookieName = "kk_guest_id";
+
+    /** 游客 Cookie 有效天数 */
+    private int guestCookieMaxAgeDays = 365;
 }

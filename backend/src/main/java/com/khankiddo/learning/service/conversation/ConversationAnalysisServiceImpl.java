@@ -57,6 +57,13 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     }
 
     @Override
+    public ConversationAnalysisResultDto analyzeEphemeral(ConversationAnalysisRequest request,
+                                                         String analysisId,
+                                                         Consumer<ConversationAnalysisProgress> onProgress) {
+        return pipeline.run(request, analysisId, onProgress);
+    }
+
+    @Override
     @Transactional
     public ConversationAnalysisResultDto analyzeAndPersist(ConversationAnalysisRequest request,
                                                            String analysisId,

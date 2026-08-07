@@ -42,8 +42,17 @@ const router = createRouter({
           component: () => import('@/views/conversation/AnalyzeView.vue'),
           meta: {
             title: '对话分析',
-            requiresAuth: true,
             robots: 'noindex, nofollow',
+          },
+      },
+      {
+          path: '/conversation/analyses/preview',
+          name: 'conversation-analysis-preview',
+          component: () => import('@/views/conversation/AnalysisDetailView.vue'),
+          meta: {
+            title: '分析预览',
+            robots: 'noindex, nofollow',
+            ephemeralAnalysis: true,
           },
       },
       {

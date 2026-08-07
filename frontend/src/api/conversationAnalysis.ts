@@ -66,6 +66,7 @@ export async function analyzeConversationStream(
     headers: authHeaders(),
     body: JSON.stringify(payload),
     signal,
+    credentials: 'include',
   })
 
   if (!response.ok) {
@@ -78,7 +79,9 @@ export async function analyzeConversationStream(
     } catch {
       // ignore
     }
-    throw new Error(message)
+    const err = new Error(message) as Error & { status?: number }
+    err.status = response.status
+    throw err
   }
 
   if (!response.body) {
@@ -143,6 +146,16 @@ export async function analyzeConversationStream(
 
 export function listConversationLlmModels() {
     return http.get<LlmModelOption[]>('/api/conversation/llm-models')
+}
+
+export interface GuestQuota {
+  limit: number
+  used: number
+  remaining: number
+}
+
+export function getGuestQuota() {
+  return http.get<GuestQuota>('/api/conversation/guest-quota', { withCredentials: true })
 }
 
 export function saveConversationAnalysis(payload: ConversationAnalysisSaveRequest) {

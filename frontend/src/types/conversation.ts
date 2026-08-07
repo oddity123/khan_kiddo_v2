@@ -55,6 +55,10 @@ export interface AnalysisResultsPayload {
   chineseExpressionCount?: number
   educationalSummary?: EducationalSummaryRoot
   errorTypeDistribution?: ErrorTypeDistribution[]
+  /** 流水线内 HabitCardScorer 结果，游客预览直接复用 */
+  topHabit?: ActionCard
+  actionCards?: ActionCard[]
+  familyDistribution?: FamilyDistributionItem[]
 }
 
 export interface ChineseExpressionItem {

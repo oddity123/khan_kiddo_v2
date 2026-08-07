@@ -46,6 +46,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/site").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/home").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/feedback").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/conversation/llm-models").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/conversation/guest-quota").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/conversation/analyze/stream").permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {

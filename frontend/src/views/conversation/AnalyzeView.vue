@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import {Cpu, Document, RefreshRight, Upload} from '@element-plus/icons-vue'
+import {Cpu, Document, MagicStick, RefreshRight, Upload} from '@element-plus/icons-vue'
 import type {InputInstance} from 'element-plus'
 import {ElMessage} from 'element-plus'
+import {storeToRefs} from 'pinia'
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 
-import {analyzeConversationStream, listConversationLlmModels} from '@/api/conversationAnalysis'
+import {
+  analyzeConversationStream,
+  getGuestQuota,
+  listConversationLlmModels,
+  type GuestQuota,
+} from '@/api/conversationAnalysis'
 import ImportMethodsPanel from '@/components/conversation/ImportMethodsPanel.vue'
+import {SAMPLE_ORAL_CONVERSATION} from '@/constants/sampleConversation'
+import {useAuthStore} from '@/stores/auth'
+import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
 import type {ConversationAnalysisProgress, LlmModelOption} from '@/types/conversation'
 import {PROGRESS_STATUS} from '@/types/conversation'
+import {resultToEphemeralDetail} from '@/utils/ephemeralDetail'
 import {getErrorMessage} from '@/utils/error'
 
 const router = useRouter()
+const auth = useAuthStore()
+const {isAuthenticated} = storeToRefs(auth)
+const ephemeralStore = useEphemeralAnalysisStore()
 
 const MODEL_STORAGE_KEY = 'kk.conversation.analysis.modelId'
 /** Keep in sync with extension/src/shared/constants.ts */
@@ -27,6 +40,7 @@ const analyzing = ref(false)
 const showProgress = ref(false)
 const progressLog = ref<ConversationAnalysisProgress[]>([])
 const abortController = ref<AbortController | null>(null)
+const guestQuota = ref<GuestQuota | null>(null)
 
 interface StreamingCommitRow {
   original: string
@@ -96,6 +110,40 @@ async function loadModelOptions() {
   }
 }
 
+async function loadGuestQuota() {
+  if (isAuthenticated.value) {
+    guestQuota.value = null
+    return
+  }
+  try {
+    const {data} = await getGuestQuota()
+    guestQuota.value = data
+  } catch {
+    guestQuota.value = null
+  }
+}
+
+function fillSampleConversation() {
+  if (analyzing.value) {
+    return
+  }
+  content.value = SAMPLE_ORAL_CONVERSATION
+  extensionImportHint.value = ''
+  ElMessage.success('已填入示例口语对话，可直接开始分析')
+  void focusContentInput()
+}
+
+const guestQuotaHint = computed(() => {
+  if (isAuthenticated.value || !guestQuota.value) {
+    return ''
+  }
+  const {remaining, limit} = guestQuota.value
+  if (remaining <= 0) {
+    return `免费体验 ${limit} 次已用完，登录后可继续分析`
+  }
+  return `未登录可免费分析 ${remaining}/${limit} 次（结果不保存，刷新即失）`
+})
+
 function consumeExtensionImport(): boolean {
   try {
     const raw = sessionStorage.getItem(EXTENSION_IMPORT_SESSION_KEY)
@@ -136,6 +184,7 @@ function consumeExtensionImport(): boolean {
 
 onMounted(() => {
   void loadModelOptions()
+  void loadGuestQuota()
   consumeExtensionImport()
   window.addEventListener('kk-extension-import', consumeExtensionImport)
 })
@@ -262,6 +311,11 @@ async function onAnalyze() {
     ElMessage.warning('请选择分析模型')
     return
   }
+  if (!isAuthenticated.value && guestQuota.value && guestQuota.value.remaining <= 0) {
+    ElMessage.warning('免费体验次数已用完，请登录后继续')
+    await router.push({path: '/login', query: {redirect: '/conversation/analyze'}})
+    return
+  }
 
   localStorage.setItem(MODEL_STORAGE_KEY, selectedModelId.value)
   analyzing.value = true
@@ -278,12 +332,30 @@ async function onAnalyze() {
         abortController.value.signal,
     )
     ElMessage.success('分析完成')
-    await router.replace(`/conversation/analyses/${analysisResult.analysisId}`)
+    if (isAuthenticated.value) {
+      await router.replace(`/conversation/analyses/${analysisResult.analysisId}`)
+    } else {
+      ephemeralStore.setDetail(resultToEphemeralDetail(analysisResult, text))
+      await loadGuestQuota()
+      await router.replace({name: 'conversation-analysis-preview'})
+    }
   } catch (error) {
     if ((error as Error).name === 'AbortError') {
       return
     }
-    const failed = error as Error & { analysisId?: string }
+    const failed = error as Error & { analysisId?: string; status?: number }
+    if (failed.status === 401) {
+      ElMessage.warning(getErrorMessage(error, '登录已失效，请重新登录'))
+      auth.clearSession()
+      await router.push({path: '/login', query: {redirect: '/conversation/analyze'}})
+      return
+    }
+    if (failed.status === 403) {
+      ElMessage.warning(getErrorMessage(error, '免费体验次数已用完，请登录后继续'))
+      await loadGuestQuota()
+      await router.push({path: '/login', query: {redirect: '/conversation/analyze'}})
+      return
+    }
     if (failed.analysisId) {
       ElMessage.error(getErrorMessage(error, '分析失败'))
       await router.replace(`/conversation/analyses/${failed.analysisId}`)
@@ -291,6 +363,7 @@ async function onAnalyze() {
     }
     showProgress.value = false
     ElMessage.error(getErrorMessage(error, '分析失败，请稍后重试'))
+    await loadGuestQuota()
   } finally {
     analyzing.value = false
   }
@@ -304,14 +377,27 @@ async function onAnalyze() {
       <p class="page-desc">
         导入你与 AI 的英文对话，系统将逐句标出可优化表达并给出改写建议。右侧有三种导入方式可选。
       </p>
+      <p v-if="guestQuotaHint" class="guest-quota-hint">{{ guestQuotaHint }}</p>
       <p v-if="extensionImportHint" class="import-hint">{{ extensionImportHint }}</p>
     </header>
 
     <div class="analyze-grid">
       <section class="input-panel kk-glass kk-glass--panel">
-        <div class="panel-label">
-          <el-icon><Document/></el-icon>
-          对话字幕
+        <div class="panel-label-row">
+          <div class="panel-label">
+            <el-icon><Document/></el-icon>
+            对话字幕
+          </div>
+          <el-button
+              class="sample-btn"
+              text
+              type="primary"
+              :icon="MagicStick"
+              :disabled="analyzing"
+              @click="fillSampleConversation"
+          >
+            一键带入示例
+          </el-button>
         </div>
         <el-input
             ref="contentInputRef"
@@ -480,6 +566,13 @@ async function onAnalyze() {
   max-width: 40rem;
 }
 
+.guest-quota-hint {
+  margin: 0.55rem 0 0;
+  font-size: 0.88rem;
+  color: var(--kk-color-accent);
+  line-height: 1.45;
+}
+
 .import-hint {
   margin: 0.5rem 0 0;
   color: var(--kk-color-accent, #0b1a7d);
@@ -535,6 +628,23 @@ async function onAnalyze() {
   color: var(--kk-color-primary);
   font-size: 0.92rem;
   flex-shrink: 0;
+}
+
+.panel-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.panel-label-row .panel-label {
+  margin-bottom: 0;
+}
+
+.sample-btn {
+  flex-shrink: 0;
+  font-weight: 600;
 }
 
 .input-meta {

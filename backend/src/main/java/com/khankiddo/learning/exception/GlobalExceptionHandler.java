@@ -45,6 +45,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(GuestQuotaExceededException.class)
+    public ResponseEntity<Map<String, String>> handleGuestQuotaExceeded(GuestQuotaExceededException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
         String message = ex.getReason() != null ? ex.getReason() : "请求失败";

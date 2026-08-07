@@ -2,15 +2,20 @@ package com.khankiddo.learning.service.conversation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.conversation.ConversationAnalyzeRateLimiter;
+import com.khankiddo.learning.conversation.GuestAnalysisQuotaService;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
 import com.khankiddo.learning.security.SecurityUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -26,10 +31,24 @@ public class ConversationAnalysisStreamService {
 
     private final ConversationAnalysisService conversationAnalysisService;
     private final ConversationAnalyzeRateLimiter analyzeRateLimiter;
+    private final GuestAnalysisQuotaService guestAnalysisQuotaService;
     private final ObjectMapper objectMapper;
 
-    public SseEmitter analyzeStream(ConversationAnalysisRequest request) {
-        analyzeRateLimiter.checkAllowed(SecurityUtils.getCurrentUserId());
+    public SseEmitter analyzeStream(
+            ConversationAnalysisRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        SecurityUtils.rejectStaleBearer(httpRequest);
+
+        Long userId = SecurityUtils.getCurrentUserId();
+        boolean guest = ObjectUtils.isEmpty(userId);
+        String reservedGuestId = null;
+        if (!guest) {
+            analyzeRateLimiter.checkAllowed(userId);
+        } else {
+            reservedGuestId = guestAnalysisQuotaService.resolveOrCreateGuestId(httpRequest, httpResponse);
+            guestAnalysisQuotaService.reserveOrThrow(reservedGuestId);
+        }
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
         AtomicBoolean finished = new AtomicBoolean(false);
@@ -44,22 +63,32 @@ public class ConversationAnalysisStreamService {
         emitter.onError(ex -> finished.set(true));
 
         SecurityContext securityContext = SecurityContextHolder.getContext();
+        final boolean persist = !guest;
+        final String guestIdForRefund = reservedGuestId;
         Thread.startVirtualThread(() -> {
             SecurityContextHolder.setContext(securityContext);
             try {
-                ConversationAnalysisResultDto result = conversationAnalysisService.analyzeAndPersist(
+                ConversationAnalysisResultDto result = persist
+                        ? conversationAnalysisService.analyzeAndPersist(
+                        request, analysisId, progress -> sendProgress(emitter, finished, progress))
+                        : conversationAnalysisService.analyzeEphemeral(
                         request, analysisId, progress -> sendProgress(emitter, finished, progress));
                 sendProgress(emitter, finished, ConversationAnalysisProgress.complete(result));
             } catch (Exception ex) {
-                log.error("对话分析流式任务失败, analysisId={}", analysisId, ex);
+                log.error("对话分析流式任务失败, analysisId={}, guest={}", analysisId, guest, ex);
+                if (StringUtils.hasText(guestIdForRefund)) {
+                    guestAnalysisQuotaService.refund(guestIdForRefund);
+                }
                 long elapsed = System.currentTimeMillis() - startedAt;
-                conversationAnalysisService.saveFailed(
-                        analysisId,
-                        request.getConversationContent(),
-                        ex.getMessage(),
-                        elapsed);
+                if (persist) {
+                    conversationAnalysisService.saveFailed(
+                            analysisId,
+                            request.getConversationContent(),
+                            ex.getMessage(),
+                            elapsed);
+                }
                 sendProgress(emitter, finished,
-                        ConversationAnalysisProgress.error(ex.getMessage(), analysisId));
+                        ConversationAnalysisProgress.error(ex.getMessage(), persist ? analysisId : null));
             } finally {
                 SecurityContextHolder.clearContext();
             }

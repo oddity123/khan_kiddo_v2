@@ -14,6 +14,13 @@ public interface ConversationAnalysisService {
     ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
                                           Consumer<ConversationAnalysisProgress> onProgress);
 
+    /**
+     * 仅跑流水线、不落库（游客体验）。
+     */
+    ConversationAnalysisResultDto analyzeEphemeral(ConversationAnalysisRequest request,
+                                                   String analysisId,
+                                                   Consumer<ConversationAnalysisProgress> onProgress);
+
     ConversationAnalysisResultDto analyzeAndPersist(ConversationAnalysisRequest request,
                                                     String analysisId,
                                                     Consumer<ConversationAnalysisProgress> onProgress);

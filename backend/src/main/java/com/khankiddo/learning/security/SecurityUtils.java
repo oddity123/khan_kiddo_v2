@@ -1,9 +1,12 @@
 package com.khankiddo.learning.security;
 
 import com.khankiddo.learning.exception.UnauthorizedException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 
 /**
  * 当前登录用户访问入口。需「必须已登录」时用 {@link #requireUserId()} / {@link #requireCurrentUser()}，
@@ -51,5 +54,25 @@ public final class SecurityUtils {
             throw new UnauthorizedException("未登录");
         }
         return user;
+    }
+
+    /**
+     * 请求带了 Bearer 但未能解析为登录用户（过期/伪造）时拒绝，避免被当成游客。
+     */
+    public static void rejectStaleBearer(HttpServletRequest request) {
+        if (ObjectUtils.isEmpty(request)) {
+            return;
+        }
+        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+        if (!StringUtils.hasText(header) || !header.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            return;
+        }
+        String token = header.substring(7).trim();
+        if (!StringUtils.hasText(token)) {
+            return;
+        }
+        if (ObjectUtils.isEmpty(getCurrentUserId())) {
+            throw new UnauthorizedException("登录已失效，请重新登录");
+        }
     }
 }

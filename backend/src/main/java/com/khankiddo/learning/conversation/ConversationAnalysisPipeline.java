@@ -102,6 +102,7 @@ public class ConversationAnalysisPipeline {
                 grammar,
                 distribution,
                 chineseExpressions,
+                habitScoreResult,
                 summaryOutcome);
     }
 
@@ -230,6 +231,7 @@ public class ConversationAnalysisPipeline {
                                                           GrammarAnalysisResult grammar,
                                                           List<ErrorTypeDistributionDto> distribution,
                                                           List<ChineseExpressionDto> chineseExpressions,
+                                                          HabitCardScorer.HabitScoreResult habitScoreResult,
                                                           SummaryOutcome summaryOutcome) {
         String summaryJson = summaryParser.toJson(summaryOutcome.report());
         Map<String, Object> analysisResults = new LinkedHashMap<>();
@@ -241,6 +243,9 @@ public class ConversationAnalysisPipeline {
         analysisResults.put("chineseExpressionCount", chineseExpressions.size());
         analysisResults.put("educationalSummary", summaryOutcome.report());
         analysisResults.put("errorTypeDistribution", distribution);
+        analysisResults.put("topHabit", habitScoreResult.topHabit());
+        analysisResults.put("actionCards", habitScoreResult.actionCards());
+        analysisResults.put("familyDistribution", habitScoreResult.familyDistribution());
         analysisResults.put("summaryDegraded", summaryOutcome.degraded());
         if (summaryOutcome.degraded()) {
             analysisResults.put("summaryDegradedReason", summaryOutcome.degradedReason());

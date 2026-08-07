@@ -27,6 +27,7 @@ import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import TopHabitHero from '@/components/conversation/TopHabitHero.vue'
+import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
 import type {
   AnalysisItem,
   ChineseExpressionItem,
@@ -39,12 +40,14 @@ import {getErrorMessage} from '@/utils/error'
 
 const route = useRoute()
 const router = useRouter()
+const ephemeralStore = useEphemeralAnalysisStore()
 
 const loading = ref(true)
 const detail = ref<ConversationAnalysisDetail | null>(null)
 const pageReady = ref(false)
 
-const analysisId = computed(() => String(route.params.id ?? ''))
+const isEphemeral = computed(() => Boolean(route.meta.ephemeralAnalysis))
+const analysisId = computed(() => (isEphemeral.value ? '' : String(route.params.id ?? '')))
 const summaryReport = computed(() => detail.value?.educationalSummary?.report)
 
 const overallStats = computed(() => summaryReport.value?.overallStats)
@@ -349,6 +352,28 @@ function formatTime(value?: string) {
 }
 
 async function loadDetail() {
+  if (isEphemeral.value) {
+    loading.value = true
+    pageReady.value = false
+    fanOrderIds.value = []
+    clearMintPoll()
+    const cached = ephemeralStore.detail
+    if (!cached) {
+      detail.value = null
+      loading.value = false
+      ElMessage.warning('预览结果已失效，请重新分析')
+      await router.replace('/conversation/analyze')
+      return
+    }
+    detail.value = cached
+    fanOrderIds.value = []
+    loading.value = false
+    requestAnimationFrame(() => {
+      pageReady.value = true
+    })
+    return
+  }
+
   if (!analysisId.value) {
     return
   }
@@ -378,7 +403,7 @@ async function loadDetail() {
 }
 
 async function onDelete() {
-  if (!analysisId.value) {
+  if (isEphemeral.value || !analysisId.value) {
     return
   }
   try {
@@ -400,7 +425,7 @@ async function onDelete() {
 }
 
 onMounted(loadDetail)
-watch(analysisId, loadDetail)
+watch([analysisId, isEphemeral], loadDetail)
 onBeforeUnmount(clearMintPoll)
 </script>
 
@@ -411,15 +436,41 @@ onBeforeUnmount(clearMintPoll)
       :class="{ 'detail-page--ready': pageReady }"
   >
     <header class="detail-topbar kk-glass">
-      <router-link to="/conversation/analyses" class="back-link">
+      <router-link
+          :to="isEphemeral ? '/conversation/analyze' : '/conversation/analyses'"
+          class="back-link"
+      >
         <el-icon><ArrowLeft/></el-icon>
-        返回列表
+        {{ isEphemeral ? '返回分析' : '返回列表' }}
       </router-link>
-      <h1 class="topbar-title">对话分析详情</h1>
-      <el-button type="danger" plain :icon="Delete" @click="onDelete">删除</el-button>
+      <h1 class="topbar-title">{{ isEphemeral ? '分析预览' : '对话分析详情' }}</h1>
+      <el-button
+          v-if="!isEphemeral"
+          type="danger"
+          plain
+          :icon="Delete"
+          @click="onDelete"
+      >
+        删除
+      </el-button>
+      <router-link
+          v-else
+          class="login-save-link"
+          :to="{ path: '/login', query: { redirect: '/conversation/analyze' } }"
+      >
+        登录以保存
+      </router-link>
     </header>
 
     <template v-if="detail">
+      <el-alert
+          v-if="isEphemeral"
+          class="detail-error-alert"
+          type="info"
+          title="游客预览：结果不会保存，刷新或关闭页面后即消失"
+          show-icon
+          :closable="false"
+      />
       <el-alert
           v-if="detail.status === 'failed' && detail.errorMessage"
           class="detail-error-alert"
@@ -767,6 +818,19 @@ onBeforeUnmount(clearMintPoll)
 .back-link:hover {
   color: var(--kk-color-accent);
   transform: translateX(-2px);
+}
+
+.login-save-link {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--kk-color-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.login-save-link:hover {
+  text-decoration: underline;
+  color: var(--kk-color-accent);
 }
 
 .topbar-title {

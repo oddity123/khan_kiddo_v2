@@ -1,9 +1,12 @@
 package com.khankiddo.learning.controller;
 
+import com.khankiddo.learning.conversation.GuestAnalysisQuotaService;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisService;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisStreamService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -20,15 +23,29 @@ public class ConversationAnalysisController {
     private final ConversationAnalysisService conversationAnalysisService;
     private final ConversationAnalysisStreamService conversationAnalysisStreamService;
     private final LlmModelCatalog llmModelCatalog;
+    private final GuestAnalysisQuotaService guestAnalysisQuotaService;
 
     @GetMapping("/llm-models")
     public List<LlmModelOptionDto> listLlmModels() {
         return llmModelCatalog.listEnabled();
     }
 
+    @GetMapping("/guest-quota")
+    public GuestQuotaDto guestQuota(HttpServletRequest request) {
+        GuestAnalysisQuotaService.GuestQuotaSnapshot snapshot = guestAnalysisQuotaService.snapshot(request);
+        return GuestQuotaDto.builder()
+                .limit(snapshot.limit())
+                .used(snapshot.used())
+                .remaining(snapshot.remaining())
+                .build();
+    }
+
     @PostMapping(value = "/analyze/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter analyzeStream(@Valid @RequestBody ConversationAnalysisRequest request) {
-        return conversationAnalysisStreamService.analyzeStream(request);
+    public SseEmitter analyzeStream(
+            @Valid @RequestBody ConversationAnalysisRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+        return conversationAnalysisStreamService.analyzeStream(request, httpRequest, httpResponse);
     }
 
     @PostMapping("/analyses")
