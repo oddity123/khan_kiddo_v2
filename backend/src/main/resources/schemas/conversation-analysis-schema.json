@@ -7,12 +7,10 @@
         "type": "object",
         "properties": {
           "originalSentence": {
-            "type": "string",
-            "description": "用户原句，必须是单个句子；一段话含多个句子时拆成多个 item"
+            "type": "string"
           },
           "suggestion": {
-            "type": "string",
-            "description": "针对整句的完整修改建议或地道表达"
+            "type": "string"
           },
           "errors": {
             "type": "array",
@@ -60,12 +58,10 @@
                     "WORD_FORM_OTHER",
                     "STRUCTURE_OTHER",
                     "PRONOUN_OTHER"
-                  ],
-                  "description": "知识点字典中的具体知识点 ID，用于反查问题类型/严重度/纠正策略。无法判断细粒度知识点时使用兜底 ID（如 STRUCTURE_OTHER）"
+                  ]
                 },
                 "point": {
-                  "type": "string",
-                  "description": "针对单一错误的纠正说明，格式：原文错误片段 → 正确写法（简短中文原因）。例如：have → has（主谓一致，主语第三人称单数）。硬性要求：片段只截出错的关键词或短语，禁止照抄整句/整段；一个 point 只针对一处改动、只给一条原因，禁止用分号堆叠多条理由；括号内原因必须用简体中文，一句话且尽量不超过 25 个字；必须给出修正，禁止只摘抄原文。"
+                  "type": "string"
                 }
               },
               "required": [
@@ -73,8 +69,7 @@
                 "point"
               ],
               "additionalProperties": false
-            },
-            "description": "该句子中的具体错误点列表"
+            }
           }
         },
         "required": [
@@ -83,8 +78,7 @@
           "errors"
         ],
         "additionalProperties": false
-      },
-      "description": "按句子组织的分析结果列表"
+      }
     }
   },
   "required": ["items"],
