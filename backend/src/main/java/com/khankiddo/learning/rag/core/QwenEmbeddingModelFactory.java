@@ -1,8 +1,6 @@
 package com.khankiddo.learning.rag.core;
 
 import com.khankiddo.learning.config.condition.OnGrammarErrorRagCondition;
-import com.khankiddo.learning.llm.LlmModelCatalog;
-import com.khankiddo.learning.llm.ResolvedLlmModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import lombok.RequiredArgsConstructor;
@@ -11,23 +9,26 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
+/**
+ * 语法 RAG 嵌入模型：只依赖 {@link RagProperties} / {@code QWEN_*}，
+ * 不经过对话分析用的 {@code LlmModelCatalog}。
+ */
 @Configuration
 @Conditional(OnGrammarErrorRagCondition.class)
 @RequiredArgsConstructor
 public class QwenEmbeddingModelFactory {
 
-    private static final String QWEN_PLUS_MODEL_ID = "qwen-plus";
-
     private final RagProperties ragProperties;
-    private final LlmModelCatalog modelCatalog;
 
     @Bean
     public EmbeddingModel ragEmbeddingModel() {
-        ResolvedLlmModel qwen = modelCatalog.resolveRequired(QWEN_PLUS_MODEL_ID);
-        var config = qwen.getConfig();
+        if (!StringUtils.hasText(ragProperties.getEmbeddingApiKey())) {
+            throw new IllegalStateException(
+                    "RAG 已启用但未配置 app.rag.embedding-api-key（通常为 QWEN_API_KEY）");
+        }
         return OpenAiEmbeddingModel.builder()
-                .baseUrl(normalizeBaseUrl(config.getBaseUrl()))
-                .apiKey(modelCatalog.resolveApiKey(config))
+                .baseUrl(normalizeBaseUrl(ragProperties.getEmbeddingBaseUrl()))
+                .apiKey(ragProperties.getEmbeddingApiKey().trim())
                 .modelName(ragProperties.getEmbeddingModelName())
                 .maxSegmentsPerBatch(ragProperties.getEmbeddingMaxSegmentsPerBatch())
                 .build();
