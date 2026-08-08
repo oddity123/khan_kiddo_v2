@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "utterances": [
+    {
+      "id": "u1",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "ARTICLE_A_AN",
+          "acceptablePointIds": [
+            "ARTICLE_A_AN",
+            "ARTICLE_OTHER"
+          ],
+          "span": "a action plan",
+          "note": ""
+        }
+      ],
+      "suggestionHint": "I will create an action plan so that you can follow it, and I will also discuss further treatment for your child after the examination."
+    },
+    {
+      "id": "u2",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "SVA_RELATIVE_CLAUSE",
+          "acceptablePointIds": [
+            "SVA_RELATIVE_CLAUSE",
+            "AGREEMENT_OTHER"
+          ],
+          "span": "family members that has",
+          "note": ""
+        }
+      ],
+      "suggestionHint": "And before we see, remind me, have you noticed any other family members that have asthma, eczema, or hay fever?"
+    },
+    {
+      "id": "u3",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "VERB_PATTERN_OTHER",
+          "acceptablePointIds": [
+            "VERB_PATTERN_OTHER"
+          ],
+          "span": "helps the model gradually improving",
+          "note": ""
+        }
+      ],
+      "suggestionHint": "Repeating the loops or repeating the loop helps the model gradually improve its reasoning over time."
+    },
+    {
+      "id": "u4",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "PLURAL_COUNTABLE",
+          "acceptablePointIds": [
+            "PLURAL_COUNTABLE",
+            "NOUN_NUMBER_OTHER"
+          ],
+          "span": "these company",
+          "note": ""
+        },
+        {
+          "errorId": "e2",
+          "primaryPointId": "VERB_PATTERN_OTHER",
+          "acceptablePointIds": [
+            "VERB_PATTERN_OTHER",
+            "GERUND_AFTER_PREP"
+          ],
+          "span": "workers applying",
+          "note": "attract … to apply，不宜用 applying 表目的。"
+        }
+      ],
+      "suggestionHint": "Also, this will attract more workers to apply to these companies."
+    },
+    {
+      "id": "u5",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "GERUND_AFTER_PREP",
+          "acceptablePointIds": [
+            "GERUND_AFTER_PREP",
+            "VERB_PATTERN_OTHER"
+          ],
+          "span": "before proceed",
+          "note": ""
+        }
+      ],
+      "suggestionHint": "Yeah, but before proceeding, how can I address the voice name?"
+    },
+    {
+      "id": "u6",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "VERB_PATTERN_OTHER",
+          "acceptablePointIds": [
+            "VERB_PATTERN_OTHER"
+          ],
+          "span": "wish your baby have",
+          "note": ""
+        }
+      ],
+      "suggestionHint": "I wish your baby a speedy recovery."
+    },
+    {
+      "id": "u7",
+      "expectError": false,
+      "errors": [],
+      "suggestionHint": ""
+    }
+  ]
+}

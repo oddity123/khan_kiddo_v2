@@ -1,0 +1,12 @@
+{
+  "id": "clear-error-01",
+  "category": "clear_error",
+  "title": "Clear grammar and word-form errors",
+  "notes": "auto-labeled; no human linguistic review",
+  "goldSource": {
+    "model": "gpt-5.6-luna",
+    "dated": "2026-08-08",
+    "reviewedBy": "none",
+    "reviewStatus": "model_only"
+  }
+}

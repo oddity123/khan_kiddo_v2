@@ -37,21 +37,21 @@ app:
         max-tokens: ${AI_MAX_TOKENS:10240}
         enabled: true
       # 通义千问（DashScope 兼容模式）
-      - id: qwen-plus
-        display-name: Qwen Plus
+      - id: qwen3.6-plus
+        display-name: qwen3.6-plus
         provider: qwen
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
-        model-name: ${QWEN_MODEL_NAME:qwen3.6-plus}
+        model-name: qwen3.6-plus
         temperature: 0.2
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
-      - id: glm-5.2
-        display-name: glm-5.2
+      - id: qwen3.7-plus
+        display-name: qwen3.7-plus(效果最好)
         provider: qwen
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
-        model-name: glm-5.2
+        model-name: qwen3.7-plus
         temperature: 0.2
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true

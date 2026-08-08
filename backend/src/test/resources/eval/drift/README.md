@@ -119,7 +119,7 @@ export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' ../.env | grep -v '&' | xargs)
   随 `mvn test` 常规运行。
 - **运行器** `ConversationDriftHarness` 只负责调真实模型 N 次并喂给内核，不做断言。
 
-## 下一步（golden set，本期未做）
+## 下一步（golden set）
 
-漂移测稳定性；**准确性**需要独立参照。计划用**换厂商的强模型**（线上用豆包，裁判用
-GPT/Claude）逐句提候选、人工只裁决分歧项，冻结成 golden set，再算 precision/recall。
+准确性评测见 **`../golden/README.md`**：冻结 Stage2 utterance + gold，
+运行器 `ConversationGoldenHarness`（`-Dgolden=true`）。漂移仍只测稳定性。

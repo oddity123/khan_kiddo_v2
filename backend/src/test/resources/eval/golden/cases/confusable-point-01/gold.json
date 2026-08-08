@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "utterances": [
+    {
+      "id": "u1",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "PREPOSITION_OTHER",
+          "acceptablePointIds": [
+            "PREPOSITION_OTHER",
+            "COLLOCATION"
+          ],
+          "span": "for teacher",
+          "note": "In this context, a possessive or an of/from construction is more natural, e.g. a teacher's instructions."
+        },
+        {
+          "errorId": "e2",
+          "primaryPointId": "FEEL_ED_ADJ",
+          "acceptablePointIds": [
+            "FEEL_ED_ADJ",
+            "WORD_FORM_OTHER"
+          ],
+          "span": "stressful",
+          "note": "For the person's emotional state, 'stressed' is expected; 'stressful' normally describes something that causes stress."
+        }
+      ],
+      "suggestionHint": "Well, I think self-study is good enough. Like, if I have to follow a teacher's instructions, to be honest, I might feel a bit anxious or stressed."
+    },
+    {
+      "id": "u2",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "ARTICLE_OTHER",
+          "acceptablePointIds": [
+            "ARTICLE_OTHER",
+            "STRUCTURE_OTHER"
+          ],
+          "span": "a both company and the employees perspectives",
+          "note": "The determiner and noun-phrase structure after 'from' are malformed; a natural form is 'from both the company's and the employees' perspectives' or 'from both company and employee perspectives'."
+        }
+      ],
+      "suggestionHint": "So from both the company's and the employees' perspectives, it's a great way to do so."
+    },
+    {
+      "id": "u3",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "LEXICAL_GAP",
+          "acceptablePointIds": [
+            "LEXICAL_GAP",
+            "COLLOCATION"
+          ],
+          "span": "go outside",
+          "note": "'Go outside' normally means go outdoors and does not naturally express traveling away for a business trip."
+        }
+      ],
+      "suggestionHint": "Actually, today, my director—my supervisor—asked me to go on a business trip."
+    },
+    {
+      "id": "u4",
+      "expectError": false,
+      "errors": [],
+      "suggestionHint": "It would be great, and it will be very helpful, if you could let me examine you."
+    },
+    {
+      "id": "u5",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "TENSE_OTHER",
+          "acceptablePointIds": [
+            "TENSE_OTHER",
+            "VERB_PATTERN_OTHER"
+          ],
+          "span": "I walk",
+          "note": "The second coordinated clause refers to the same future situation, so 'I'll walk' is expected."
+        }
+      ],
+      "suggestionHint": "I will be here the whole time, and I'll walk you through it step by step."
+    },
+    {
+      "id": "u6",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "FLUENCY_REDUNDANCY",
+          "acceptablePointIds": [
+            "FLUENCY_REDUNDANCY",
+            "FLUENCY_OTHER"
+          ],
+          "span": "fresh, new fresh",
+          "note": "The adjective is repeated/restarted and can be reduced to 'fresh'."
+        }
+      ],
+      "suggestionHint": "I just need to take a break and inhale some fresh air."
+    },
+    {
+      "id": "u7",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "VERB_PATTERN_OTHER",
+          "acceptablePointIds": [
+            "VERB_PATTERN_OTHER",
+            "COLLOCATION",
+            "PREP_FIXED"
+          ],
+          "span": "lead to trigger of",
+          "note": "This construction is not idiomatic; 'trigger asthma' or 'lead to an asthma attack' is natural."
+        },
+        {
+          "errorId": "e2",
+          "primaryPointId": "ARTICLE_GENERIC_ZERO",
+          "acceptablePointIds": [
+            "ARTICLE_GENERIC_ZERO",
+            "ARTICLE_OTHER"
+          ],
+          "span": "the asthma",
+          "note": "The disease name 'asthma' normally takes zero article when used generically."
+        }
+      ],
+      "suggestionHint": "Yeah, sometimes exercise can trigger asthma."
+    }
+  ]
+}

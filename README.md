@@ -76,6 +76,10 @@ LLM 输出不稳定是这类产品的核心风险。`backend/src/test/resources/
 
 度量内核 `DriftStatistics` 不依赖 LLM/Spring，随 `mvn test` 常规运行；真实调模型的 harness 需显式 `-Ddrift=true` 解锁，不会偷偷烧额度。
 
+### 6. Stage2 黄金集准确性评测
+
+`backend/src/test/resources/eval/golden/` 冻结迷你黄金集（clear-error / confusable / legit-spoken），对比线上 Stage2 的检出与 `pointId` 命中。度量内核 `GoldenStatistics` 随常规 `mvn test`；真实跑模型需 `-Dgolden=true`（见该目录 `README.md`）。设计与本期结论见 `docs/achieved/golden-set/`。
+
 ---
 
 

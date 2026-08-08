@@ -106,6 +106,27 @@ public class ConversationAnalysisPipeline {
                 summaryOutcome);
     }
 
+    /**
+     * 仅 Stage2：对已路由的英文句做语法分析并 sanitize。跳过 Stage1 / 中文通道 / Stage3。
+     * 供 golden harness 使用。
+     */
+    public GrammarAnalysisResult analyzeEnglishUtterances(
+            List<String> englishSentences,
+            String modelId,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+        if (CollectionUtils.isEmpty(englishSentences)) {
+            return GrammarAnalysisResult.builder().build();
+        }
+        Consumer<ConversationAnalysisProgress> progress =
+                onProgress == null ? p -> {} : onProgress;
+        ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(modelId);
+        GrammarAnalysisResult grammar = analyzeGrammar(englishSentences, selectedModel, progress);
+        if (grammar == null) {
+            grammar = GrammarAnalysisResult.builder().build();
+        }
+        return grammarAnalysisSanitizer.sanitize(grammar);
+    }
+
     private SeparationContext separateConversation(ConversationAnalysisRequest request,
                                                     Consumer<ConversationAnalysisProgress> onProgress) {
         onProgress.accept(ConversationAnalysisProgress.of(

@@ -1,0 +1,12 @@
+{
+  "id": "legit-spoken-01",
+  "category": "legit_spoken",
+  "title": "可接受口语与少量明确表达错误",
+  "notes": "auto-labeled; no human linguistic review",
+  "goldSource": {
+    "model": "gpt-5.6-sol",
+    "dated": "2026-08-08",
+    "reviewedBy": "none",
+    "reviewStatus": "model_only"
+  }
+}

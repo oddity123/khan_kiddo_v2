@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "utterances": [
+    {
+      "id": "u1",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "FLUENCY_INCOMPLETE",
+          "acceptablePointIds": [
+            "FLUENCY_INCOMPLETE",
+            "FLUENCY_OTHER"
+          ],
+          "span": "sharpen my com- competitive comte- com- competitive",
+          "note": "搜词假启动后未完成（未说出 competitive edge 等完整宾语）；like 填料可忽略，未完成句需标。"
+        }
+      ],
+      "suggestionHint": "I usually try to practice English in my spare time; especially recently, I would like to sharpen my competitive edge."
+    },
+    {
+      "id": "u2",
+      "expectError": false,
+      "errors": []
+    },
+    {
+      "id": "u3",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "PREPOSITION_OTHER",
+          "acceptablePointIds": [
+            "PREPOSITION_OTHER",
+            "COLLOCATION"
+          ],
+          "span": "in most of the time",
+          "note": "The natural expression is \"most of the time\" without \"in\"."
+        }
+      ],
+      "suggestionHint": "So, most of the time I always try to keep myself energetic..."
+    },
+    {
+      "id": "u4",
+      "expectError": false,
+      "errors": []
+    },
+    {
+      "id": "u5",
+      "expectError": false,
+      "errors": []
+    },
+    {
+      "id": "u6",
+      "expectError": false,
+      "errors": []
+    },
+    {
+      "id": "u7",
+      "expectError": true,
+      "errors": [
+        {
+          "errorId": "e1",
+          "primaryPointId": "VERB_PATTERN_OTHER",
+          "acceptablePointIds": [
+            "VERB_PATTERN_OTHER"
+          ],
+          "span": "helps the model gradually improving",
+          "note": "After \"help + object\", use the base verb here: \"helps the model gradually improve\"."
+        }
+      ],
+      "suggestionHint": "Repeating the loop helps the model gradually improve its reasoning over time."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "confusable-point-01",
+  "category": "confusable_point",
+  "title": "易混语法与表达边界",
+  "notes": "auto-labeled; no human linguistic review",
+  "goldSource": {
+    "model": "gpt-5.6-luna",
+    "dated": "2026-08-08",
+    "reviewedBy": "none",
+    "reviewStatus": "model_only"
+  }
+}
