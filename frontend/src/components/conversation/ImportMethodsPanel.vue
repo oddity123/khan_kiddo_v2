@@ -8,13 +8,13 @@ const emit = defineEmits<{
 }>()
 
 /** 让 ChatGPT 原封不动输出本次对话全文，便于粘贴回本系统 */
-const CHATGPT_EXPORT_PROMPT = `请将我们本次对话的全部内容原封不动地完整输出。
+const CHATGPT_EXPORT_PROMPT = `请将我们此前的对话内容原封不动地完整输出。
 
 要求：
-1. 按发言顺序逐条列出，标明说话人（User / Assistant）
-2. 不要改写、总结或省略任何一句
-3. 不要添加解释、前言或结尾，只输出对话原文
-4. 不要把本条提示词本身提取或写进输出；只导出本条之前的对话`
+1. 只导出你收到本条指令之前的对话，不要包含本条指令本身（有的模型会误把提示词也写进输出，请务必排除）
+2. 按发言顺序逐条列出，标明说话人（User / Assistant）
+3. 不要改写、总结或省略任何一句
+4. 不要添加解释、前言或结尾，只输出对话原文`
 
 const promptCopied = ref(false)
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null

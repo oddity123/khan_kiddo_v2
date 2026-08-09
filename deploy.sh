@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 本机一键部署到宝塔：打包 → 上传 → java-service restart
+# 本机一键部署到宝塔：打包 → 上传 → java-service stop + start
 #
 # 用法：
 #   cp deploy.env.example deploy.env   # 填写必填项
@@ -262,13 +262,16 @@ upload_artifacts() {
 }
 
 restart_remote() {
-  log "远程重启宝塔 Java 项目: $BT_JAVA_PROJECT"
+  # restart 偶发「未获取到Pid」；拆成 stop → 短暂等待 → start 更稳
+  local project_q
+  project_q="$(printf %q "$BT_JAVA_PROJECT")"
+  log "远程停止并启动宝塔 Java 项目: $BT_JAVA_PROJECT"
   if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] java-service $BT_JAVA_PROJECT restart"
+    echo "[dry-run] java-service $BT_JAVA_PROJECT stop && sleep 2 && java-service $BT_JAVA_PROJECT start"
     return 0
   fi
-  remote_ssh "command -v java-service >/dev/null || { echo '未找到 java-service，请检查宝塔 Java 项目管理 / 系统加固' >&2; exit 1; }; java-service $(printf %q "$BT_JAVA_PROJECT") restart"
-  ok "已请求 restart"
+  remote_ssh "command -v java-service >/dev/null || { echo '未找到 java-service，请检查宝塔 Java 项目管理 / 系统加固' >&2; exit 1; }; java-service ${project_q} stop; sleep 2; java-service ${project_q} start"
+  ok "已请求 stop + start"
 }
 
 health_check() {
@@ -315,5 +318,5 @@ health_check
 log "部署完成"
 ok "后端: $REMOTE_JAR_DIR/$REMOTE_JAR_NAME"
 ok "前端: $REMOTE_WEB_DIR"
-ok "项目: java-service $BT_JAVA_PROJECT restart"
+ok "项目: java-service $BT_JAVA_PROJECT stop + start"
 exit 0
