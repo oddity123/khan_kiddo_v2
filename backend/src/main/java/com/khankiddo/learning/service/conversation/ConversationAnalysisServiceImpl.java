@@ -318,8 +318,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         enrichedSummary.getActionCardDiagnoses());
 
         Optional<GrowthCardDto> habitCard = growthCardReviewService.findHabitCardForAnalysis(analysisId);
-        String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(
-                habitScoreResult.topHabit(), analysis.getCreatedAt(), habitCard.isPresent());
+        String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(habitCard.isPresent());
         List<GrowthCardDto> growthCards = growthCardReviewService.listByAnalysis(analysisId);
 
         return ConversationAnalysisDetailDto.builder()
@@ -335,19 +334,16 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .educationalSummary(enrichedSummary)
                 .items(items)
                 .errorTypeDistribution(distribution)
-                .chineseExpressions(enrichedSummary.getChineseExpressions())
-                .topHabit(habitScoreResult.topHabit())
                 .actionCards(habitScoreResult.actionCards())
                 .familyDistribution(habitScoreResult.familyDistribution())
                 .habitGrowthMintStatus(habitGrowthMintStatus)
-                .habitGrowthCard(habitCard.orElse(null))
                 .growthCards(growthCards)
                 .build();
     }
 
     /**
      * 由持久化的错误行（含 {@code pointId}）+ 中文表达组装打分器输入。旧数据（无 {@code pointId}）
-     * 整体跳过打分：{@code actionCards} 为空、{@code topHabit} 为 {@code null}，饼图交由调用方回退
+     * 整体跳过打分：{@code actionCards} 为空，饼图交由调用方回退
      * {@code errorTypeDistribution}。
      */
     HabitCardScorer.HabitScoreResult buildHabitScoreResult(

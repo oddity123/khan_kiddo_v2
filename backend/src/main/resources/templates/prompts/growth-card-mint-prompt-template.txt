@@ -2,6 +2,6 @@
 headline: {headline}
 title: {title}
 why: {why}
-evidence:
+evidence（可能含重复原句，请先去重再制卡）:
 {evidence}
 practiceTarget: {practiceTarget}

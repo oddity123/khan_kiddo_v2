@@ -1,6 +1,7 @@
 package com.khankiddo.learning.growth;
 
 import com.khankiddo.learning.exception.BadRequestException;
+import com.khankiddo.learning.mapper.GrowthCardEvidenceMapper;
 import com.khankiddo.learning.mapper.GrowthCardMapper;
 import com.khankiddo.learning.model.GrowthCard;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,11 +32,14 @@ class GrowthCardStoreTest {
     @Mock
     private GrowthCardMapper mapper;
 
+    @Mock
+    private GrowthCardEvidenceMapper evidenceMapper;
+
     private GrowthCardStore store;
 
     @BeforeEach
     void setUp() {
-        store = new GrowthCardStore(mapper);
+        store = new GrowthCardStore(mapper, evidenceMapper);
     }
 
     @Test
@@ -151,6 +155,7 @@ class GrowthCardStoreTest {
         store.deleteOwned("card-1", 1L);
 
         verify(mapper).deleteByCardIdAndUserId("card-1", 1L);
+        verify(evidenceMapper).deleteByCardId("card-1");
     }
 
     @Test

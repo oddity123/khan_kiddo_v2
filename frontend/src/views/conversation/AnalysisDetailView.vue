@@ -16,17 +16,17 @@ import {
   TrendCharts,
 } from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
-import {deleteGrowthCard, retryMintGrowthCards} from '@/api/growthCard'
+import {deleteGrowthCard} from '@/api/growthCard'
 import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
-import TopHabitHero from '@/components/conversation/TopHabitHero.vue'
+import GrowthCardEvidenceDialog from '@/components/growth/GrowthCardEvidenceDialog.vue'
 import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
 import type {
   AnalysisItem,
@@ -34,7 +34,7 @@ import type {
   ConversationAnalysisDetail,
   ErrorTypeDistribution,
 } from '@/types/conversation'
-import type {GrowthCard} from '@/types/growthCard'
+import type {GrowthCard, GrowthCardEvidence} from '@/types/growthCard'
 import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
@@ -57,29 +57,12 @@ const sortedItems = computed(() => {
   return sortItemsByPriority(items)
 })
 
-const topHabit = computed(() => detail.value?.topHabit)
-
-const habitGrowthMintStatus = computed(() => detail.value?.habitGrowthMintStatus ?? 'none')
 const growthCards = computed((): GrowthCard[] => detail.value?.growthCards ?? [])
 const asideTab = ref<'summary' | 'cards'>('summary')
 const growthCardCountLabel = computed(() => {
   const n = growthCards.value.length
   return n > 0 ? `卡片库 · ${n}` : '卡片库'
 })
-
-const MINT_POLL_INTERVAL_MS = 1500
-const MINT_POLL_MAX = 10
-let mintPollTimer: ReturnType<typeof setTimeout> | null = null
-let mintPollCount = 0
-const retryingMint = ref(false)
-
-function clearMintPoll() {
-  if (mintPollTimer) {
-    clearTimeout(mintPollTimer)
-    mintPollTimer = null
-  }
-  mintPollCount = 0
-}
 
 async function refreshDetailSilent() {
   if (!analysisId.value) {
@@ -94,51 +77,9 @@ async function refreshDetailSilent() {
   }
 }
 
-function scheduleMintPoll() {
-  clearMintPoll()
-  if (habitGrowthMintStatus.value !== 'pending') {
-    return
-  }
-  const poll = async () => {
-    mintPollCount += 1
-    const data = await refreshDetailSilent()
-    if (data?.habitGrowthMintStatus !== 'pending' || mintPollCount >= MINT_POLL_MAX) {
-      clearMintPoll()
-      return
-    }
-    mintPollTimer = setTimeout(poll, MINT_POLL_INTERVAL_MS)
-  }
-  mintPollTimer = setTimeout(poll, MINT_POLL_INTERVAL_MS)
-}
-
-async function onRetryMint() {
-  if (!analysisId.value || retryingMint.value) {
-    return
-  }
-  retryingMint.value = true
-  try {
-    await retryMintGrowthCards(analysisId.value)
-    if (detail.value) {
-      detail.value = {
-        ...detail.value,
-        habitGrowthMintStatus: 'pending',
-        habitGrowthCard: undefined,
-        growthCards: [],
-      }
-    }
-    asideTab.value = 'cards'
-    scheduleMintPoll()
-    ElMessage.success('已开始重新生成成长卡')
-  } catch (error) {
-    ElMessage.error(getErrorMessage(error, '重新生成失败'))
-  } finally {
-    retryingMint.value = false
-  }
-}
-
-// rank 1 已由 topHabit 独占展示为 Hero，面板只需 rank>1，避免重复
-const actionCards = computed(() => (detail.value?.actionCards ?? []).filter((card) => card.rank > 1))
-const hasHabitFocus = computed(() => Boolean(topHabit.value || actionCards.value.length))
+// actionCards 含 Top1–3；与面板统一展示
+const actionCards = computed(() => detail.value?.actionCards ?? [])
+const hasHabitFocus = computed(() => actionCards.value.length > 0)
 
 async function onHabitCardGenerated() {
   asideTab.value = 'cards'
@@ -171,21 +112,30 @@ async function onDeleteGrowthCard(cardId: string) {
     return
   }
   const remaining = (detail.value.growthCards ?? []).filter((card) => card.cardId !== cardId)
-  const habitLeft = remaining.find((card) => card.type === 'habit')
+  const hasHabitLeft = remaining.some((card) => card.type === 'habit')
   if (fanOrderIds.value.length) {
     fanOrderIds.value = fanOrderIds.value.filter((id) => id !== cardId)
   }
   detail.value = {
     ...detail.value,
     growthCards: remaining,
-    habitGrowthCard: habitLeft,
-    habitGrowthMintStatus: habitLeft
-        ? 'ready'
-        : detail.value.topHabit
-            ? 'failed'
-            : 'none',
+    habitGrowthMintStatus: hasHabitLeft ? 'ready' : 'none',
   }
   ElMessage.success('已删除成长卡')
+}
+
+const growthEvidenceOpen = ref(false)
+const growthEvidenceTitle = ref('')
+const growthEvidenceItems = ref<GrowthCardEvidence[]>([])
+
+function onOpenGrowthEvidence(cardId: string) {
+  const card = growthCards.value.find((item) => item.cardId === cardId)
+  if (!card?.evidence?.length) {
+    return
+  }
+  growthEvidenceTitle.value = card.front?.trim() || growthCardTypeLabel(card.type)
+  growthEvidenceItems.value = [...card.evidence]
+  growthEvidenceOpen.value = true
 }
 
 interface FilterChip {
@@ -226,25 +176,11 @@ function toggleFilter(key: string) {
 
 const sentencesFoldRef = ref<HTMLDetailsElement | null>(null)
 
-function locate(sentenceId: string | number) {
-  activeFilter.value = null
-  if (sentencesFoldRef.value) {
-    sentencesFoldRef.value.open = true
-  }
-  nextTick(() => {
-    document
-        .getElementById(`sentence-${sentenceId}`)
-        ?.scrollIntoView({behavior: 'smooth', block: 'center'})
-  })
-}
-
 const chineseExpressionCount = computed(() => {
   if (overallStats.value?.chineseExpressionCount != null) {
     return overallStats.value.chineseExpressionCount
   }
-  const fromDetail = detail.value?.chineseExpressions?.length ?? 0
-  const fromSummary = detail.value?.educationalSummary?.chineseExpressions?.length ?? 0
-  return fromDetail || fromSummary
+  return detail.value?.educationalSummary?.chineseExpressions?.length ?? 0
 })
 
 function growthCardTypeLabel(type: string): string {
@@ -307,6 +243,7 @@ const growthFanItems = computed((): ChineseExpressionItem[] => {
         focusPhrase: card.type === 'vocab' ? card.front : undefined,
         suggestion: card.back,
         kindLabel: growthCardTypeLabel(card.type),
+        evidenceCount: card.evidence?.length ?? 0,
       }))
 })
 
@@ -356,7 +293,6 @@ async function loadDetail() {
     loading.value = true
     pageReady.value = false
     fanOrderIds.value = []
-    clearMintPoll()
     const cached = ephemeralStore.detail
     if (!cached) {
       detail.value = null
@@ -380,7 +316,6 @@ async function loadDetail() {
   loading.value = true
   pageReady.value = false
   fanOrderIds.value = []
-  clearMintPoll()
   try {
     const {data} = await getConversationAnalysisDetail(analysisId.value)
     detail.value = data
@@ -388,12 +323,6 @@ async function loadDetail() {
     requestAnimationFrame(() => {
       pageReady.value = true
     })
-    if (data.habitGrowthMintStatus === 'pending') {
-      asideTab.value = 'cards'
-      scheduleMintPoll()
-    } else if ((data.growthCards?.length ?? 0) > 0) {
-      // keep summary as default unless user already switched
-    }
   } catch (error) {
     detail.value = null
     ElMessage.error(getErrorMessage(error, '加载详情失败'))
@@ -426,7 +355,6 @@ async function onDelete() {
 
 onMounted(loadDetail)
 watch([analysisId, isEphemeral], loadDetail)
-onBeforeUnmount(clearMintPoll)
 </script>
 
 <template>
@@ -483,7 +411,7 @@ onBeforeUnmount(clearMintPoll)
       <div class="detail-grid">
         <main class="detail-main">
           <section
-              v-if="topHabit || actionCards.length"
+              v-if="hasHabitFocus"
               class="habit-ladder kk-glass kk-glass--panel"
               aria-label="本场优先改的说话习惯"
           >
@@ -491,20 +419,13 @@ onBeforeUnmount(clearMintPoll)
               <h2 class="habit-ladder-title">本场优先改</h2>
             </header>
 
-            <TopHabitHero
-                v-if="topHabit"
-                :card="topHabit"
-                :mint-status="habitGrowthMintStatus"
-                @locate="locate"
-                @open-cards="asideTab = 'cards'"
-            />
-
             <ActionCardsPanel
                 :cards="actionCards"
                 :analysis-id="analysisId"
                 :growth-cards="growthCards"
-                @locate="locate"
+                :analysis-items="sortedItems"
                 @generated="onHabitCardGenerated"
+                @open-cards="asideTab = 'cards'"
             />
           </section>
 
@@ -728,29 +649,8 @@ onBeforeUnmount(clearMintPoll)
               role="tabpanel"
               aria-label="卡片库"
           >
-            <div
-                v-if="habitGrowthMintStatus === 'pending'"
-                class="growth-cards-status growth-cards-status--pending kk-glass kk-glass--panel"
-            >
-              成长卡生成中…
-            </div>
-            <div
-                v-else-if="habitGrowthMintStatus === 'failed' && !growthCards.length"
-                class="growth-cards-status growth-cards-status--failed kk-glass kk-glass--panel"
-            >
-              <p>成长卡生成失败</p>
-              <el-button
-                  size="small"
-                  type="primary"
-                  plain
-                  :loading="retryingMint"
-                  @click="onRetryMint"
-              >
-                重新生成
-              </el-button>
-            </div>
             <el-empty
-                v-else-if="!growthCards.length"
+                v-if="!growthCards.length"
                 class="growth-cards-empty kk-glass kk-glass--panel"
                 description="本场还没有生成成长卡"
                 :image-size="64"
@@ -765,11 +665,18 @@ onBeforeUnmount(clearMintPoll)
                   :deletable="true"
                   :items="growthFanItems"
                   :remove-card="onDeleteGrowthCard"
+                  @open-evidence="onOpenGrowthEvidence"
               />
             </template>
           </section>
         </aside>
       </div>
+
+      <GrowthCardEvidenceDialog
+          v-model="growthEvidenceOpen"
+          :title="growthEvidenceTitle"
+          :items="growthEvidenceItems"
+      />
 
     </template>
   </div>
@@ -926,25 +833,12 @@ onBeforeUnmount(clearMintPoll)
   min-width: 0;
 }
 
-.growth-cards-status,
 .growth-cards-empty {
   margin: 0;
   padding: 0.85rem 0.95rem;
   font-size: 0.86rem;
   font-weight: 600;
   color: var(--kk-color-text-muted);
-}
-
-.growth-cards-status--failed {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.55rem;
-}
-
-.growth-cards-status--failed p {
-  margin: 0;
-  color: var(--kk-color-danger);
 }
 
 @media (min-width: 1024px) {
@@ -959,7 +853,6 @@ onBeforeUnmount(clearMintPoll)
     max-height: calc(100dvh - var(--kk-navbar-offset) - 1.25rem);
     overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior: contain;
     z-index: 5;
     align-self: start;
     /* 给面板外阴影留空，避免 overflow 裁成底部硬边黑条 */
@@ -1216,7 +1109,7 @@ onBeforeUnmount(clearMintPoll)
   --summary-body: 0.84rem;
   margin-bottom: 0.75rem;
   border-top: 2px solid var(--kk-color-accent);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .summary-top {

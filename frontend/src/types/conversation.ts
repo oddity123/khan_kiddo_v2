@@ -51,12 +51,10 @@ export interface AnalysisResultsPayload {
   totalSentences?: number
   englishPracticeCount?: number
   totalErrors?: number
-  chineseExpressions?: ChineseExpressionItem[]
   chineseExpressionCount?: number
   educationalSummary?: EducationalSummaryRoot
   errorTypeDistribution?: ErrorTypeDistribution[]
   /** 流水线内 HabitCardScorer 结果，游客预览直接复用 */
-  topHabit?: ActionCard
   actionCards?: ActionCard[]
   familyDistribution?: FamilyDistributionItem[]
 }
@@ -71,6 +69,8 @@ export interface ChineseExpressionItem {
     kindLabel?: string
     /** 稳定键（成长卡 cardId 等），供闪卡列表复用 */
     cardKey?: string
+    /** 成长卡证据句数（侧栏「证据」入口） */
+    evidenceCount?: number
 }
 
 /** 与后端 EducationalSummaryParser / v1 一致：{ report: { overallStats, overallSummary }, chineseExpressions? } */
@@ -189,17 +189,12 @@ export interface ConversationAnalysisDetail {
   educationalSummary?: EducationalSummaryRoot
   items?: AnalysisItem[]
   errorTypeDistribution?: ErrorTypeDistribution[]
-  chineseExpressions?: ChineseExpressionItem[]
-    /** 本次最该改的说话习惯（rank1），无足够证据时为空 */
-    topHabit?: ActionCard
-    /** 跨通道习惯行动卡 Top 1-3，无足够证据时为空数组 */
+    /** 跨通道习惯行动卡 Top 1-3（rank1 即本场最该改），无足够证据时为空数组 */
     actionCards?: ActionCard[]
     /** 语法家族分布（饼图用），旧数据回退 errorTypeDistribution */
     familyDistribution?: FamilyDistributionItem[]
-    /** 习惯成长卡铸卡状态 */
-    habitGrowthMintStatus?: 'pending' | 'ready' | 'failed' | 'none'
-    /** 已铸成的习惯成长卡，ready 时有值 */
-    habitGrowthCard?: GrowthCard
+    /** 习惯成长卡状态：ready=已有习惯卡，none=尚未制卡 */
+    habitGrowthMintStatus?: 'ready' | 'none'
     /** 本场已生成的全部成长卡（habit + vocab） */
     growthCards?: GrowthCard[]
 }
@@ -224,7 +219,7 @@ export interface PracticePrompt {
 
 /** 跨通道习惯行动卡（Top 1-3），与后端 ActionCardDto 一致 */
 export interface ActionCard {
-    /** 1-based 排名，1 即 topHabit */
+    /** 1-based 排名，1 即本场最该改的习惯 */
     rank: number
     channel: PointChannel
     cardKind: CardKind

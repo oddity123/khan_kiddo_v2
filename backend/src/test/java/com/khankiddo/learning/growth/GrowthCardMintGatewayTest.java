@@ -28,7 +28,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,11 +67,10 @@ class GrowthCardMintGatewayTest {
                         .analysisId(ANALYSIS_ID)
                         .educationalSummary("{}")
                         .build()));
-        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
     }
 
     @Test
-    void mintAfterAnalysis_shouldPersistVocabWhenNoTopHabit() {
+    void mintAfterAnalysis_shouldPersistVocabOnly_withoutAutoHabit() {
         ChineseExpressionDto expression = ChineseExpressionDto.builder()
                 .originalIndex(3)
                 .focusPhrase("很有成就感")
@@ -82,86 +80,39 @@ class GrowthCardMintGatewayTest {
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()
                 .chineseExpressions(List.of(expression))
                 .build());
-        when(analysisSupport.score(any(), any()))
-                .thenReturn(new HabitCardScorer.HabitScoreResult(null, List.of(), List.of()));
+        GrowthCard vocabCard = GrowthCard.builder().cardId("vocab-1").front("很有成就感").build();
+        when(store.persistNewOrGet(
+                USER_ID, "vocab", "很有成就感", "I feel a strong sense of accomplishment.",
+                ANALYSIS_ID, "vocab:3", null))
+                .thenReturn(vocabCard);
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
         verify(assistant, never()).generate(anyString(), anyString());
+        verify(analysisSupport, never()).score(any(), any());
+        verify(store, never()).persistNewOrGet(
+                anyLong(), eq("habit"), anyString(), anyString(), anyString(), anyString(), isNull());
         verify(store).persistNewOrGet(
                 USER_ID, "vocab", "很有成就感", "I feel a strong sense of accomplishment.",
                 ANALYSIS_ID, "vocab:3", null);
+        verify(store).saveEvidence(any());
     }
 
     @Test
-    void mintAfterAnalysis_shouldNotInvokeAssistantWhenTopHabitAlreadyExists() {
-        ActionCardDto topHabit = ActionCardDto.builder().rank(1).habitKey("FAM_TENSE").build();
+    void mintAfterAnalysis_shouldNotAutoMintTopHabit() {
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
-        when(analysisSupport.score(any(), any()))
-                .thenReturn(new HabitCardScorer.HabitScoreResult(topHabit, List.of(topHabit), List.of()));
-        when(store.findByUserSource(USER_ID, ANALYSIS_ID, "habit", "habit:FAM_TENSE"))
-                .thenReturn(Optional.of(GrowthCard.builder().cardId("existing").build()));
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
         verify(assistant, never()).generate(anyString(), anyString());
-        verify(store, never()).persistNewOrGet(
-                anyLong(), eq("habit"), anyString(), anyString(), anyString(), anyString(), isNull());
-    }
-
-    @Test
-    void mintAfterAnalysis_shouldGenerateThenPersistHabit() {
-        ActionCardDto topHabit = ActionCardDto.builder().rank(1).habitKey("FAM_TENSE").build();
-        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
-        when(analysisSupport.score(any(), any()))
-                .thenReturn(new HabitCardScorer.HabitScoreResult(topHabit, List.of(topHabit), List.of()));
-        when(store.findByUserSource(USER_ID, ANALYSIS_ID, "habit", "habit:FAM_TENSE"))
-                .thenReturn(Optional.empty());
-        when(promptLoader.getSystemPromptGrowthCardMint()).thenReturn(SYSTEM_PROMPT);
-        when(contextBuilder.build(topHabit)).thenReturn("mint brief");
-        when(assistant.generate(SYSTEM_PROMPT, "mint brief")).thenReturn(GrowthCardDraft.builder()
-                .front("何时用现在完成时？")
-                .back("I've already finished it.")
-                .build());
-        when(store.persistNewOrGet(
-                USER_ID, "habit", "何时用现在完成时？", "I've already finished it.",
-                ANALYSIS_ID, "habit:FAM_TENSE", null))
-                .thenReturn(GrowthCard.builder().cardId("new").build());
-
-        gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
-
-        verify(assistant, times(1)).generate(SYSTEM_PROMPT, "mint brief");
-        verify(store).persistNewOrGet(
-                USER_ID,
-                "habit",
-                "何时用现在完成时？",
-                "I've already finished it.",
-                ANALYSIS_ID,
-                "habit:FAM_TENSE",
-                null);
-    }
-
-    @Test
-    void mintAfterAnalysis_shouldSkipPersistWhenDraftEmpty() {
-        ActionCardDto topHabit = ActionCardDto.builder().rank(1).habitKey("FAM_TENSE").build();
-        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
-        when(analysisSupport.score(any(), any()))
-                .thenReturn(new HabitCardScorer.HabitScoreResult(topHabit, List.of(topHabit), List.of()));
-        when(store.findByUserSource(USER_ID, ANALYSIS_ID, "habit", "habit:FAM_TENSE"))
-                .thenReturn(Optional.empty());
-        when(promptLoader.getSystemPromptGrowthCardMint()).thenReturn(SYSTEM_PROMPT);
-        when(contextBuilder.build(topHabit)).thenReturn("mint brief");
-        when(assistant.generate(SYSTEM_PROMPT, "mint brief"))
-                .thenReturn(GrowthCardDraft.builder().front("").back("").build());
-
-        gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
-
+        verify(store, never()).findByUserSource(anyLong(), anyString(), eq("habit"), anyString());
         verify(store, never()).persistNewOrGet(
                 anyLong(), eq("habit"), anyString(), anyString(), anyString(), anyString(), isNull());
     }
 
     @Test
     void mintHabitByKey_shouldGenerateAndPersistForTop2() {
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
         ActionCardDto top2 = ActionCardDto.builder().rank(2).habitKey("FAM_ARTICLE").titleZh("冠词").build();
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
         when(analysisSupport.score(any(), any()))
@@ -184,10 +135,12 @@ class GrowthCardMintGatewayTest {
 
         assertEquals("card-2", result.getCardId());
         verify(assistant).generate(SYSTEM_PROMPT, "top2 brief");
+        verify(store).saveEvidence(any());
     }
 
     @Test
     void mintHabitByKey_shouldReturnExistingWithoutLlm() {
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
         ActionCardDto top2 = ActionCardDto.builder().rank(2).habitKey("FAM_ARTICLE").build();
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
         when(analysisSupport.score(any(), any()))
@@ -204,6 +157,7 @@ class GrowthCardMintGatewayTest {
 
     @Test
     void mintHabitByKey_shouldRejectUnknownHabit() {
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
         when(analysisSupport.score(any(), any()))
                 .thenReturn(new HabitCardScorer.HabitScoreResult(null, List.of(), List.of()));

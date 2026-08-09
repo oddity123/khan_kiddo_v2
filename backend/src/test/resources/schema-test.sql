@@ -68,3 +68,18 @@ CREATE TABLE IF NOT EXISTS growth_card
     UNIQUE (card_id),
     UNIQUE (user_id, source_analysis_id, type, source_ref)
 );
+
+CREATE TABLE IF NOT EXISTS growth_card_evidence
+(
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    card_id            VARCHAR(64)  NOT NULL,
+    user_id            BIGINT       NOT NULL,
+    source_analysis_id VARCHAR(64)  NOT NULL,
+    sentence_id        VARCHAR(64),
+    track_key          VARCHAR(190) NOT NULL,
+    original_sentence  TEXT         NOT NULL,
+    suggestion         TEXT,
+    sort_order         INT          NOT NULL DEFAULT 0,
+    created_at         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (card_id, track_key)
+);

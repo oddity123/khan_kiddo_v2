@@ -238,13 +238,46 @@ defineExpose({openChat, closeChat, toggleChat})
 
 @media (max-width: 720px) {
   .rag-float {
-    right: 0.85rem;
-    bottom: 0.85rem;
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   .rag-panel {
-    width: min(100vw - 1.2rem, 26.5rem);
-    height: min(70dvh, 34rem);
+    width: min(100vw - 1rem, 26.5rem);
+    height: min(72dvh, calc(100dvh - 5.5rem));
+    border-radius: var(--kk-radius-lg);
+  }
+
+  /* 移动端：圆形图标钮，减轻遮挡与视觉重量 */
+  .rag-bubble {
+    width: 3.15rem;
+    min-width: 3.15rem;
+    height: 3.15rem;
+    padding: 0;
+    box-shadow:
+        0 8px 20px rgba(11, 26, 125, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .rag-bubble:hover,
+  .rag-bubble:active {
+    transform: scale(0.97);
+  }
+
+  .rag-bubble-label {
+    display: none;
+  }
+
+  .rag-bubble--open {
+    width: 3.15rem;
+    min-width: 3.15rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rag-panel,
+  .rag-bubble {
+    transition: none;
   }
 }
 </style>

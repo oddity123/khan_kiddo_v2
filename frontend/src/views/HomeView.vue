@@ -7,6 +7,7 @@ import {FlashCards, FlipCard} from 'vue3-flashcards'
 
 import PillarMark from '@/components/home/PillarMark.vue'
 import {useAuthStore} from '@/stores/auth'
+import {useSiteStore} from '@/stores/site'
 import type {DailyPracticeStat} from '@/types/home'
 import {signalPrerenderReady} from '@/utils/prerender'
 
@@ -373,8 +374,12 @@ watch(revealed, (on) => {
 onMounted(() => {
   requestAnimationFrame(() => {
     revealed.value = true
-    signalPrerenderReady()
   })
+  void useSiteStore()
+    .ensureLoaded()
+    .finally(() => {
+      signalPrerenderReady()
+    })
 })
 
 onUnmounted(() => {

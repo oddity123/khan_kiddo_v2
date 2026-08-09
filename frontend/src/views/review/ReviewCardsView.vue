@@ -52,6 +52,10 @@ async function loadRandom() {
 onMounted(() => {
   void loadToday()
 })
+
+function onCardDeleted(cardId: string) {
+  cards.value = cards.value.filter((card) => card.cardId !== cardId)
+}
 </script>
 
 <template>
@@ -95,9 +99,11 @@ onMounted(() => {
       </div>
       <GrowthFlashcardDeck
           page
+          deletable
           :cards="cards"
           :empty-today-text="mode === 'random' ? '没有抽到成长卡，先去分析生成一些吧' : '今天没有待复习的成长卡'"
           :empty-done-text="mode === 'random' ? '这 5 张已经练完' : '今日成长卡已练完'"
+          @deleted="onCardDeleted"
       />
     </section>
   </div>

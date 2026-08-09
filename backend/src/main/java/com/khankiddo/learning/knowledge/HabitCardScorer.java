@@ -66,9 +66,10 @@ public class HabitCardScorer {
         if (!CollectionUtils.isEmpty(chineseExpressions)) {
             PointDefinition chinesePoint = dictionary.resolveOrFallback(CHINESE_POINT_ID);
             for (ChineseExpressionDto expression : chineseExpressions) {
-                String focusPhrase = StringUtils.hasText(expression.getFocusPhrase())
-                        ? expression.getFocusPhrase()
-                        : expression.getOriginalSentence();
+                // 词汇求助（有 focusPhrase）不参与习惯打分 / Top3；仅内容表达计入
+                if (StringUtils.hasText(expression.getFocusPhrase())) {
+                    continue;
+                }
                 String sentenceId = expression.getOriginalIndex() != null
                         ? String.valueOf(expression.getOriginalIndex())
                         : null;
@@ -76,7 +77,7 @@ public class HabitCardScorer {
                         chinesePoint,
                         sentenceId,
                         expression.getOriginalSentence(),
-                        focusPhrase,
+                        expression.getOriginalSentence(),
                         expression.getSuggestion(),
                         CHINESE_INJECT_SEVERITY));
             }

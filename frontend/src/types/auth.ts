@@ -13,7 +13,7 @@ export interface LoginResponse {
 export interface RegisterPayload {
     username: string
     password: string
-    email?: string
+    email: string
 }
 
 export interface RegisterResponse {

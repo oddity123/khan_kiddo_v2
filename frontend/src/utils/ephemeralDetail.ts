@@ -33,8 +33,6 @@ export function resultToEphemeralDetail(
     educationalSummary,
     items: ar?.items,
     errorTypeDistribution: ar?.errorTypeDistribution,
-    chineseExpressions: ar?.chineseExpressions ?? educationalSummary?.chineseExpressions,
-    topHabit: ar?.topHabit,
     actionCards: ar?.actionCards ?? [],
     familyDistribution: ar?.familyDistribution,
     habitGrowthMintStatus: 'none',

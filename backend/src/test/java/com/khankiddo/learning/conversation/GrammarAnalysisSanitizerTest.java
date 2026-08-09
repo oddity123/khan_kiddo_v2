@@ -86,7 +86,7 @@ class GrammarAnalysisSanitizerTest {
     }
 
     @Test
-    void dropsChineseType_evenWhenFragmentInOriginal() {
+    void keepsChineseCodeSwitch_whenFragmentInOriginal() {
         GrammarAnalysisResult grammar = result(item(
                 "I sit down on a 楼梯.",
                 "I sat down on the stairs.",
@@ -94,7 +94,10 @@ class GrammarAnalysisSanitizerTest {
 
         GrammarAnalysisResult cleaned = sanitizer.sanitize(grammar);
 
-        assertThat(cleaned.getItems()).isEmpty();
+        assertThat(cleaned.getItems()).hasSize(1);
+        assertThat(cleaned.getItems().get(0).getErrors()).hasSize(1);
+        assertThat(cleaned.getItems().get(0).getErrors().get(0).getPointId())
+                .isEqualTo("CHINESE_CODE_SWITCH");
     }
 
     @Test

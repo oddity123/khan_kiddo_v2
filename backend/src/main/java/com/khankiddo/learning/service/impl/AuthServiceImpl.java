@@ -50,9 +50,12 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public RegisterResponse register(RegisterRequest request) {
         String username = request.getUsername().trim();
-        String email = StringUtils.hasText(request.getEmail()) ? request.getEmail().trim() : null;
+        if (!StringUtils.hasText(request.getEmail())) {
+            throw new BadRequestException("请填写邮箱，后续找回密码会用到");
+        }
+        String email = request.getEmail().trim();
 
-        if (StringUtils.hasText(email) && !email.matches("^[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}$")) {
+        if (!email.matches("^[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}$")) {
             throw new BadRequestException("邮箱格式不正确");
         }
 

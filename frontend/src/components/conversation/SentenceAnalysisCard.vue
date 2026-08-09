@@ -95,7 +95,7 @@ function chipIcon(type?: string): Component {
         <span class="pane-head-icon pane-head-icon--ai" aria-hidden="true">
           <el-icon><MagicStick/></el-icon>
         </span>
-        <span class="pane-tag pane-tag--ai">AI 建议</span>
+        <span class="pane-tag pane-tag--ai">优化表达</span>
       </header>
       <p class="pane-improved">{{ item.suggestion }}</p>
     </section>

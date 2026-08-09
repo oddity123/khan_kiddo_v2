@@ -1,6 +1,5 @@
 package com.khankiddo.learning.growth;
 
-import com.khankiddo.learning.dto.conversation.ActionCardDto;
 import com.khankiddo.learning.dto.growth.GrowthCardGradeRequest;
 import com.khankiddo.learning.model.GrowthCard;
 import com.khankiddo.learning.security.AuthenticatedUser;
@@ -14,11 +13,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,11 +33,14 @@ class GrowthCardReviewServiceTest {
     @Mock
     private GrowthCardMintGateway gateway;
 
+    @Mock
+    private GrowthCardEvidenceHydrator evidenceHydrator;
+
     private GrowthCardReviewService reviewService;
 
     @BeforeEach
     void setUp() {
-        reviewService = new GrowthCardReviewService(store, gateway);
+        reviewService = new GrowthCardReviewService(store, gateway, evidenceHydrator);
         var auth = new UsernamePasswordAuthenticationToken(
                 new AuthenticatedUser(1L, "test"), null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);
@@ -49,39 +53,12 @@ class GrowthCardReviewServiceTest {
 
     @Test
     void resolveHabitMintStatus_shouldReturnReadyWhenCardPresent() {
-        String status = reviewService.resolveHabitMintStatus(
-                ActionCardDto.builder().pointId("P1").build(),
-                LocalDateTime.now().minusMinutes(5),
-                true);
-
-        assertEquals("ready", status);
+        assertEquals("ready", reviewService.resolveHabitMintStatus(true));
     }
 
     @Test
-    void resolveHabitMintStatus_shouldReturnNoneWhenNoTopHabit() {
-        String status = reviewService.resolveHabitMintStatus(null, LocalDateTime.now(), false);
-
-        assertEquals("none", status);
-    }
-
-    @Test
-    void resolveHabitMintStatus_shouldReturnPendingWhenRecentAnalysis() {
-        String status = reviewService.resolveHabitMintStatus(
-                ActionCardDto.builder().pointId("P1").build(),
-                LocalDateTime.now().minusSeconds(10),
-                false);
-
-        assertEquals("pending", status);
-    }
-
-    @Test
-    void resolveHabitMintStatus_shouldReturnFailedWhenStaleWithoutCard() {
-        String status = reviewService.resolveHabitMintStatus(
-                ActionCardDto.builder().pointId("P1").build(),
-                LocalDateTime.now().minusMinutes(2),
-                false);
-
-        assertEquals("failed", status);
+    void resolveHabitMintStatus_shouldReturnNoneWhenNoHabitCard() {
+        assertEquals("none", reviewService.resolveHabitMintStatus(false));
     }
 
     @Test
@@ -122,6 +99,9 @@ class GrowthCardReviewServiceTest {
                 .sourceRef("habit:tense")
                 .build();
 
+        when(store.listEvidence("card-2")).thenReturn(List.of());
+        when(evidenceHydrator.hydrateMissing(anyList(), anyMap())).thenReturn(Map.of());
+
         var dto = reviewService.toDto(card);
 
         assertEquals("card-2", dto.getCardId());
@@ -132,5 +112,6 @@ class GrowthCardReviewServiceTest {
         assertEquals("world", dto.getBack());
         assertEquals("analysis-2", dto.getSourceAnalysisId());
         assertEquals("habit:tense", dto.getSourceRef());
+        assertEquals(0, dto.getEvidence() == null ? 0 : dto.getEvidence().size());
     }
 }

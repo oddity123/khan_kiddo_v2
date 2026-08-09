@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -23,4 +24,6 @@ public class GrowthCardDto {
     /** 如 habit:{habitKey}，用于判断某行动卡是否已铸卡 */
     private String sourceRef;
     private java.time.LocalDateTime createdAt;
+    /** 关联证据句（关系表），复习弹窗展示 */
+    private List<GrowthCardEvidenceDto> evidence;
 }

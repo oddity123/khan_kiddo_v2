@@ -84,29 +84,30 @@ class HabitCardDetailAssemblyTest {
     }
 
     @Test
-    void chineseExpressionsArePassedThroughToScorer() {
+    void chineseContentExpressionsArePassedThroughToScorer() {
         List<ConversationAnalysisItem> rows = List.of(
                 row(1L, "ARTICLE_A_AN", "Tense", "a apple", "an apple"),
                 row(1L, "ARTICLE_A_AN", "Tense", "a hour", "an hour")
         );
+        // 内容表达（无 focusPhrase）才计入习惯打分；词汇求助不进 Top
         List<ChineseExpressionDto> chinese = List.of(
                 ChineseExpressionDto.builder()
                         .originalIndex(0)
                         .originalSentence("我觉得立法很重要")
-                        .focusPhrase("立法")
-                        .suggestion("legislation")
+                        .focusPhrase("")
+                        .suggestion("I think legislation is important.")
                         .build(),
                 ChineseExpressionDto.builder()
                         .originalIndex(1)
                         .originalSentence("这个客商很有名")
-                        .focusPhrase("客商")
-                        .suggestion("client")
+                        .focusPhrase("")
+                        .suggestion("This client is well known.")
                         .build(),
                 ChineseExpressionDto.builder()
                         .originalIndex(2)
                         .originalSentence("他喜欢敲碗")
-                        .focusPhrase("敲碗")
-                        .suggestion("tap the bowl")
+                        .focusPhrase("")
+                        .suggestion("He likes to tap the bowl.")
                         .build()
         );
 

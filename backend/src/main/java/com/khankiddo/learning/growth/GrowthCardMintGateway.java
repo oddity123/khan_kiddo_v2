@@ -11,6 +11,7 @@ import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.GrowthCard;
+import com.khankiddo.learning.model.GrowthCardEvidence;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,17 +47,8 @@ public class GrowthCardMintGateway {
             return;
         }
 
+        // 习惯卡不再自动铸 Top1，由用户在行动卡上手动「制卡」；此处仅自动沉淀词汇卡
         ConversationAnalysis analysis = analysisOpt.get();
-        HabitCardScorer.HabitScoreResult scoreResult = scoreAnalysis(analysisId, analysis);
-        ActionCardDto topHabit = scoreResult.topHabit();
-
-        if (topHabit != null) {
-            String sourceRef = habitSourceRef(topHabit);
-            if (store.findByUserSource(userId, analysisId, "habit", sourceRef).isEmpty()) {
-                mintHabitCard(userId, analysisId, topHabit);
-            }
-        }
-
         for (ChineseExpressionDto expression : scoreResultChinese(analysis)) {
             persistVocabCard(userId, analysisId, expression);
         }
@@ -67,8 +59,8 @@ public class GrowthCardMintGateway {
     }
 
     /**
-     * 按 habitKey 对本场行动卡走 LLM 生成并落库（Top2/3 手动铸卡等）。
-     * 已存在同 sourceRef 则直接返回，不再调 LLM。
+     * 按 habitKey 对本场行动卡走 LLM 生成并落库。
+     * 已存在同 sourceRef 则直接返回（仍补写缺失证据），不再调 LLM。
      */
     public GrowthCard mintHabitByKey(Long userId, String analysisId, String habitKey) {
         if (!StringUtils.hasText(habitKey)) {
@@ -86,7 +78,10 @@ public class GrowthCardMintGateway {
         String sourceRef = habitSourceRef(habit);
         Optional<GrowthCard> existing = store.findByUserSource(userId, analysisId, "habit", sourceRef);
         if (existing.isPresent()) {
-            return existing.get();
+            GrowthCard card = existing.get();
+            store.saveEvidence(GrowthCardEvidenceSupport.fromHabitExamples(
+                    userId, card.getCardId(), analysisId, habit));
+            return card;
         }
 
         GrowthCard card = mintHabitCard(userId, analysisId, habit);
@@ -154,7 +149,7 @@ public class GrowthCardMintGateway {
                     analysisId, resolveHabitKey(habit));
             return null;
         }
-        return store.persistNewOrGet(
+        GrowthCard card = store.persistNewOrGet(
                 userId,
                 "habit",
                 draft.getFront().trim(),
@@ -162,6 +157,10 @@ public class GrowthCardMintGateway {
                 analysisId,
                 habitSourceRef(habit),
                 null);
+        List<GrowthCardEvidence> evidence = GrowthCardEvidenceSupport.fromHabitExamples(
+                userId, card.getCardId(), analysisId, habit);
+        store.saveEvidence(evidence);
+        return card;
     }
 
     private void persistVocabCard(Long userId, String analysisId, ChineseExpressionDto expression) {
@@ -175,7 +174,7 @@ public class GrowthCardMintGateway {
         if (!StringUtils.hasText(front) || !StringUtils.hasText(back)) {
             return;
         }
-        store.persistNewOrGet(
+        GrowthCard card = store.persistNewOrGet(
                 userId,
                 "vocab",
                 front,
@@ -183,5 +182,7 @@ public class GrowthCardMintGateway {
                 analysisId,
                 "vocab:" + expression.getOriginalIndex(),
                 null);
+        store.saveEvidence(GrowthCardEvidenceSupport.fromChineseExpression(
+                userId, card.getCardId(), analysisId, expression));
     }
 }

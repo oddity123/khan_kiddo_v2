@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.mapper.GrowthCardEvidenceMapper">
+
+    <resultMap id="GrowthCardEvidenceResultMap" type="com.khankiddo.learning.model.GrowthCardEvidence">
+        <id column="id" property="id"/>
+        <result column="card_id" property="cardId"/>
+        <result column="user_id" property="userId"/>
+        <result column="source_analysis_id" property="sourceAnalysisId"/>
+        <result column="sentence_id" property="sentenceId"/>
+        <result column="track_key" property="trackKey"/>
+        <result column="original_sentence" property="originalSentence"/>
+        <result column="suggestion" property="suggestion"/>
+        <result column="sort_order" property="sortOrder"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="EvidenceColumns">
+        id, card_id, user_id, source_analysis_id, sentence_id, track_key,
+        original_sentence, suggestion, sort_order, created_at
+    </sql>
+
+    <insert id="insertIgnore">
+        INSERT IGNORE INTO growth_card_evidence
+        (card_id, user_id, source_analysis_id, sentence_id, track_key,
+         original_sentence, suggestion, sort_order)
+        VALUES (#{cardId}, #{userId}, #{sourceAnalysisId}, #{sentenceId}, #{trackKey},
+                #{originalSentence}, #{suggestion}, #{sortOrder})
+    </insert>
+
+    <insert id="insertIgnoreBatch">
+        INSERT IGNORE INTO growth_card_evidence
+        (card_id, user_id, source_analysis_id, sentence_id, track_key,
+         original_sentence, suggestion, sort_order)
+        VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (#{row.cardId}, #{row.userId}, #{row.sourceAnalysisId}, #{row.sentenceId}, #{row.trackKey},
+             #{row.originalSentence}, #{row.suggestion}, #{row.sortOrder})
+        </foreach>
+    </insert>
+
+    <select id="findByCardId" resultMap="GrowthCardEvidenceResultMap">
+        SELECT
+        <include refid="EvidenceColumns"/>
+        FROM growth_card_evidence
+        WHERE card_id = #{cardId}
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="findByCardIds" resultMap="GrowthCardEvidenceResultMap">
+        SELECT
+        <include refid="EvidenceColumns"/>
+        FROM growth_card_evidence
+        WHERE card_id IN
+        <foreach collection="cardIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY card_id ASC, sort_order ASC, id ASC
+    </select>
+
+    <select id="findByUserAnalysisSentence" resultMap="GrowthCardEvidenceResultMap">
+        SELECT
+        <include refid="EvidenceColumns"/>
+        FROM growth_card_evidence
+        WHERE user_id = #{userId}
+          AND source_analysis_id = #{sourceAnalysisId}
+          AND sentence_id = #{sentenceId}
+        ORDER BY created_at ASC, id ASC
+    </select>
+
+    <delete id="deleteByCardId">
+        DELETE FROM growth_card_evidence
+        WHERE card_id = #{cardId}
+    </delete>
+
+    <select id="countByCardId" resultType="long">
+        SELECT COUNT(*)
+        FROM growth_card_evidence
+        WHERE card_id = #{cardId}
+    </select>
+</mapper>

@@ -20,7 +20,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ActionCardDto {
 
-    /** 1-based 排名，1 即 topHabit */
+    /** 1-based 排名，1 即本场最该改的习惯 */
     private int rank;
 
     private PointChannel channel;

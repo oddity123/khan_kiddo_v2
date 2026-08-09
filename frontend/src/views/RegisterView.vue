@@ -43,7 +43,10 @@ const rules: FormRules = {
       trigger: 'blur',
     },
   ],
-  email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }],
+  email: [
+    { required: true, message: '请填写邮箱，后续找回密码会用到', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
+  ],
 }
 
 onMounted(() => {
@@ -60,11 +63,10 @@ async function onSubmit() {
   }
   submitting.value = true
   try {
-    const email = form.email.trim()
     await registerApi({
       username: form.username.trim(),
       password: form.password,
-      email: email || undefined,
+      email: form.email.trim(),
     })
     await router.push({ name: 'login', query: { registered: '1' } })
   } catch (error) {
@@ -124,13 +126,14 @@ async function onSubmit() {
           />
         </el-form-item>
 
-        <el-form-item label="邮箱（可选）" prop="email">
+        <el-form-item label="邮箱" prop="email">
           <el-input
             v-model="form.email"
-            placeholder="用于找回密码和通知"
+            placeholder="请输入常用邮箱"
             autocomplete="email"
             :prefix-icon="Message"
           />
+          <p class="auth-field-hint">后期找回密码会用到此邮箱</p>
         </el-form-item>
 
         <el-button
@@ -211,6 +214,14 @@ async function onSubmit() {
   font-family: var(--kk-font-body);
   font-weight: 600;
   color: var(--kk-color-text-secondary);
+}
+
+.auth-field-hint {
+  margin: 0.35rem 0 0;
+  font-family: var(--kk-font-body);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--kk-color-text-subtle);
 }
 
 .auth-submit {

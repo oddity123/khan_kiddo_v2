@@ -56,10 +56,19 @@ public class GrowthCardController {
         reviewService.retryMint(analysisId);
     }
 
-    /** 对本场指定习惯（Top2/3 等）走 LLM 生成并落库 */
+    /** 对本场指定习惯走 LLM 生成并落库 */
     @PostMapping("/mint/{analysisId}/habit")
     public GrowthCardDto mintHabit(@PathVariable String analysisId,
                                    @Valid @RequestBody MintHabitGrowthCardRequest request) {
         return reviewService.mintHabit(analysisId, request.getHabitKey());
+    }
+
+    /**
+     * 按句追踪：某场分析某句关联了哪些成长卡。
+     */
+    @GetMapping("/by-sentence")
+    public List<GrowthCardDto> bySentence(@RequestParam String analysisId,
+                                          @RequestParam String sentenceId) {
+        return reviewService.listBySentence(analysisId, sentenceId);
     }
 }

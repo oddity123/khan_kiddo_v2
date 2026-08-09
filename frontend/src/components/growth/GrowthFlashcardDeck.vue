@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import {ElMessage} from 'element-plus'
+import {Delete} from '@element-plus/icons-vue'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {computed, nextTick, ref, watch} from 'vue'
 import {FlashCards, FlipCard} from 'vue3-flashcards'
 
-import {gradeGrowthCard} from '@/api/growthCard'
-import type {GrowthCard, GrowthGrade} from '@/types/growthCard'
+import {deleteGrowthCard, gradeGrowthCard} from '@/api/growthCard'
+import GrowthCardEvidenceDialog from '@/components/growth/GrowthCardEvidenceDialog.vue'
+import type {GrowthCard, GrowthCardEvidence, GrowthGrade} from '@/types/growthCard'
 import {getErrorMessage} from '@/utils/error'
 
 const props = withDefaults(
@@ -14,16 +16,23 @@ const props = withDefaults(
       compact?: boolean
       /** 独立复习页：卡片更大、垂直居中 */
       page?: boolean
+      /** 允许删除当前成长卡 */
+      deletable?: boolean
       emptyTodayText?: string
       emptyDoneText?: string
     }>(),
     {
       compact: false,
       page: false,
+      deletable: false,
       emptyTodayText: '今天没有待复习的成长卡',
       emptyDoneText: '本轮卡片已练完',
     },
 )
+
+const emit = defineEmits<{
+  deleted: [cardId: string]
+}>()
 
 interface DeckExpose {
   reset: (options?: {animate?: boolean; delay?: number}) => void | Promise<void>
@@ -37,6 +46,25 @@ const queue = ref<GrowthCard[]>([])
 const initialCount = ref(0)
 const isFlipped = ref(false)
 const grading = ref(false)
+const deleting = ref(false)
+const evidenceOpen = ref(false)
+const evidenceTitle = ref('')
+const evidenceItems = ref<GrowthCardEvidence[]>([])
+
+function evidenceCount(card: GrowthCard): number {
+  return card.evidence?.length ?? 0
+}
+
+function openEvidence(card: GrowthCard, event?: Event) {
+  event?.stopPropagation()
+  event?.preventDefault()
+  if (!evidenceCount(card)) {
+    return
+  }
+  evidenceTitle.value = card.front?.trim() || typeLabel(card.type)
+  evidenceItems.value = [...(card.evidence ?? [])]
+  evidenceOpen.value = true
+}
 
 watch(
     () => props.cards,
@@ -129,6 +157,38 @@ async function submitGrade(grade: GrowthGrade) {
     grading.value = false
   }
 }
+
+async function deleteCurrent() {
+  const current = queue.value[0]
+  if (!props.deletable || !current || grading.value || deleting.value) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm('确定删除这张成长卡？删除后不可恢复。', '删除确认', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return
+  }
+
+  deleting.value = true
+  try {
+    await deleteGrowthCard(current.cardId)
+    queue.value = queue.value.filter((card) => card.cardId !== current.cardId)
+    isFlipped.value = false
+    emit('deleted', current.cardId)
+    ElMessage.success('已删除成长卡')
+    await nextTick()
+    await deckRef.value?.reset?.({animate: false})
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '删除失败，请稍后重试'))
+  } finally {
+    deleting.value = false
+  }
+}
 </script>
 
 <template>
@@ -169,6 +229,16 @@ async function submitGrade(grade: GrowthGrade) {
                 <section class="growth-pane">
                   <p class="growth-main">{{ item.front }}</p>
                 </section>
+                <button
+                    v-if="evidenceCount(item)"
+                    type="button"
+                    class="growth-evidence-btn"
+                    @click.stop="openEvidence(item, $event)"
+                    @pointerdown.stop
+                    @pointerup.stop
+                >
+                  查看证据
+                </button>
               </article>
             </template>
             <template #back>
@@ -180,6 +250,16 @@ async function submitGrade(grade: GrowthGrade) {
                 <section class="growth-pane">
                   <p class="growth-main growth-main--back">{{ item.back }}</p>
                 </section>
+                <button
+                    v-if="evidenceCount(item)"
+                    type="button"
+                    class="growth-evidence-btn"
+                    @click.stop="openEvidence(item, $event)"
+                    @pointerdown.stop
+                    @pointerup.stop
+                >
+                  查看证据
+                </button>
               </article>
             </template>
           </FlipCard>
@@ -197,12 +277,25 @@ async function submitGrade(grade: GrowthGrade) {
     </div>
 
     <div v-if="count > 0" class="growth-actions">
-      <p class="growth-actions-hint">点击卡片翻面后评分</p>
+      <div class="growth-actions-top">
+        <p class="growth-actions-hint">点击卡片翻面后评分</p>
+        <button
+            v-if="deletable"
+            type="button"
+            class="growth-delete-btn"
+            :disabled="grading || deleting"
+            aria-label="删除成长卡"
+            @click="deleteCurrent"
+        >
+          <el-icon><Delete/></el-icon>
+          删除
+        </button>
+      </div>
       <div class="growth-grade-row">
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--again"
-            :disabled="grading || !isFlipped"
+            :disabled="grading || deleting || !isFlipped"
             @click="submitGrade('again')"
         >
           <span class="growth-grade-label">Again</span>
@@ -211,7 +304,7 @@ async function submitGrade(grade: GrowthGrade) {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--hard"
-            :disabled="grading || !isFlipped"
+            :disabled="grading || deleting || !isFlipped"
             @click="submitGrade('hard')"
         >
           <span class="growth-grade-label">Hard</span>
@@ -220,7 +313,7 @@ async function submitGrade(grade: GrowthGrade) {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--good"
-            :disabled="grading || !isFlipped"
+            :disabled="grading || deleting || !isFlipped"
             @click="submitGrade('good')"
         >
           <span class="growth-grade-label">Good</span>
@@ -229,7 +322,7 @@ async function submitGrade(grade: GrowthGrade) {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--easy"
-            :disabled="grading || !isFlipped"
+            :disabled="grading || deleting || !isFlipped"
             @click="submitGrade('easy')"
         >
           <span class="growth-grade-label">Easy</span>
@@ -237,6 +330,12 @@ async function submitGrade(grade: GrowthGrade) {
         </button>
       </div>
     </div>
+
+    <GrowthCardEvidenceDialog
+        v-model="evidenceOpen"
+        :title="evidenceTitle"
+        :items="evidenceItems"
+    />
   </div>
 </template>
 
@@ -437,6 +536,30 @@ async function submitGrade(grade: GrowthGrade) {
   font-weight: 600;
 }
 
+.growth-evidence-btn {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin: 0.15rem 0 0;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--kk-radius-pill);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 18%, var(--kk-color-border));
+  background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
+  font-family: var(--kk-font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--kk-color-primary);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.growth-evidence-btn:hover {
+  background: color-mix(in srgb, var(--kk-color-primary) 12%, white);
+  border-color: color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
+}
+
 .growth-empty {
   display: flex;
   align-items: center;
@@ -462,11 +585,47 @@ async function submitGrade(grade: GrowthGrade) {
   gap: 0.4rem;
 }
 
+.growth-actions-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
 .growth-actions-hint {
   margin: 0;
   font-size: 0.68rem;
   color: var(--kk-color-text-subtle);
   text-align: center;
+}
+
+.growth-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--kk-radius-pill);
+  border: 1px solid color-mix(in srgb, var(--kk-color-danger, #b42318) 22%, var(--kk-color-border));
+  background: color-mix(in srgb, var(--kk-color-danger, #b42318) 6%, white);
+  font-family: var(--kk-font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--kk-color-danger, #b42318);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.growth-delete-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--kk-color-danger, #b42318) 12%, white);
+  border-color: color-mix(in srgb, var(--kk-color-danger, #b42318) 35%, transparent);
+}
+
+.growth-delete-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .growth-grade-row {

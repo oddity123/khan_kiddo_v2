@@ -260,11 +260,9 @@ public class ConversationAnalysisPipeline {
         analysisResults.put("totalSentences", userCount);
         analysisResults.put("englishPracticeCount", englishPracticeCount);
         analysisResults.put("totalErrors", countErrors(grammar));
-        analysisResults.put("chineseExpressions", chineseExpressions);
         analysisResults.put("chineseExpressionCount", chineseExpressions.size());
         analysisResults.put("educationalSummary", summaryOutcome.report());
         analysisResults.put("errorTypeDistribution", distribution);
-        analysisResults.put("topHabit", habitScoreResult.topHabit());
         analysisResults.put("actionCards", habitScoreResult.actionCards());
         analysisResults.put("familyDistribution", habitScoreResult.familyDistribution());
         analysisResults.put("summaryDegraded", summaryOutcome.degraded());

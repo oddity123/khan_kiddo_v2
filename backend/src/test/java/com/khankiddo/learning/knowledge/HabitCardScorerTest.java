@@ -21,11 +21,11 @@ class HabitCardScorerTest {
                 hit("ARTICLE_A_AN", "STYLE", "a apple", "an apple", "I eat a apple."),
                 hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
         );
-        // 3 条中文夹杂
+        // 3 条中文内容表达（无 focusPhrase）
         List<ChineseExpressionDto> chinese = List.of(
-                chinese("立法", "legislation"),
-                chinese("客商", "client"),
-                chinese("敲碗", "tap the bowl")
+                contentGap("我觉得立法很重要", "I think legislation is important."),
+                contentGap("这个客商很关键", "This client is very important."),
+                contentGap("大家在敲碗", "Everyone is tapping the bowl.")
         );
 
         HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
@@ -44,10 +44,10 @@ class HabitCardScorerTest {
                 hit("ARTICLE_A_AN", "BASIC", "a apple", "an apple", "I eat a apple."),
                 hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
         );
-        // 2 条中文夹杂：BASIC 应为 2*(2*1.25*1.0)=5.0 > 3.6；若误用字典 STYLE=1 则为 2*(1*1.25*1.0)=2.5 < 3.6
+        // 2 条中文内容表达：BASIC 应为 2*(2*1.25*1.0)=5.0 > 3.6；若误用字典 STYLE=1 则为 2*(1*1.25*1.0)=2.5 < 3.6
         List<ChineseExpressionDto> chinese = List.of(
-                chinese("立法", "legislation"),
-                chinese("客商", "client")
+                contentGap("我觉得立法很重要", "I think legislation is important."),
+                contentGap("这个客商很关键", "This client is very important.")
         );
 
         HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
@@ -55,6 +55,30 @@ class HabitCardScorerTest {
         assertEquals("CHINESE_CODE_SWITCH", result.topHabit().getPointId());
         assertEquals(5.0, result.topHabit().getScore(), 1e-9);
         assertEquals("CHINESE", result.topHabit().getHabitKey());
+    }
+
+    @Test
+    void vocabHelpDoesNotEnterTopOrFamilyDistribution() {
+        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        HabitCardScorer scorer = new HabitCardScorer(dict);
+
+        List<HabitScoreInput.ErrorHit> hits = List.of(
+                hit("ARTICLE_A_AN", "STYLE", "a apple", "an apple", "I eat a apple."),
+                hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
+        );
+        // 多条词汇求助（有 focusPhrase）不得抬高中文通道或抢 Top
+        List<ChineseExpressionDto> chinese = List.of(
+                vocabHelp("立法", "legislation"),
+                vocabHelp("客商", "client"),
+                vocabHelp("敲碗", "tap the bowl")
+        );
+
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
+
+        assertTrue(result.actionCards().stream().noneMatch(c -> "CHINESE".equals(c.getHabitKey())));
+        assertTrue(result.familyDistribution().stream()
+                .noneMatch(f -> f.getChannel() == PointChannel.CHINESE || "FAM_CHINESE".equals(f.getFamilyId())));
+        assertEquals("FAM_ARTICLE", result.topHabit().getHabitKey());
     }
 
     @Test
@@ -171,11 +195,20 @@ class HabitCardScorerTest {
                 pointId, "s" + (sequence++), originalSentence, errorPoint, suggestion, errorLevel);
     }
 
-    private static ChineseExpressionDto chinese(String focusPhrase, String suggestion) {
+    private static ChineseExpressionDto vocabHelp(String focusPhrase, String suggestion) {
         return ChineseExpressionDto.builder()
                 .originalIndex(sequence++)
-                .originalSentence("我觉得" + focusPhrase + "很重要")
+                .originalSentence(focusPhrase + "怎么说")
                 .focusPhrase(focusPhrase)
+                .suggestion(suggestion)
+                .build();
+    }
+
+    private static ChineseExpressionDto contentGap(String originalSentence, String suggestion) {
+        return ChineseExpressionDto.builder()
+                .originalIndex(sequence++)
+                .originalSentence(originalSentence)
+                .focusPhrase("")
                 .suggestion(suggestion)
                 .build();
     }

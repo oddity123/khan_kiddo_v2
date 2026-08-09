@@ -205,7 +205,7 @@ onMounted(() => {
       <div class="head-copy">
         <p class="page-eyebrow">Review Center</p>
         <h1 class="page-title">复盘中心</h1>
-        <p class="page-desc">把最近练习沉淀成可行动的复盘，并用右下角助手追问薄弱点。</p>
+        <p class="page-desc">最近练习与薄弱点一览</p>
       </div>
       <button type="button" class="dashboard-link" @click="router.push('/conversation/analyze')">
         去分析
@@ -215,13 +215,6 @@ onMounted(() => {
 
     <template v-if="home?.authenticated && home.analysisStats">
     <section class="dashboard">
-      <header class="dashboard-head">
-        <div class="dashboard-head-copy">
-          <h2 class="dashboard-title">学习概览</h2>
-          <p class="dashboard-lead">最近练习与薄弱点一览</p>
-        </div>
-      </header>
-
       <div class="stats-layout">
         <div class="stat-hero">
           <div class="stat-hero-top">

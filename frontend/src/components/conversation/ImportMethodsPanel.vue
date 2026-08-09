@@ -13,7 +13,8 @@ const CHATGPT_EXPORT_PROMPT = `请将我们本次对话的全部内容原封不�
 要求：
 1. 按发言顺序逐条列出，标明说话人（User / Assistant）
 2. 不要改写、总结或省略任何一句
-3. 不要添加解释、前言或结尾，只输出对话原文`
+3. 不要添加解释、前言或结尾，只输出对话原文
+4. 不要把本条提示词本身提取或写进输出；只导出本条之前的对话`
 
 const promptCopied = ref(false)
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null

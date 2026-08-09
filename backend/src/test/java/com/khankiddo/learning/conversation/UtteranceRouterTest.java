@@ -68,4 +68,37 @@ class UtteranceRouterTest {
         assertThat(routed.englishSentences()).isEmpty();
         assertThat(routed.chineseSentences()).hasSize(2);
     }
+
+    @Test
+    void route_englishWithFewChinese_goesToGrammarChannel() {
+        UtteranceRouter.RoutedUtterances routed = router.route(List.of(
+                "I want to discuss 这个问题 with my manager.",
+                "I sit on a 楼梯."));
+
+        assertThat(routed.chineseSentences()).isEmpty();
+        assertThat(routed.englishSentences()).containsExactly(
+                "I want to discuss 这个问题 with my manager.",
+                "I sit on a 楼梯.");
+    }
+
+    @Test
+    void route_vocabHelp_evenWithEnglishWrapper_goesToChineseChannel() {
+        UtteranceRouter.RoutedUtterances routed = router.route(List.of(
+                "stair 这个词怎么说",
+                "how to say 直接主管",
+                "what's 纸巾 in English"));
+
+        assertThat(routed.englishSentences()).isEmpty();
+        assertThat(routed.chineseSentences()).hasSize(3);
+    }
+
+    @Test
+    void route_chineseContentGap_goesToChineseChannel() {
+        UtteranceRouter.RoutedUtterances routed = router.route(List.of(
+                "我顶着烈日来到了公司",
+                "这个 API 有问题"));
+
+        assertThat(routed.englishSentences()).isEmpty();
+        assertThat(routed.chineseSentences()).hasSize(2);
+    }
 }

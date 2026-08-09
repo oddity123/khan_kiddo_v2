@@ -4,8 +4,6 @@ import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.ai.conversation.model.GrammarErrorDto;
 import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
-import com.khankiddo.learning.knowledge.PointChannel;
-import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,10 +88,6 @@ public class GrammarAnalysisSanitizer {
 
     private boolean shouldKeep(GrammarErrorDto error, String normalizedOriginal) {
         if (error == null || !StringUtils.hasText(error.getPoint())) {
-            return false;
-        }
-        PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
-        if (definition.channel() == PointChannel.CHINESE) {
             return false;
         }
         if (!StringUtils.hasText(normalizedOriginal)) {
