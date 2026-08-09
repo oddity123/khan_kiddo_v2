@@ -375,11 +375,9 @@ onMounted(() => {
   requestAnimationFrame(() => {
     revealed.value = true
   })
-  void useSiteStore()
-    .ensureLoaded()
-    .finally(() => {
-      signalPrerenderReady()
-    })
+  // 预渲染时无后端，勿等 /api/site（axios 30s 会与 prerender timeout 撞车）
+  void useSiteStore().ensureLoaded()
+  signalPrerenderReady()
 })
 
 onUnmounted(() => {
