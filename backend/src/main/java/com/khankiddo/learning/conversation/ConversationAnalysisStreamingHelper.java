@@ -267,10 +267,11 @@ public class ConversationAnalysisStreamingHelper {
         StreamingPreview preview = extractStreamingPreview(accumulated);
         boolean isNewItem = isNewStreamingItem(last[0], preview.original);
 
+        // 流式 token 只更新预览字段，不带进度文案；否则分批模式下 Relay 剥掉预览后，
+        // 同一句「正在接收…」会在并发批次交错下反复进入进度日志。
         ConversationAnalysisProgress.ConversationAnalysisProgressBuilder builder =
                 ConversationAnalysisProgress.builder()
                         .status(ConversationAnalysisProgress.STATUS_ANALYZING)
-                        .message("正在接收 AI 分析结果...")
                         .streamingOriginal(preview.original);
 
         if (StringUtils.hasText(preview.suggestion)) {

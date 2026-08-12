@@ -31,6 +31,8 @@ const MODEL_STORAGE_KEY = 'kk.conversation.analysis.modelId'
 const EXTENSION_IMPORT_SESSION_KEY = 'kk.extension.import.conversation'
 
 const MIN_LENGTH = 10
+/** 软上限提示：超过后易触发上游读超时 */
+const SUGGESTED_MAX_LENGTH = 13000
 const content = ref('')
 const extensionImportHint = ref('')
 const modelOptions = ref<LlmModelOption[]>([])
@@ -39,6 +41,8 @@ const modelsLoading = ref(false)
 const analyzing = ref(false)
 const showProgress = ref(false)
 const progressLog = ref<ConversationAnalysisProgress[]>([])
+/** 进度列表按 status+message 去重（并发分批时不能只和上一条比） */
+const seenProgressKeys = new Set<string>()
 const abortController = ref<AbortController | null>(null)
 const guestQuota = ref<GuestQuota | null>(null)
 
@@ -240,6 +244,10 @@ function resetStreamingPreview() {
   lastStreamingCommitKey = ''
 }
 
+function progressLogKey(event: ConversationAnalysisProgress) {
+  return `${event.status}\0${event.message ?? ''}`
+}
+
 function onProgress(event: ConversationAnalysisProgress) {
   if (event.status === PROGRESS_STATUS.COMPLETED) {
     return
@@ -254,10 +262,12 @@ function onProgress(event: ConversationAnalysisProgress) {
     return
   }
 
-  const last = progressLog.value[progressLog.value.length - 1]
-  if (!last || last.status !== event.status || last.message !== event.message) {
-    progressLog.value.push(event)
+  const key = progressLogKey(event)
+  if (seenProgressKeys.has(key)) {
+    return
   }
+  seenProgressKeys.add(key)
+  progressLog.value.push(event)
 }
 
 const showStreamingPanel = computed(() => {
@@ -293,6 +303,7 @@ function resetForm() {
   }
   content.value = ''
   progressLog.value = []
+  seenProgressKeys.clear()
   resetStreamingPreview()
   showProgress.value = false
 }
@@ -321,6 +332,7 @@ async function onAnalyze() {
   analyzing.value = true
   showProgress.value = true
   progressLog.value = []
+  seenProgressKeys.clear()
   resetStreamingPreview()
   abortController.value?.abort()
   abortController.value = new AbortController()
@@ -375,7 +387,7 @@ async function onAnalyze() {
     <header class="page-head">
       <h1 class="page-title">对话分析</h1>
       <p class="page-desc">
-        导入你与 AI 的英文对话，系统将逐句标出可优化表达并给出改写建议。右侧有三种导入方式可选。
+        导入你与 AI 的英文对话，系统将逐句标出可优化表达并给出改写建议。
       </p>
       <p v-if="guestQuotaHint" class="guest-quota-hint">{{ guestQuotaHint }}</p>
       <p v-if="extensionImportHint" class="import-hint">{{ extensionImportHint }}</p>
@@ -409,7 +421,15 @@ async function onAnalyze() {
             resize="vertical"
         />
         <div class="input-meta">
-          <span>已输入 {{ charCount }} 字</span>
+          <div class="input-meta-main">
+            <span>已输入 {{ charCount }} 字</span>
+            <span
+                class="hint"
+                :class="{'hint--warn': charCount > SUGGESTED_MAX_LENGTH}"
+            >
+              字数过多可能会超时，建议 {{ SUGGESTED_MAX_LENGTH }} 字以下，如果报错请重试
+            </span>
+          </div>
           <span class="hint">至少 {{ MIN_LENGTH }} 字</span>
         </div>
         <div class="model-row">
@@ -650,13 +670,28 @@ async function onAnalyze() {
 .input-meta {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin-top: 0.5rem;
   font-size: 0.82rem;
   color: var(--kk-color-text-subtle);
 }
 
+.input-meta-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.65rem;
+  min-width: 0;
+}
+
 .hint {
   color: var(--kk-color-accent-text);
+}
+
+.hint--warn {
+  color: var(--kk-color-warn);
+  font-weight: 600;
 }
 
 .model-row {
