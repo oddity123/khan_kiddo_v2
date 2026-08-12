@@ -84,25 +84,26 @@ const hasHabitFocus = computed(() => actionCards.value.length > 0)
 async function onHabitCardGenerated() {
   asideTab.value = 'cards'
   const beforeIds = new Set(growthCards.value.map((card) => card.cardId))
-  const insertAt = growthFanRef.value?.getActiveIndex?.() ?? 0
   await refreshDetailSilent()
   await nextTick()
   const added = (detail.value?.growthCards ?? []).filter((card) => !beforeIds.has(card.cardId))
   if (!added.length) {
     return
   }
-  // watch 可能已把新卡 append 到末尾；再挪到当前复习位之上
-  let order = fanOrderIds.value.filter((id) =>
-      (detail.value?.growthCards ?? []).some((card) => card.cardId === id),
+  // 新卡置顶：watch 可能已 prepend；再保证顺序为「新增（新→旧）+ 原序」
+  const addedIds = new Set(added.map((card) => card.cardId))
+  const rest = fanOrderIds.value.filter(
+      (id) =>
+          !addedIds.has(id) &&
+          (detail.value?.growthCards ?? []).some((card) => card.cardId === id),
   )
-  for (const card of added) {
-    order = order.filter((id) => id !== card.cardId)
-    order.splice(Math.min(insertAt, order.length), 0, card.cardId)
-  }
-  fanOrderIds.value = order
+  fanOrderIds.value = [
+    ...sortGrowthCardsNewestFirst(added).map((card) => card.cardId),
+    ...rest,
+  ]
   await nextTick()
   await nextTick()
-  // 现有「滑出再飞回」动画，表现新卡落到当前顶位
+  // 牌组按 cursorId 锚定旧卡；须 reset 到第 0 张后再播插入动画
   await growthFanRef.value?.playInsertRestore()
 }
 
@@ -143,35 +144,51 @@ interface FilterChip {
   label: string
 }
 
-// 从证据里收集 pointId/familyId 作为筛选维度，兜底用 type 保证旧数据也能筛
-function chipKey(item: AnalysisItem): string[] {
-  return (item.errors ?? []).map((err) => err.pointId || err.familyId || err.type)
+/** 顶部筛选按展示类型去重；同一 type 下多个 point 合并为一个标签 */
+function chipTypes(item: AnalysisItem): string[] {
+  const types: string[] = []
+  const seen = new Set<string>()
+  for (const err of item.errors ?? []) {
+    const key = err.type?.trim()
+    if (!key || seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    types.push(key)
+  }
+  return types
 }
 
 const filterChips = computed((): FilterChip[] => {
   const seen = new Map<string, string>()
   for (const item of sortedItems.value) {
-    for (const err of item.errors ?? []) {
-      const key = err.pointId || err.familyId || err.type
-      if (key && !seen.has(key)) {
-        seen.set(key, displayTypeLabel(err.type))
+    for (const type of chipTypes(item)) {
+      if (!seen.has(type)) {
+        seen.set(type, displayTypeLabel(type))
       }
     }
   }
   return Array.from(seen.entries()).map(([key, label]) => ({key, label}))
 })
 
-const activeFilter = ref<string | null>(null)
+/** 多选；空数组表示不过滤 */
+const activeFilters = ref<string[]>([])
 
 const filteredItems = computed(() => {
-  if (!activeFilter.value) {
+  if (!activeFilters.value.length) {
     return sortedItems.value
   }
-  return sortedItems.value.filter((item) => chipKey(item).includes(activeFilter.value as string))
+  const selected = new Set(activeFilters.value)
+  return sortedItems.value.filter((item) => chipTypes(item).some((type) => selected.has(type)))
 })
 
 function toggleFilter(key: string) {
-  activeFilter.value = activeFilter.value === key ? null : key
+  const idx = activeFilters.value.indexOf(key)
+  if (idx >= 0) {
+    activeFilters.value = activeFilters.value.filter((item) => item !== key)
+    return
+  }
+  activeFilters.value = [...activeFilters.value, key]
 }
 
 const sentencesFoldRef = ref<HTMLDetailsElement | null>(null)
@@ -187,7 +204,7 @@ function growthCardTypeLabel(type: string): string {
   return type === 'habit' ? '习惯' : type === 'vocab' ? '词汇' : type
 }
 
-/** 侧栏牌序：新制卡插到当前卡之上；默认按创建时间新→旧 */
+/** 侧栏牌序：新制卡置顶；默认按创建时间新→旧 */
 const fanOrderIds = ref<string[]>([])
 
 function sortGrowthCardsNewestFirst(cards: GrowthCard[]): GrowthCard[] {
@@ -202,20 +219,18 @@ function sortGrowthCardsNewestFirst(cards: GrowthCard[]): GrowthCard[] {
 }
 
 function syncFanOrderFromCards(cards: GrowthCard[]) {
-  const ids = cards.map((card) => card.cardId)
-  const idSet = new Set(ids)
+  const idSet = new Set(cards.map((card) => card.cardId))
   if (fanOrderIds.value.length === 0) {
     fanOrderIds.value = sortGrowthCardsNewestFirst(cards).map((card) => card.cardId)
     return
   }
   const kept = fanOrderIds.value.filter((id) => idSet.has(id))
   const known = new Set(kept)
-  for (const id of sortGrowthCardsNewestFirst(cards).map((card) => card.cardId)) {
-    if (!known.has(id)) {
-      kept.push(id)
-    }
-  }
-  fanOrderIds.value = kept
+  // 新增卡 prepend，保证刷新后也落在牌组第一位
+  const newcomers = sortGrowthCardsNewestFirst(cards)
+      .map((card) => card.cardId)
+      .filter((id) => !known.has(id))
+  fanOrderIds.value = [...newcomers, ...kept]
 }
 
 watch(
@@ -226,7 +241,7 @@ watch(
     {immediate: true},
 )
 
-/** 复用知识卡片 Fan：按 fanOrder 排列（新卡可插在当前卡之上） */
+/** 复用知识卡片 Fan：按 fanOrder 排列（新卡置顶） */
 const growthFanItems = computed((): ChineseExpressionItem[] => {
   const cards = growthCards.value
   const byId = new Map(cards.map((card) => [card.cardId, card]))
@@ -249,7 +264,6 @@ const growthFanItems = computed((): ChineseExpressionItem[] => {
 
 const growthFanRef = ref<{
   playInsertRestore: () => Promise<void>
-  getActiveIndex: () => number
 } | null>(null)
 
 const englishPracticeCount = computed(() => {
@@ -293,6 +307,7 @@ async function loadDetail() {
     loading.value = true
     pageReady.value = false
     fanOrderIds.value = []
+    activeFilters.value = []
     const cached = ephemeralStore.detail
     if (!cached) {
       detail.value = null
@@ -316,6 +331,7 @@ async function loadDetail() {
   loading.value = true
   pageReady.value = false
   fanOrderIds.value = []
+  activeFilters.value = []
   try {
     const {data} = await getConversationAnalysisDetail(analysisId.value)
     detail.value = data
@@ -443,13 +459,14 @@ watch([analysisId, isEphemeral], loadDetail)
                 已分析 {{ englishPracticeCount }} 句纯英文表达
               </p>
 
-              <div v-if="filterChips.length" class="filter-chip-row">
+              <div v-if="filterChips.length" class="filter-chip-row" role="group" aria-label="按优化类型筛选">
                 <button
                     v-for="chip in filterChips"
                     :key="chip.key"
                     type="button"
                     class="filter-chip"
-                    :class="{ 'filter-chip--active': activeFilter === chip.key }"
+                    :class="{ 'filter-chip--active': activeFilters.includes(chip.key) }"
+                    :aria-pressed="activeFilters.includes(chip.key)"
                     @click="toggleFilter(chip.key)"
                 >
                   {{ chip.label }}

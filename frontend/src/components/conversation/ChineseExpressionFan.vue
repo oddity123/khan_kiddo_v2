@@ -82,6 +82,8 @@ const deleting = ref(false)
 const deleteAnimatingId = ref<string | null>(null)
 const reviewed = ref(0)
 const celebrated = ref(false)
+/** 制卡置顶时递增，强制 remount 牌组以清 cursorId/history */
+const deckSessionKey = ref(0)
 /** 按钮/键盘滑出时叠在卡片上的对勾/叉（不 peek，避免抽动） */
 const feedbackDir = ref<SwipeDir | null>(null)
 const feedbackCardId = ref<string | null>(null)
@@ -284,40 +286,27 @@ function celebrate() {
 const suppressCelebrate = ref(false)
 
 /**
- * 用「撤回上一张」同款 restore 动画表现新卡插入：
- * 先轻推走当前顶卡再 restore 飞回（不 reset 整副牌）。
+ * 新卡已置顶后展示为第 1 张。
+ * 不可再用「swipe + restore」：wait-animation-end 下 restore 常接不上，
+ * 会把新卡留在 history，界面停在旧卡（表现为 2/N + 需撤回才能见新卡）。
+ * 直接 remount 牌组，cursorId/history 归零，稳显示第 0 张。
  */
 async function playInsertRestore() {
-  if (resetting.value || swiping.value || deleting.value || count.value === 0) {
+  if (resetting.value || deleting.value || count.value === 0) {
     return
   }
-  await nextTick()
-  const deck = deckRef.value
-  if (!deck) {
-    return
-  }
-  const keepReviewed = reviewed.value
+  clearLiftHold()
   suppressCelebrate.value = true
   celebrated.value = false
   feedbackDir.value = null
   feedbackCardId.value = null
-  holdLift(520)
-  swiping.value = true
-  try {
-    deck.swipeLeft()
-    await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 360)
-    })
-    deck.restore()
-    await new Promise<void>((resolve) => {
-      window.setTimeout(resolve, 80)
-    })
-  } finally {
-    swiping.value = false
-    suppressCelebrate.value = false
-    reviewed.value = keepReviewed
-    refreshUi()
-  }
+  swiping.value = false
+  dragging.value = false
+  reviewed.value = 0
+  deckSessionKey.value += 1
+  await nextTick()
+  suppressCelebrate.value = false
+  refreshUi()
 }
 
 defineExpose({
@@ -534,6 +523,7 @@ onBeforeUnmount(() => {
     <div class="cn-fan-stage">
       <div class="cn-fan-deck">
         <FlashCards
+            :key="deckSessionKey"
             ref="deckRef"
             class="cn-flashcards"
             :items="deckItems"
