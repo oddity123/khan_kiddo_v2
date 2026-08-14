@@ -3,7 +3,7 @@
 归档：2026-08-14 → `docs/achieved/learning-loop-gaps/`  
 状态：已完结。P0 由成长卡吸收并落地。
 
-> **注：** P0「今日复习队列 / 掌握度」已由成长卡设计吸收，见 [`../../todo/growth-cards/`](../../todo/growth-cards/)。
+> **注：** P0「今日复习队列 / 掌握度」已由成长卡设计吸收，见 [`../growth-cards/`](../growth-cards/)。
 
 - 对照竞品：[LingoTrace-Public](https://github.com/fionazhang676-oss/LingoTrace-Public)
 - 整理日期：2026-08-02
