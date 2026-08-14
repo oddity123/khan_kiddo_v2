@@ -104,7 +104,7 @@ user_focus_point (
 - LLM 练 3 句 / `POST /practice`
 - 历史复发加权改 Top
 - 回填旧 `point_id`
-- 复习队列 / 掌握度体系（见 `docs/todo/learning-loop-gaps/`）
+- 复习队列 / 掌握度体系（见 `docs/achieved/learning-loop-gaps/`）
 
 ---
 
