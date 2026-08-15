@@ -45,9 +45,28 @@ Stage 2/3 可选 `doubao-seed` / `qwen-plus` / `glm-5.2`（`app.llm.models`）�
 
 ### 2. 得分不交给 LLM
 
-综合自然度得分由 `conversation/scoring/WeightedNaturalnessPerformanceScorer.java` 按 `resources/scoring/performance-scoring.yml` 的权重本地计算。LLM 只负责发现问题与写解释，**数字部分完全确定、可复现、可审计**。
+综合自然度得分由 `conversation/scoring/WeightedNaturalnessPerformanceScorer.java` 按 `resources/scoring/performance-scoring.yml` 本地计算。LLM 只负责发现问题与写解释，**数字部分完全确定、可复现、可审计**。
 
+**输入**：英文练习句数 + 每句错误的 `ProblemType`（由知识点 `pointId` 反查）。无错误时四维与综合分均为满分 **98**（区间 45–98）。
 
+**四维各自计分**（只看该维度绑定的错误类型）：
+
+1. 句内按错误类型累加权重，单句上限 6.0
+2. 密度扣分：`penalty = 34 × (1 − exp(−0.22 × 总加权扣分 / (句数 + 2)))`
+3. 得分：`98 − penalty`；含 FATAL 级错误句再扣 `(严重句数 / 有效句数) × 4`
+4. **仅自然度维度**：含自然度类错误的句子额外扣 `(自然度句数 / 有效句数) × 5`
+5. 四舍五入后夹到 45–98
+
+**综合分**（加权平均）：
+
+| 维度 | 权重 | 主要错误类型 |
+| ---- | ---- | ------------ |
+| 表达自然 | 40% | 中式英语、搭配、不自然、用词、冗余、语气、正式度 |
+| 语法准确 | 25% | 时态、一致、介词、结构、从句、冠词等 |
+| 文本流畅 | 20% | 不完整、冗余 |
+| 词汇表达 | 15% | 词汇、用词、搭配 |
+
+短对话用「句数 + 2」平滑密度分母，避免一两句就暴跌；各类型权重与维度绑定见 `performance-scoring.yml`（改后重启生效）。
 
 ### 3. 个人错句 RAG 复盘助手
 
@@ -168,38 +187,6 @@ Chrome → 扩展管理 → 加载已解压的扩展 → 选 `extension/dist`。
 
 
 
-## 项目结构
-
-```
-khan_kiddo_v2/
-├── backend/                        # Java 21 + Spring Boot 3.5（pom.xml 在这里）
-│   └── src/main/
-│       ├── java/com/khankiddo/learning/
-│       │   ├── conversation/       # ★ 三阶段分析编排、批处理、评分
-│       │   ├── ai/                 # LangChain4j AiService（分离、语法助手）
-│       │   ├── llm/                # 模型目录与工厂、Prompt 组装
-│       │   ├── rag/                # Qdrant 索引与检索基础设施
-│       │   ├── controller/         # 9 个 REST 控制器
-│       │   ├── security/           # JWT 过滤器、SecurityUtils
-│       │   ├── service/ mapper/ model/ dto/ config/
-│       │   └── exception/ prompt/ util/
-│       └── resources/
-│           ├── templates/prompts/  # ★ 8 个 prompt 模板（分阶段 system + user）
-│           ├── schemas/            # LLM 结构化输出的 JSON Schema
-│           ├── scoring/            # 评分权重配置
-│           ├── sql/DDL.sql         # 4 张表
-│           └── mapper/             # MyBatis XML
-├── frontend/                       # Vue 3 + Vite + TS + Pinia + Element Plus
-│   └── src/{api,views,components,stores,router,styles,types,utils}
-├── extension/                      # Chrome MV3：ChatGPT 分享页字幕导入
-├── mvn.sh                          # ★ Maven 包装脚本（锁定 Java 21）
-├── package.sh / deploy.sh          # 一键打包 / 上传到宝塔
-├── DEPLOY.md                       # 部署与 v1 迁移说明
-└── .env.example                    # 全部环境变量及注释
-```
-
-
-
 ## 功能与页面
 
 
@@ -214,44 +201,6 @@ khan_kiddo_v2/
 | 留言反馈     | `/feedback`                  | Markdown 编辑 + 实时预览               | –   |
 
 
-导航栏的「笔记本」目前是占位（功能迁移中）；生词本与文章生成尚未从 v1 迁移。
-
-## API 一览
-
-公开端点：`/api/health`、`/api/site`、`/api/home`（登录后返回更多统计）、`/api/auth/login|register`、`/api/feedback`。
-其余全部需要 `Authorization: Bearer <token>`（`config/SecurityConfig.java` 中 `anyRequest().authenticated()`）。
-
-
-| 方法           | 路径                                          | 说明                              |
-| ------------ | ------------------------------------------- | ------------------------------- |
-| POST         | `/api/conversation/analyze/stream`          | **核心接口**，SSE 三阶段分析；限流每用户每分钟 5 次 |
-| GET          | `/api/conversation/llm-models`              | 已启用且 Key 已配置的 Stage2/3 模型       |
-| GET / DELETE | `/api/conversation/analyses[/{id}]`         | 分析列表、详情、删除                      |
-| POST         | `/api/conversation/grammar-rag/chat/stream` | 语法复盘助手，SSE                      |
-| GET          | `/api/ai/grammar-stats/chat`                | 语法统计助手（非流式）                     |
-| GET          | `/api/auth/me`                              | 当前用户                            |
-
-
-
-
-## 主要配置
-
-完整清单见 `[.env.example](.env.example)`，以下是最常改的：
-
-
-| 变量                                       | 默认                             | 说明                               |
-| ---------------------------------------- | ------------------------------ | -------------------------------- |
-| `PORT`                                   | `8080`                         | 后端端口                             |
-| `SPRING_PROFILES_ACTIVE`                 | `dev`                          | 生产必须设为 `prod`                    |
-| `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` | 本地 `khan_kiddo_dev`            | —                                |
-| `JWT_SECRET` / `JWT_EXPIRATION_HOURS`    | dev 有默认 / `168`                | 生产必填，≥32 字符                      |
-| `DOUBAO_API_KEY`                         | —                              | **必填**，分析全流程依赖                   |
-| `QWEN_API_KEY`                           | —                              | 可选：Stage2/3 备选模型 + RAG embedding |
-| `QDRANT_HOST` / `QDRANT_PORT`            | — / `6334`                     | 可选：启用向量检索                        |
-| `AI_SEPARATION_MODEL`                    | `doubao-seed-1-6-flash-250828` | Stage 1 专用模型                     |
-| `AI_TEMPERATURE` / `AI_MAX_TOKENS`       | `0.2` / `10240`                | 采样参数（`.env.example` 里给的是 `0.4`）  |
-
-
 
 
 ## 测试
@@ -261,7 +210,9 @@ khan_kiddo_v2/
 cd frontend && npm run build        # vue-tsc 类型检查 + 生产构建
 ```
 
-漂移评测（**会消耗真实 LLM 额度**）：
+`DriftStatistics` / `GoldenStatistics` 比对内核随常规 `mvn test` 跑；下面两个 harness **会消耗真实 LLM 额度**，需显式解锁。
+
+漂移评测（稳定性，免标注）：
 
 ```bash
 cd backend
@@ -270,7 +221,18 @@ export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' ../.env | grep -v '&' | xargs)
     -Ddrift=true -Ddrift.runs=5 -Dtest=ConversationDriftHarness
 ```
 
-报告输出到 `backend/target/drift-report/drift-<时间戳>.md`。语料放在 `backend/src/test/resources/eval/drift/conversations/*.txt`，详见该目录的 [README](backend/src/test/resources/eval/drift/README.md)。
+报告：`backend/target/drift-report/drift-<时间戳>.md`。语料：`backend/src/test/resources/eval/drift/conversations/*.txt`，详见 [drift README](backend/src/test/resources/eval/drift/README.md)。
+
+黄金集评测（Stage2 准确性，需标准答案）：
+
+```bash
+cd backend
+export $(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' ../.env | grep -v '&' | xargs)
+./mvn.sh -q test -Dspring.profiles.active=test \
+    -Dgolden=true -Dtest=ConversationGoldenHarness
+```
+
+可选 `-Dgolden.modelId=<id>` 指定 Stage2 模型。报告：`backend/target/golden-report/golden-<时间戳>.md`。主集 3 case（clear-error / confusable / legit-spoken）在 `backend/src/test/resources/eval/golden/cases/`，详见 [golden README](backend/src/test/resources/eval/golden/README.md)。
 
 
 ## 相关文档
