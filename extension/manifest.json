@@ -3,16 +3,17 @@
   "name": "Khan Kiddo",
   "description": "从 ChatGPT 公开分享页导入对话字幕到 Khan Kiddo 分析页。",
   "version": "0.1.0",
-  "permissions": ["storage", "tabs", "scripting"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": ["storage", "scripting"],
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://chat.openai.com/*",
-    "http://localhost:5173/*",
-    "http://127.0.0.1:5173/*"
-  ],
-  "optional_host_permissions": [
-    "http://*/*",
-    "https://*/*"
+    "https://khankiddo.top/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -20,7 +21,11 @@
   },
   "action": {
     "default_title": "Khan Kiddo",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
   },
   "content_scripts": [
     {

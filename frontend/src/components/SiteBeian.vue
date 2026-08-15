@@ -25,10 +25,13 @@ const hasBeian = computed(
 
 <template>
   <div
-    v-if="hasBeian"
+    v-if="hasBeian || variant === 'footer'"
     class="site-beian"
     :class="`site-beian--${variant}`"
   >
+    <p v-if="variant === 'footer'" class="site-beian__line site-beian__legal">
+      <router-link to="/privacy/extension">浏览器扩展隐私政策</router-link>
+    </p>
     <p v-if="site.info?.icpNumber" class="site-beian__line">
       <a
         :href="site.info.icpUrl"
@@ -65,6 +68,10 @@ const hasBeian = computed(
 
 .site-beian__line + .site-beian__line {
   margin-top: 0.25rem;
+}
+
+.site-beian__legal {
+  margin-bottom: 0.4rem;
 }
 
 .site-beian a {

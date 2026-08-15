@@ -22,12 +22,15 @@ npm run build
 
 Chrome → 扩展程序 → 开发者模式 → **加载已解压的扩展程序** → 选择 `extension/dist`。
 
+正式构建会自动收窄权限：仅保留固定生产站、ChatGPT 分享页、`storage`（隐私同意状态）和
+`scripting`（向分析页传递导入内容）。localhost 与动态站点权限只会进入 development 构建。
+
 ## 使用
 
-1. 打开站点并**先登录**。
-2. 打开任意 `https://chatgpt.com/share/...`，点击右下角 **导入到 Khan Kiddo**。
+1. 打开任意 `https://chatgpt.com/share/...`，点击右下角 **导入到 Khan Kiddo**。
+2. 首次使用时阅读数据说明并确认；也可以随时在 popup 取消同意。
 3. 或在扩展 popup 粘贴分享链接 → **导入并打开**。
-4. 分析页输入框自动填入字幕后，点「开始分析」。
+4. 分析页输入框自动填入字幕后，点「开始分析」。登录后可保存历史，未登录可使用访客额度。
 
 开发版 popup 会显示「站点地址」；正式版只显示导入，目标固定为生产站。
 
@@ -37,3 +40,4 @@ Chrome → 扩展程序 → 开发者模式 → **加载已解压的扩展程序
 - Voice 字幕取自 `parts[].content_type === "audio_transcription"`。
 - 本阶段不在扩展内跑分析 SSE；只负责导入文本。
 - 生产域名通过 `extension/.env.production` 的 `VITE_KK_WEB_ORIGIN` 配置。
+- 扩展隐私政策：`https://khankiddo.top/privacy/extension`。

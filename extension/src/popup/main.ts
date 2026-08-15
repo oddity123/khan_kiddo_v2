@@ -1,4 +1,5 @@
 import type {ImportShareResult, SettingsResponse} from '../shared/protocol'
+import {PRIVACY_CONSENT_STORAGE_KEY} from '../shared/constants'
 
 const originRow = document.getElementById('originRow') as HTMLDivElement
 const webOriginInput = document.getElementById('webOrigin') as HTMLInputElement
@@ -6,8 +7,20 @@ const shareUrlInput = document.getElementById('shareUrl') as HTMLTextAreaElement
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement
 const importBtn = document.getElementById('importBtn') as HTMLButtonElement
 const statusEl = document.getElementById('status') as HTMLDivElement
+const privacyConsentInput = document.getElementById('privacyConsent') as HTMLInputElement
 
 let allowOriginOverride = false
+
+async function loadPrivacyConsent(): Promise<void> {
+  const stored = await chrome.storage.local.get(PRIVACY_CONSENT_STORAGE_KEY)
+  privacyConsentInput.checked = stored[PRIVACY_CONSENT_STORAGE_KEY] === true
+}
+
+privacyConsentInput.addEventListener('change', () => {
+  void chrome.storage.local.set({
+    [PRIVACY_CONSENT_STORAGE_KEY]: privacyConsentInput.checked,
+  })
+})
 
 function setStatus(text: string, kind: '' | 'ok' | 'error' = ''): void {
   statusEl.textContent = text
@@ -49,6 +62,10 @@ saveBtn.addEventListener('click', () => {
 
 importBtn.addEventListener('click', () => {
   void (async () => {
+    if (!privacyConsentInput.checked) {
+      setStatus('请先阅读并同意数据使用说明', 'error')
+      return
+    }
     const shareUrl = shareUrlInput.value.trim()
     if (!shareUrl) {
       setStatus('请粘贴 ChatGPT 分享链接', 'error')
@@ -80,4 +97,4 @@ importBtn.addEventListener('click', () => {
   })()
 })
 
-void loadSettings()
+void Promise.all([loadSettings(), loadPrivacyConsent()])

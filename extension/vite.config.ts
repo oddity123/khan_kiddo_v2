@@ -26,6 +26,19 @@ function mergeWebOriginHostPermission(
   manifest.host_permissions = list
 }
 
+function configureDevelopmentPermissions(manifest: Record<string, unknown>): void {
+  const hosts = Array.isArray(manifest.host_permissions)
+      ? [...(manifest.host_permissions as string[])]
+      : []
+  for (const host of ['http://localhost:5173/*', 'http://127.0.0.1:5173/*']) {
+    if (!hosts.includes(host)) {
+      hosts.push(host)
+    }
+  }
+  manifest.host_permissions = hosts
+  manifest.optional_host_permissions = ['http://*/*', 'https://*/*']
+}
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, __dirname, '')
   const webOrigin = env.VITE_KK_WEB_ORIGIN
@@ -62,7 +75,10 @@ export default defineConfig(({mode}) => {
             manifest.host_permissions = existing.filter(
                 (p) => !p.includes('localhost') && !p.includes('127.0.0.1'),
             )
+            delete manifest.optional_host_permissions
             mergeWebOriginHostPermission(manifest, webOrigin)
+          } else {
+            configureDevelopmentPermissions(manifest)
           }
           writeFileSync(
               resolve(__dirname, 'dist/manifest.json'),

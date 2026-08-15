@@ -92,6 +92,30 @@
     }
     .status.error { color: #9f1239; }
     .status.ok { color: #166534; }
+    .privacy-consent {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 8px;
+      align-items: start;
+      margin-top: 10px;
+      padding: 10px;
+      border: 1px solid rgba(11, 26, 125, 0.12);
+      border-radius: 9px;
+      background: #fff;
+      color: #475569;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .privacy-consent input {
+      width: 14px;
+      height: 14px;
+      margin: 1px 0 0;
+      accent-color: #0b1a7d;
+    }
+    .privacy-consent a {
+      color: #0b1a7d;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -107,6 +131,14 @@
     <label for="shareUrl">分享链接（可选）</label>
     <textarea id="shareUrl" placeholder="https://chatgpt.com/share/..."></textarea>
   </div>
+
+  <label class="privacy-consent" for="privacyConsent">
+    <input id="privacyConsent" type="checkbox"/>
+    <span>
+      我已了解：扩展会读取该公开分享页的标题、链接和对话正文，并将内容临时传递到 Khan Kiddo 分析页；扩展不会读取 ChatGPT 登录凭据。查看
+      <a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">扩展隐私政策</a>。
+    </span>
+  </label>
 
   <div class="actions">
     <button id="saveBtn" class="secondary hidden" type="button">保存设置</button>

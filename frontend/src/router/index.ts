@@ -85,6 +85,15 @@ const router = createRouter({
           },
       },
       {
+          path: '/privacy/extension',
+          name: 'extension-privacy',
+          component: () => import('@/views/ExtensionPrivacyView.vue'),
+          meta: {
+            title: '浏览器扩展隐私政策',
+            description: 'Khan Kiddo Chrome 与 Edge 浏览器扩展的数据处理、权限、存储和用户选择说明。',
+          },
+      },
+      {
           path: '/review',
           name: 'review-center',
           component: () => import('@/views/review/ReviewCenterView.vue'),

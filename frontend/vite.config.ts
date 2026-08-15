@@ -20,7 +20,7 @@ export default defineConfig({
   plugins: [
     vue(),
     prerender({
-      routes: ['/', '/login', '/register', '/feedback'],
+      routes: ['/', '/login', '/register', '/feedback', '/privacy/extension'],
       renderer: '@prerenderer/renderer-puppeteer',
       rendererOptions: {
         headless: true,
