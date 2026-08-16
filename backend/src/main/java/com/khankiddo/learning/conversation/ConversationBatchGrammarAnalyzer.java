@@ -22,7 +22,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
- * 用户句数超过阈值时，按 {@link ConversationAnalysisProperties#getBatchSize()} 均分切批并发流式分析。
+ * 用户句数超过阈值时，按 {@link ConversationAnalysisProperties#getBatchSize()} 均分切批并发分析。
+ * 分批一律非流式（chat），不占用 Stage 2 流式连接。
  */
 @Slf4j
 @Component
@@ -68,7 +69,7 @@ public class ConversationBatchGrammarAnalyzer {
                     try {
                         semaphore.acquire();
                         String userPrompt = userPromptBuilder.buildFromUserSentences(batchSentences);
-                        GrammarAnalysisResult result = streamingHelper.streamGrammarAnalysis(
+                        GrammarAnalysisResult result = streamingHelper.analyzeGrammarWithoutStreaming(
                                 systemPrompt, userPrompt, model, batchNum, totalBatches, batchProgress);
                         orderedResults.set(index, result);
                         int done = completedCount.incrementAndGet();

@@ -6,6 +6,9 @@ import dev.langchain4j.service.AiServices;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * Stage 3 教育总结 / 行动卡诊断：单次非流式 chat，不走流式预览。
+ */
 @Component
 @RequiredArgsConstructor
 public class EducationalSummaryClient {

@@ -191,8 +191,11 @@ public class ConversationAnalysisPipeline {
 
         GrammarAnalysisResult grammar;
         if (englishSentences.size() > properties.getBatchThreshold()) {
+            log.info("Stage2 grammar analysis mode=chat (batched), sentences={}, batchSize={}",
+                    englishSentences.size(), properties.getBatchSize());
             grammar = batchAnalyzer.analyzeInBatches(englishSentences, systemPrompt, model, onProgress);
         } else {
+            log.info("Stage2 grammar analysis mode=stream (preview), sentences={}", englishSentences.size());
             String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(englishSentences);
             grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, model, onProgress);
         }

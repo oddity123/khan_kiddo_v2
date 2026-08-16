@@ -1,6 +1,8 @@
 package com.khankiddo.learning.service.conversation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.khankiddo.learning.conversation.ConversationAnalysisErrorMessages;
+import com.khankiddo.learning.conversation.ConversationAnalysisPersistSupport;
 import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.*;
@@ -25,7 +27,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -49,6 +53,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final PointDictionary pointDictionary;
     private final HabitCardScorer habitCardScorer;
     private final GrowthCardReviewService growthCardReviewService;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
@@ -64,12 +69,12 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     }
 
     @Override
-    @Transactional
     public ConversationAnalysisResultDto analyzeAndPersist(ConversationAnalysisRequest request,
                                                            String analysisId,
                                                            Consumer<ConversationAnalysisProgress> onProgress) {
         ConversationAnalysisResultDto result = pipeline.run(request, analysisId, onProgress);
-        return persistAnalysis(request.getConversationContent().trim(), result);
+        return new TransactionTemplate(transactionManager).execute(status ->
+                persistAnalysis(request.getConversationContent().trim(), result));
     }
 
     @Override
@@ -77,14 +82,12 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     public void saveFailed(String analysisId, String conversationContent, String errorMessage, long processingTimeMs) {
         Long userId = SecurityUtils.requireUserId();
         String trimmedContent = StringUtils.hasText(conversationContent) ? conversationContent.trim() : "";
-        String trimmedError = StringUtils.hasText(errorMessage) ? errorMessage.trim() : "分析失败";
-        if (trimmedError.length() > 2000) {
-            trimmedError = trimmedError.substring(0, 2000);
-        }
+        String trimmedError = ConversationAnalysisErrorMessages.sanitizeStoredMessage(errorMessage);
         LocalDateTime now = LocalDateTime.now();
         ConversationAnalysis analysis = ConversationAnalysis.builder()
                 .userId(userId)
-                .analysisId(analysisId)
+                .analysisId(ConversationAnalysisPersistSupport.truncate(
+                        analysisId, ConversationAnalysisPersistSupport.ANALYSIS_ID_MAX))
                 .conversationContent(trimmedContent)
                 .status("failed")
                 .errorMessage(trimmedError)
@@ -114,9 +117,11 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private ConversationAnalysisResultDto persistAnalysis(String conversationContent,
                                                           ConversationAnalysisResultDto result) {
         Long userId = SecurityUtils.requireUserId();
-        String analysisId = StringUtils.hasText(result.getAnalysisId())
-                ? result.getAnalysisId().trim()
-                : UUID.randomUUID().toString();
+        String analysisId = ConversationAnalysisPersistSupport.truncate(
+                StringUtils.hasText(result.getAnalysisId())
+                        ? result.getAnalysisId().trim()
+                        : UUID.randomUUID().toString(),
+                ConversationAnalysisPersistSupport.ANALYSIS_ID_MAX);
         LocalDateTime analyzedAt = ObjectUtils.defaultIfNull(result.getAnalyzedAt(), LocalDateTime.now());
         long processingTimeMs = ObjectUtils.defaultIfNull(result.getProcessingTimeMs(), 0L);
 
@@ -127,9 +132,12 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .status("success")
                 .processingTimeMs(processingTimeMs)
                 .educationalSummary(result.getEducationalSummaryJson())
-                .llmModelId(result.getLlmModelId())
-                .llmModelName(result.getLlmModelName())
-                .llmProvider(result.getLlmProvider())
+                .llmModelId(ConversationAnalysisPersistSupport.truncate(
+                        result.getLlmModelId(), ConversationAnalysisPersistSupport.LLM_MODEL_ID_MAX))
+                .llmModelName(ConversationAnalysisPersistSupport.truncate(
+                        result.getLlmModelName(), ConversationAnalysisPersistSupport.LLM_MODEL_NAME_MAX))
+                .llmProvider(ConversationAnalysisPersistSupport.truncate(
+                        result.getLlmProvider(), ConversationAnalysisPersistSupport.LLM_PROVIDER_MAX))
                 .createdAt(analyzedAt)
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -182,7 +190,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                     resolvedPointId = pointDictionary.resolveOrFallback(null).pointId();
                     englishType = toEnglishProblemType(error.getType());
                 }
-                dbItems.add(ConversationAnalysisItem.builder()
+                dbItems.add(ConversationAnalysisPersistSupport.truncateItem(ConversationAnalysisItem.builder()
                         .analysisId(analysisId)
                         .sentenceId(sentenceId)
                         .originalSentence(item.getOriginalSentence())
@@ -190,7 +198,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         .pointId(resolvedPointId)
                         .errorPoint(point)
                         .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
-                        .build());
+                        .build()));
             }
         }
         return dbItems;

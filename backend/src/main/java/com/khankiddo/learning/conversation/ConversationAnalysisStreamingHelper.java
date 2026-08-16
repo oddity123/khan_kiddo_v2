@@ -30,8 +30,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Stage 2 主分析：LangChain4j {@link StreamingChatModel} 流式接收 JSON，
- * 按 delta 推送 {@link ConversationAnalysisProgress} 预览字段（与 v1 前端协议一致）。
+ * Stage 2 主分析：LangChain4j 调用语法 JSON。
+ * <p>
+ * 单批（句数 ≤ batch-threshold）走 {@link StreamingChatModel}，仅供前端逐句预览；
+ * 分批走 {@link ChatModel} 非流式，避免并发打满流式连接。预览不是正确性前提。
  */
 @Slf4j
 @Component
@@ -58,7 +60,7 @@ public class ConversationAnalysisStreamingHelper {
             String userPrompt,
             ResolvedLlmModel model,
             Consumer<ConversationAnalysisProgress> onProgress) {
-        return streamGrammarAnalysis(systemPrompt, userPrompt, model, 0, 0, onProgress);
+        return analyzeGrammarJson(systemPrompt, userPrompt, model, 0, 0, true, onProgress);
     }
 
     public GrammarAnalysisResult streamGrammarAnalysis(
@@ -67,6 +69,30 @@ public class ConversationAnalysisStreamingHelper {
             ResolvedLlmModel model,
             int batchNum,
             int totalBatches,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+        return analyzeGrammarJson(systemPrompt, userPrompt, model, batchNum, totalBatches, true, onProgress);
+    }
+
+    /**
+     * Stage 2 非流式语法分析。分批并发时使用，避免同时打满流式连接。
+     */
+    public GrammarAnalysisResult analyzeGrammarWithoutStreaming(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model,
+            int batchNum,
+            int totalBatches,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+        return analyzeGrammarJson(systemPrompt, userPrompt, model, batchNum, totalBatches, false, onProgress);
+    }
+
+    private GrammarAnalysisResult analyzeGrammarJson(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model,
+            int batchNum,
+            int totalBatches,
+            boolean streaming,
             Consumer<ConversationAnalysisProgress> onProgress) {
 
         boolean batched = totalBatches > 1;
@@ -77,21 +103,29 @@ public class ConversationAnalysisStreamingHelper {
         String startMessage = batched
                 ? String.format("正在分析第 %d 批（共 %d 批）...", batchNum, totalBatches)
                 : "正在分析用户英文表达...";
+        log.info("Stage2 grammar analysis mode={}, batchNum={}, totalBatches={}",
+                streaming ? "stream" : "chat", batchNum, totalBatches);
 
-        progressSink.accept(ConversationAnalysisProgress.builder()
-                .status(ConversationAnalysisProgress.STATUS_ANALYZING)
-                .message(startMessage)
-                .streamingOriginal("...")
-                .build());
+        ConversationAnalysisProgress.ConversationAnalysisProgressBuilder startBuilder =
+                ConversationAnalysisProgress.builder()
+                        .status(ConversationAnalysisProgress.STATUS_ANALYZING)
+                        .message(startMessage);
+        if (streaming) {
+            startBuilder.streamingOriginal("...");
+        }
+        progressSink.accept(startBuilder.build());
 
         GrammarAnalysisResult result = null;
         for (int attempt = 1; attempt <= GRAMMAR_PARSE_MAX_ATTEMPTS; attempt++) {
-            StreamedGrammarJson streamed = attempt == 1
-                    ? streamJsonText(systemPrompt, userPrompt, model, progressSink)
-                    : fetchGrammarJsonSync(systemPrompt, userPrompt, model);
-            if (attempt == 1 && !streamed.streamCompletedNormally()) {
-                log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
-                        streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
+            StreamedGrammarJson streamed;
+            if (streaming && attempt == 1) {
+                streamed = streamJsonText(systemPrompt, userPrompt, model, progressSink);
+                if (!streamed.streamCompletedNormally()) {
+                    log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
+                            streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
+                    streamed = fetchGrammarJsonSync(systemPrompt, userPrompt, model);
+                }
+            } else {
                 streamed = fetchGrammarJsonSync(systemPrompt, userPrompt, model);
             }
             try {

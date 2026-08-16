@@ -1,6 +1,7 @@
 package com.khankiddo.learning.service.conversation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.khankiddo.learning.conversation.ConversationAnalysisErrorMessages;
 import com.khankiddo.learning.conversation.ConversationAnalyzeRateLimiter;
 import com.khankiddo.learning.conversation.GuestAnalysisQuotaService;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
@@ -80,15 +81,16 @@ public class ConversationAnalysisStreamService {
                     guestAnalysisQuotaService.refund(guestIdForRefund);
                 }
                 long elapsed = System.currentTimeMillis() - startedAt;
+                String userMessage = ConversationAnalysisErrorMessages.toUserMessage(ex);
                 if (persist) {
                     conversationAnalysisService.saveFailed(
                             analysisId,
                             request.getConversationContent(),
-                            ex.getMessage(),
+                            userMessage,
                             elapsed);
                 }
                 sendProgress(emitter, finished,
-                        ConversationAnalysisProgress.error(ex.getMessage(), persist ? analysisId : null));
+                        ConversationAnalysisProgress.error(userMessage, persist ? analysisId : null));
             } finally {
                 SecurityContextHolder.clearContext();
             }
