@@ -4,6 +4,8 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
+
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.conversation-analysis")
@@ -25,6 +27,21 @@ public class ConversationAnalysisProperties {
      * 分批分析最大并发批数
      */
     private int batchConcurrentLimit = 5;
+
+    /**
+     * HTTP 无数据读超时（流式与非流式 socket 空闲）。
+     */
+    private Duration httpReadTimeout = Duration.ofSeconds(45);
+
+    /**
+     * 流式整段生成墙钟上限（latch.await），允许持续出 token。
+     */
+    private Duration streamWallClockTimeout = Duration.ofMinutes(5);
+
+    /**
+     * 非流式单次调用超时。LangChain4j HTTP 重试关闭后，业务层各自再试。
+     */
+    private Duration chatTimeout = Duration.ofSeconds(60);
 
     /** Stage 1 对话分离模型（Flash，对齐 v1 LlmModelKind.FLASH） */
     private String separationModelName = "doubao-seed-1-6-flash-250828";

@@ -18,7 +18,6 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -29,7 +28,8 @@ public class LlmChatModelFactory {
     private final SchemaLoader schemaLoader;
     private final List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies;
     private final HttpClientBuilder httpClientBuilder;
-    private final Duration defaultTimeout;
+    private final Duration defaultChatTimeout;
+    private final Duration defaultStreamingTimeout;
     private final Integer defaultMaxRetries;
     private final boolean defaultLogRequests;
     private final boolean defaultLogResponses;
@@ -40,8 +40,9 @@ public class LlmChatModelFactory {
             SchemaLoader schemaLoader,
             List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
-            @Value("${langchain4j.open-ai.chat-model.timeout:120s}") Duration defaultTimeout,
-            @Value("${langchain4j.open-ai.chat-model.max-retries:3}") Integer defaultMaxRetries,
+            @Value("${langchain4j.open-ai.chat-model.timeout:60s}") Duration defaultChatTimeout,
+            @Value("${langchain4j.open-ai.streaming-chat-model.timeout:45s}") Duration defaultStreamingTimeout,
+            @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer defaultMaxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean defaultLogRequests,
             @Value("${langchain4j.open-ai.chat-model.log-responses:true}") boolean defaultLogResponses) {
         this.modelCatalog = modelCatalog;
@@ -49,7 +50,8 @@ public class LlmChatModelFactory {
         this.schemaLoader = schemaLoader;
         this.grammarStructuredOutputPolicies = grammarStructuredOutputPolicies;
         this.httpClientBuilder = httpClientBuilder;
-        this.defaultTimeout = defaultTimeout;
+        this.defaultChatTimeout = defaultChatTimeout;
+        this.defaultStreamingTimeout = defaultStreamingTimeout;
         this.defaultMaxRetries = defaultMaxRetries;
         this.defaultLogRequests = defaultLogRequests;
         this.defaultLogResponses = defaultLogResponses;
@@ -127,7 +129,7 @@ public class LlmChatModelFactory {
     }
 
     private ChatModel buildChatModel(LlmModelProperties.ModelConfig config, GrammarStreamingModelSpec spec) {
-        Duration timeout = resolveTimeout(config);
+        Duration timeout = resolveChatTimeout(config);
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(timeout);
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .httpClientBuilder(clientBuilder)
@@ -173,7 +175,7 @@ public class LlmChatModelFactory {
             ResponseFormat responseFormat,
             boolean strictJsonSchema,
             boolean omitMaxTokens) {
-        Duration timeout = resolveTimeout(config);
+        Duration timeout = defaultStreamingTimeout;
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(timeout);
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
                 .httpClientBuilder(clientBuilder)
@@ -221,11 +223,11 @@ public class LlmChatModelFactory {
                 .orElseThrow(() -> new IllegalStateException("未找到可用的语法分析结构化输出策略"));
     }
 
-    private Duration resolveTimeout(LlmModelProperties.ModelConfig config) {
+    private Duration resolveChatTimeout(LlmModelProperties.ModelConfig config) {
         if (config.getTimeout() != null) {
             return config.getTimeout();
         }
-        return defaultTimeout;
+        return defaultChatTimeout;
     }
 
     private HttpClientBuilder copyHttpClientBuilder(Duration timeout) {

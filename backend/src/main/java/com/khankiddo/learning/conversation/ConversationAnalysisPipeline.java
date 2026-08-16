@@ -74,7 +74,8 @@ public class ConversationAnalysisPipeline {
 
         List<ChineseExpressionDto> chineseExpressions = reviewChineseExpressions(routed, selectedModel, onProgress);
 
-        GrammarAnalysisResult grammar = analyzeGrammar(routed.englishSentences(), selectedModel, onProgress);
+        GrammarAnalysisResult grammar = analyzeGrammar(
+                routed.englishSentences(), selectedModel, analysisId, onProgress);
         grammar = grammarAnalysisSanitizer.sanitize(grammar);
         List<AnalysisItemDto> items = toDisplayItems(grammar);
         List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
@@ -120,7 +121,7 @@ public class ConversationAnalysisPipeline {
         Consumer<ConversationAnalysisProgress> progress =
                 onProgress == null ? p -> {} : onProgress;
         ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(modelId);
-        GrammarAnalysisResult grammar = analyzeGrammar(englishSentences, selectedModel, progress);
+        GrammarAnalysisResult grammar = analyzeGrammar(englishSentences, selectedModel, null, progress);
         if (grammar == null) {
             grammar = GrammarAnalysisResult.builder().build();
         }
@@ -179,6 +180,7 @@ public class ConversationAnalysisPipeline {
 
     private GrammarAnalysisResult analyzeGrammar(List<String> englishSentences,
                                                   ResolvedLlmModel model,
+                                                  String analysisId,
                                                   Consumer<ConversationAnalysisProgress> onProgress) {
         if (CollectionUtils.isEmpty(englishSentences)) {
             onProgress.accept(ConversationAnalysisProgress.of(
@@ -191,9 +193,10 @@ public class ConversationAnalysisPipeline {
 
         GrammarAnalysisResult grammar;
         if (englishSentences.size() > properties.getBatchThreshold()) {
-            log.info("Stage2 grammar analysis mode=chat (batched), sentences={}, batchSize={}",
-                    englishSentences.size(), properties.getBatchSize());
-            grammar = batchAnalyzer.analyzeInBatches(englishSentences, systemPrompt, model, onProgress);
+            log.info("Stage2 grammar analysis mode=chat (batched), analysisId={}, sentences={}, batchSize={}",
+                    analysisId, englishSentences.size(), properties.getBatchSize());
+            grammar = batchAnalyzer.analyzeInBatches(
+                    englishSentences, systemPrompt, model, analysisId, onProgress);
         } else {
             log.info("Stage2 grammar analysis mode=stream (preview), sentences={}", englishSentences.size());
             String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(englishSentences);

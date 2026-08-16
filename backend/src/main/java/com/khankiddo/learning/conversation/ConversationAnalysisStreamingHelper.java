@@ -3,6 +3,7 @@ package com.khankiddo.learning.conversation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
+import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.llm.LlmChatModelFactory;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
@@ -17,7 +18,6 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import org.apache.commons.lang3.ObjectUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -44,15 +44,15 @@ public class ConversationAnalysisStreamingHelper {
 
     private final LlmChatModelFactory chatModelFactory;
     private final ObjectMapper objectMapper;
-    private final Duration streamTimeout;
+    private final Duration streamWallClockTimeout;
 
     public ConversationAnalysisStreamingHelper(
             LlmChatModelFactory chatModelFactory,
             ObjectMapper objectMapper,
-            @Value("${langchain4j.open-ai.streaming-chat-model.timeout:120s}") Duration streamTimeout) {
+            ConversationAnalysisProperties properties) {
         this.chatModelFactory = chatModelFactory;
         this.objectMapper = objectMapper;
-        this.streamTimeout = streamTimeout;
+        this.streamWallClockTimeout = properties.getStreamWallClockTimeout();
     }
 
     public GrammarAnalysisResult streamGrammarAnalysis(
@@ -119,10 +119,20 @@ public class ConversationAnalysisStreamingHelper {
         for (int attempt = 1; attempt <= GRAMMAR_PARSE_MAX_ATTEMPTS; attempt++) {
             StreamedGrammarJson streamed;
             if (streaming && attempt == 1) {
-                streamed = streamJsonText(systemPrompt, userPrompt, model, progressSink);
-                if (!streamed.streamCompletedNormally()) {
-                    log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
-                            streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
+                try {
+                    streamed = streamJsonText(systemPrompt, userPrompt, model, progressSink);
+                    if (!streamed.streamCompletedNormally()) {
+                        log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
+                                streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
+                        streamed = fetchGrammarJsonSync(systemPrompt, userPrompt, model);
+                    }
+                } catch (BadRequestException ex) {
+                    if (!ConversationAnalysisIoRetryPolicy.isRetryable(ex)) {
+                        throw ex;
+                    }
+                    log.warn("语法分析流式 I/O 失败，改用非流式 (batchNum={}, totalBatches={}, cause={})",
+                            batchNum, totalBatches,
+                            ex.getCause() != null ? ex.getCause().toString() : ex.getMessage());
                     streamed = fetchGrammarJsonSync(systemPrompt, userPrompt, model);
                 }
             } else {
@@ -230,7 +240,7 @@ public class ConversationAnalysisStreamingHelper {
         });
 
         try {
-            if (!latch.await(streamTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+            if (!latch.await(streamWallClockTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
                 throw new BadRequestException("AI 分析超时，请缩短对话内容或稍后重试");
             }
         } catch (InterruptedException ex) {
@@ -239,7 +249,8 @@ public class ConversationAnalysisStreamingHelper {
         }
 
         if (errorRef.get() != null) {
-            throw new BadRequestException("AI 分析失败: " + errorRef.get().getMessage());
+            Throwable error = errorRef.get();
+            throw new BadRequestException("AI 分析失败，请稍后重试", error);
         }
         String finalText = resolveFinalStreamText(accumulated.toString(), completeTextRef.get());
         if (!StringUtils.hasText(finalText)) {

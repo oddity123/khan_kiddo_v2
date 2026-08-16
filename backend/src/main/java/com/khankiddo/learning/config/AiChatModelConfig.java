@@ -31,8 +31,8 @@ public class AiChatModelConfig {
             @Value("${langchain4j.open-ai.chat-model.api-key:}") String apiKey,
             @Value("${langchain4j.open-ai.chat-model.base-url:https://ark.cn-beijing.volces.com/api/v3}") String baseUrl,
             @Value("${langchain4j.open-ai.chat-model.max-tokens:10240}") Integer maxTokens,
-            @Value("${langchain4j.open-ai.chat-model.timeout:120s}") Duration timeout,
-            @Value("${langchain4j.open-ai.chat-model.max-retries:3}") Integer maxRetries,
+            @Value("${langchain4j.open-ai.chat-model.timeout:60s}") Duration timeout,
+            @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer maxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean logRequests,
             @Value("${langchain4j.open-ai.chat-model.log-responses:true}") boolean logResponses) {
 
