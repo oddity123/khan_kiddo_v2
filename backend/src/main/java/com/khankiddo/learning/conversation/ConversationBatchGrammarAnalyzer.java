@@ -6,6 +6,7 @@ import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -134,15 +136,17 @@ public class ConversationBatchGrammarAnalyzer {
 
         int totalBatches = batches.size();
         AtomicBoolean cancelUnstarted = new AtomicBoolean(false);
+        Map<String, String> parentMdc = ConversationAnalysisCallLog.copyContext();
         List<Future<?>> futures = new ArrayList<>();
         for (int batchIndex : batchIndexes) {
             final int index = batchIndex;
             final int batchNum = batchIndex + 1;
             final List<String> batchSentences = batches.get(batchIndex);
             futures.add(executor.submit(() -> {
-                runOneBatch(systemPrompt, model, analysisId, batchProgress, semaphore, completedCount,
-                        orderedResults, lastErrors, attempt, cancelUnstartedOnFailure, cancelUnstarted,
-                        totalBatches, index, batchNum, batchSentences);
+                ConversationAnalysisCallLog.runWithCopiedContext(parentMdc, () ->
+                        runOneBatch(systemPrompt, model, analysisId, batchProgress, semaphore, completedCount,
+                                orderedResults, lastErrors, attempt, cancelUnstartedOnFailure, cancelUnstarted,
+                                totalBatches, index, batchNum, batchSentences));
                 return null;
             }));
         }

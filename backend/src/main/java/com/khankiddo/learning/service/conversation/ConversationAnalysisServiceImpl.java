@@ -11,6 +11,7 @@ import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
@@ -58,23 +59,45 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     @Override
     public ConversationAnalysisResultDto analyze(ConversationAnalysisRequest request,
                                                    Consumer<ConversationAnalysisProgress> onProgress) {
-        return pipeline.run(request, UUID.randomUUID().toString(), onProgress);
+        String analysisId = UUID.randomUUID().toString();
+        boolean ownedMdc = ConversationAnalysisCallLog.putIfAbsent(analysisId);
+        try {
+            return pipeline.run(request, analysisId, onProgress);
+        } finally {
+            if (ownedMdc) {
+                ConversationAnalysisCallLog.clear();
+            }
+        }
     }
 
     @Override
     public ConversationAnalysisResultDto analyzeEphemeral(ConversationAnalysisRequest request,
                                                          String analysisId,
                                                          Consumer<ConversationAnalysisProgress> onProgress) {
-        return pipeline.run(request, analysisId, onProgress);
+        boolean ownedMdc = ConversationAnalysisCallLog.putIfAbsent(analysisId);
+        try {
+            return pipeline.run(request, analysisId, onProgress);
+        } finally {
+            if (ownedMdc) {
+                ConversationAnalysisCallLog.clear();
+            }
+        }
     }
 
     @Override
     public ConversationAnalysisResultDto analyzeAndPersist(ConversationAnalysisRequest request,
                                                            String analysisId,
                                                            Consumer<ConversationAnalysisProgress> onProgress) {
-        ConversationAnalysisResultDto result = pipeline.run(request, analysisId, onProgress);
-        return new TransactionTemplate(transactionManager).execute(status ->
-                persistAnalysis(request.getConversationContent().trim(), result));
+        boolean ownedMdc = ConversationAnalysisCallLog.putIfAbsent(analysisId);
+        try {
+            ConversationAnalysisResultDto result = pipeline.run(request, analysisId, onProgress);
+            return new TransactionTemplate(transactionManager).execute(status ->
+                    persistAnalysis(request.getConversationContent().trim(), result));
+        } finally {
+            if (ownedMdc) {
+                ConversationAnalysisCallLog.clear();
+            }
+        }
     }
 
     @Override
@@ -95,7 +118,24 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
-        analysisMapper.insert(analysis);
+        long persistStartedAt = System.currentTimeMillis();
+        try {
+            analysisMapper.insert(analysis);
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_PERSIST,
+                    null,
+                    1,
+                    System.currentTimeMillis() - persistStartedAt,
+                    ConversationAnalysisCallLog.RESULT_OK);
+        } catch (RuntimeException ex) {
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_PERSIST,
+                    null,
+                    1,
+                    System.currentTimeMillis() - persistStartedAt,
+                    ConversationAnalysisCallLog.resultOf(ex));
+            throw ex;
+        }
     }
 
     @Override
@@ -116,6 +156,29 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
     private ConversationAnalysisResultDto persistAnalysis(String conversationContent,
                                                           ConversationAnalysisResultDto result) {
+        long persistStartedAt = System.currentTimeMillis();
+        try {
+            ConversationAnalysisResultDto persisted = doPersistAnalysis(conversationContent, result);
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_PERSIST,
+                    result.getLlmModelId(),
+                    1,
+                    System.currentTimeMillis() - persistStartedAt,
+                    ConversationAnalysisCallLog.RESULT_OK);
+            return persisted;
+        } catch (RuntimeException ex) {
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_PERSIST,
+                    result.getLlmModelId(),
+                    1,
+                    System.currentTimeMillis() - persistStartedAt,
+                    ConversationAnalysisCallLog.resultOf(ex));
+            throw ex;
+        }
+    }
+
+    private ConversationAnalysisResultDto doPersistAnalysis(String conversationContent,
+                                                            ConversationAnalysisResultDto result) {
         Long userId = SecurityUtils.requireUserId();
         String analysisId = ConversationAnalysisPersistSupport.truncate(
                 StringUtils.hasText(result.getAnalysisId())

@@ -5,6 +5,7 @@ import com.khankiddo.learning.ai.conversation.model.ChineseExpressionReviewItemD
 import com.khankiddo.learning.ai.conversation.model.ChineseExpressionReviewResult;
 import com.khankiddo.learning.conversation.UtteranceRouter;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.prompt.PromptLoader;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -37,6 +38,7 @@ public class ChineseExpressionReviewClient {
         if (CollectionUtils.isEmpty(chineseSentences)) {
             return List.of();
         }
+        long llmStartedAt = System.currentTimeMillis();
         try {
             String userPrompt = buildUserPrompt(chineseSentences);
             ChatModel chatModel = chatModelFactory.chatForChineseExpressionReview(model);
@@ -48,8 +50,20 @@ public class ChineseExpressionReviewClient {
             ChatResponse response = chatModel.chat(request);
             String json = response.aiMessage().text();
             ChineseExpressionReviewResult parsed = objectMapper.readValue(json, ChineseExpressionReviewResult.class);
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_CHINESE_REVIEW,
+                    model != null ? model.getId() : null,
+                    1,
+                    System.currentTimeMillis() - llmStartedAt,
+                    ConversationAnalysisCallLog.RESULT_OK);
             return dedupeByFocusPhrase(mergeSuggestions(chineseSentences, parsed));
         } catch (Exception ex) {
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_CHINESE_REVIEW,
+                    model != null ? model.getId() : null,
+                    1,
+                    System.currentTimeMillis() - llmStartedAt,
+                    ConversationAnalysisCallLog.resultOf(ex));
             log.warn("中文表达建议生成失败，保留原句: {}", ex.getMessage(), ex);
             return fallbackWithoutSuggestions(chineseSentences);
         }

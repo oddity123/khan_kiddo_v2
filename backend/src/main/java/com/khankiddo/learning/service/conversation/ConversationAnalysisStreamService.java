@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.conversation.ConversationAnalysisErrorMessages;
 import com.khankiddo.learning.conversation.ConversationAnalyzeRateLimiter;
 import com.khankiddo.learning.conversation.GuestAnalysisQuotaService;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
@@ -68,6 +69,7 @@ public class ConversationAnalysisStreamService {
         final String guestIdForRefund = reservedGuestId;
         Thread.startVirtualThread(() -> {
             SecurityContextHolder.setContext(securityContext);
+            ConversationAnalysisCallLog.putAnalysisId(analysisId);
             try {
                 ConversationAnalysisResultDto result = persist
                         ? conversationAnalysisService.analyzeAndPersist(
@@ -92,6 +94,7 @@ public class ConversationAnalysisStreamService {
                 sendProgress(emitter, finished,
                         ConversationAnalysisProgress.error(userMessage, persist ? analysisId : null));
             } finally {
+                ConversationAnalysisCallLog.clear();
                 SecurityContextHolder.clearContext();
             }
         });

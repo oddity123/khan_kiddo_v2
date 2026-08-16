@@ -5,16 +5,20 @@ import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.slf4j.MDC;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,6 +48,24 @@ class ConversationBatchGrammarAnalyzerTest {
         properties.setBatchConcurrentLimit(5);
         analyzer = new ConversationBatchGrammarAnalyzer(streamingHelper, userPromptBuilder, properties);
         when(userPromptBuilder.buildFromUserSentences(any())).thenReturn("prompt");
+    }
+
+    @Test
+    void copiesAnalysisIdMdcOntoBatchWorkerThreads() {
+        ConversationAnalysisCallLog.putAnalysisId("analysis-mdc");
+        AtomicReference<String> seenOnWorker = new AtomicReference<>();
+        when(streamingHelper.analyzeGrammarWithoutStreaming(
+                any(), any(), any(), anyInt(), anyInt(), any()))
+                .thenAnswer(invocation -> {
+                    seenOnWorker.set(MDC.get(ConversationAnalysisCallLog.MDC_ANALYSIS_ID));
+                    return GrammarAnalysisResult.builder().build();
+                });
+        try {
+            analyzer.analyzeInBatches(twoBatchSentences(), "system", model(), "analysis-mdc", progress -> {});
+        } finally {
+            ConversationAnalysisCallLog.clear();
+        }
+        assertThat(seenOnWorker.get()).isEqualTo("analysis-mdc");
     }
 
     @Test
