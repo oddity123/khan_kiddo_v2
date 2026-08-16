@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import {ChatDotRound, CopyDocument, DocumentCopy, Monitor} from '@element-plus/icons-vue'
+import {ChatDotRound, CopyDocument, DocumentCopy, Download, Monitor} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {ref} from 'vue'
+
+const EDGE_ADDON_URL =
+    'https://microsoftedge.microsoft.com/addons/detail/khan-kiddo/pmbinepmifhmejifegcdmnjcdojpmoao'
 
 const emit = defineEmits<{
   focusInput: []
@@ -86,16 +89,26 @@ function onPasteMethod() {
         </div>
       </li>
 
-      <li class="method method--beta">
+      <li class="method">
         <span class="method-icon" aria-hidden="true">
           <el-icon><Monitor/></el-icon>
         </span>
         <div class="method-body">
           <div class="method-row">
             <h3 class="method-name">浏览器插件</h3>
-            <span class="method-tag method-tag--beta">Beta</span>
+            <span class="method-tag method-tag--accent">Edge</span>
           </div>
-          <p class="method-text">分享页一键导入字幕，开发中。</p>
+          <p class="method-text">安装后, 点击ChatGPT的分享按钮, 粘贴到插件中即可一键导入</p>
+          <p class="method-text">或者直接打开 ChatGPT 分享页，点击右下角的按钮一键导入。</p>
+          <a
+              class="method-action method-action--primary"
+              :href="EDGE_ADDON_URL"
+              target="_blank"
+              rel="noopener noreferrer"
+          >
+            <el-icon><Download/></el-icon>
+            去 Edge 安装
+          </a>
         </div>
       </li>
     </ol>
@@ -211,12 +224,6 @@ function onPasteMethod() {
   color: var(--kk-color-accent-text);
 }
 
-.method-tag--beta {
-  color: var(--kk-color-warn);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
 .method-text {
   margin: 0 0 0.45rem;
   font-size: 0.78rem;
@@ -237,6 +244,7 @@ function onPasteMethod() {
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--kk-color-link);
+  text-decoration: none;
   cursor: pointer;
   transition: color 0.15s ease;
 }
@@ -271,15 +279,6 @@ function onPasteMethod() {
   background: var(--kk-color-success-bg);
   border-color: color-mix(in srgb, var(--kk-color-success) 35%, transparent);
   color: var(--kk-color-success);
-}
-
-.method--beta .method-icon,
-.method--beta .method-name {
-  color: var(--kk-color-text-subtle);
-}
-
-.method--beta .method-text {
-  margin-bottom: 0;
 }
 
 @media (max-width: 992px) {
