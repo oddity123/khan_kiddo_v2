@@ -259,14 +259,14 @@ function onOpenCards(event?: Event) {
             <button
                 v-if="evidenceCount(card)"
                 type="button"
-                class="ac-evidence-btn"
+                class="kk-btn-blue ac-evidence-btn"
                 @click="openEvidence(card, $event)"
             >
               查看证据: {{ evidenceCount(card) }}句
             </button>
             <button
                 type="button"
-                class="ac-cta"
+                class="kk-btn-blue ac-cta"
                 :class="{
                   'ac-cta--done': isMintDone(card),
                   'ac-cta--pending': isMintPending(card),
@@ -466,23 +466,7 @@ function onOpenCards(event?: Event) {
 
 .ac-evidence-btn {
   flex-shrink: 0;
-  margin: 0;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--kk-radius-pill);
-  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 18%, var(--kk-glass-inner-border));
-  background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
-  font-family: var(--kk-font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--kk-color-primary);
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.ac-evidence-btn:hover {
-  background: color-mix(in srgb, var(--kk-color-primary) 12%, white);
-  border-color: color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
 }
 
 .ac-body {
@@ -514,34 +498,7 @@ function onOpenCards(event?: Event) {
 }
 
 .ac-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0.28rem 0.7rem;
-  border-radius: var(--kk-radius-pill);
-  border: none;
-  background: linear-gradient(145deg, var(--kk-color-primary), var(--kk-color-primary-soft));
-  color: #fff;
-  font-size: 0.74rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--kk-shadow-btn);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
   white-space: nowrap;
-}
-
-.ac-cta:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: var(--kk-shadow-btn-hover);
-}
-
-.ac-cta:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.ac-cta:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 
 .ac-cta--done,
@@ -552,6 +509,12 @@ function onOpenCards(event?: Event) {
   border: 1px solid color-mix(in srgb, var(--kk-color-success) 22%, transparent);
   box-shadow: none;
   cursor: pointer;
+}
+
+.ac-cta--done:hover:not(:disabled),
+.ac-cta--pending:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
 }
 
 .ac-cta--pending,
@@ -578,21 +541,10 @@ function onOpenCards(event?: Event) {
   .ac-preview {
     margin-inline: -0.25rem;
   }
-
-  .ac-cta {
-    box-shadow: none;
-  }
-
-  .ac-evidence-btn {
-    font-size: 0.66rem;
-    padding: 0.12rem 0.45rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ac-chevron,
-  .ac-cta,
-  .ac-evidence-btn {
+  .ac-chevron {
     transition: none;
   }
 }
