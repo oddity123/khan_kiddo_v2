@@ -87,7 +87,7 @@ Stage 2/3 可选 `doubao-seed` / `qwen-plus` / `glm-5.2`（`app.llm.models`）�
 
 关键设计：**扩展不接触后端**。它调用 `GET https://chatgpt.com/backend-api/share/{id}` 走用户本机网络，把格式化文本写入前端 `sessionStorage`，最终由用户在页面上点「开始分析」才发起请求 —— 扩展无需任何 Khan Kiddo 凭证。
 
-beta版本, 插件暂未上架商店
+已上架 [Chrome Web Store](https://chromewebstore.google.com/detail/khan-kiddo/clgpfpccbjceihdjcpacihfmgenhaggj) 与 [Edge 扩展商店](https://microsoftedge.microsoft.com/addons/detail/khan-kiddo/pmbinepmifhmejifegcdmnjcdojpmoao)。
 
 ### 5. 免标注的"分析漂移"评测
 

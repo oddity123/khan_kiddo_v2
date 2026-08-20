@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import {ChatDotRound, CopyDocument, DocumentCopy, Download, Monitor} from '@element-plus/icons-vue'
+import {ChatDotRound, CopyDocument, DocumentCopy, Monitor} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {ref} from 'vue'
+import chromeIcon from '@/assets/icons/chrome.ico'
+import edgeIcon from '@/assets/icons/edge.ico'
 
+const CHROME_WEBSTORE_URL =
+    'https://chromewebstore.google.com/detail/khan-kiddo/clgpfpccbjceihdjcpacihfmgenhaggj'
 const EDGE_ADDON_URL =
     'https://microsoftedge.microsoft.com/addons/detail/khan-kiddo/pmbinepmifhmejifegcdmnjcdojpmoao'
 
@@ -96,19 +100,30 @@ function onPasteMethod() {
         <div class="method-body">
           <div class="method-row">
             <h3 class="method-name">浏览器插件</h3>
-            <span class="method-tag method-tag--accent">Edge</span>
+            <span class="method-tag method-tag--accent">Chrome / Edge</span>
           </div>
-          <p class="method-text">安装后, 点击ChatGPT的分享按钮, 粘贴到插件中即可一键导入</p>
+          <p class="method-text">安装后，点击 ChatGPT 的分享按钮，粘贴到插件中即可一键导入。</p>
           <p class="method-text">或者直接打开 ChatGPT 分享页，点击右下角的按钮一键导入。</p>
-          <a
-              class="method-action method-action--primary"
-              :href="EDGE_ADDON_URL"
-              target="_blank"
-              rel="noopener noreferrer"
-          >
-            <el-icon><Download/></el-icon>
-            去 Edge 安装
-          </a>
+          <div class="method-actions">
+            <a
+                class="method-action method-action--primary"
+                :href="CHROME_WEBSTORE_URL"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+              <img class="store-icon" :src="chromeIcon" alt="" width="15" height="15"/>
+               安装
+            </a>
+            <a
+                class="method-action method-action--primary"
+                :href="EDGE_ADDON_URL"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+              <img class="store-icon" :src="edgeIcon" alt="" width="15" height="15"/>
+               安装
+            </a>
+          </div>
         </div>
       </li>
     </ol>
@@ -229,6 +244,20 @@ function onPasteMethod() {
   font-size: 0.78rem;
   line-height: 1.45;
   color: var(--kk-color-text-muted);
+}
+
+.method-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.55rem;
+}
+
+.store-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  display: block;
+  object-fit: contain;
 }
 
 .method-action {
