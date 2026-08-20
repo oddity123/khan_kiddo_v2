@@ -3,9 +3,11 @@ package com.khankiddo.learning.conversation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
+import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.llm.LlmChatModelFactory;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
@@ -17,21 +19,23 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import org.apache.commons.lang3.ObjectUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Stage 2 主分析：LangChain4j {@link StreamingChatModel} 流式接收 JSON，
- * 按 delta 推送 {@link ConversationAnalysisProgress} 预览字段（与 v1 前端协议一致）。
+ * Stage 2 主分析：LangChain4j 调用语法 JSON。
+ * <p>
+ * 单批（句数 ≤ batch-threshold）走 {@link StreamingChatModel}，仅供前端逐句预览；
+ * 分批走 {@link ChatModel} 非流式，避免并发打满流式连接。预览不是正确性前提。
  */
 @Slf4j
 @Component
@@ -42,15 +46,15 @@ public class ConversationAnalysisStreamingHelper {
 
     private final LlmChatModelFactory chatModelFactory;
     private final ObjectMapper objectMapper;
-    private final Duration streamTimeout;
+    private final Duration streamWallClockTimeout;
 
     public ConversationAnalysisStreamingHelper(
             LlmChatModelFactory chatModelFactory,
             ObjectMapper objectMapper,
-            @Value("${langchain4j.open-ai.streaming-chat-model.timeout:120s}") Duration streamTimeout) {
+            ConversationAnalysisProperties properties) {
         this.chatModelFactory = chatModelFactory;
         this.objectMapper = objectMapper;
-        this.streamTimeout = streamTimeout;
+        this.streamWallClockTimeout = properties.getStreamWallClockTimeout();
     }
 
     public GrammarAnalysisResult streamGrammarAnalysis(
@@ -58,7 +62,7 @@ public class ConversationAnalysisStreamingHelper {
             String userPrompt,
             ResolvedLlmModel model,
             Consumer<ConversationAnalysisProgress> onProgress) {
-        return streamGrammarAnalysis(systemPrompt, userPrompt, model, 0, 0, onProgress);
+        return analyzeGrammarJson(systemPrompt, userPrompt, model, 0, 0, true, onProgress);
     }
 
     public GrammarAnalysisResult streamGrammarAnalysis(
@@ -67,6 +71,30 @@ public class ConversationAnalysisStreamingHelper {
             ResolvedLlmModel model,
             int batchNum,
             int totalBatches,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+        return analyzeGrammarJson(systemPrompt, userPrompt, model, batchNum, totalBatches, true, onProgress);
+    }
+
+    /**
+     * Stage 2 非流式语法分析。分批并发时使用，避免同时打满流式连接。
+     */
+    public GrammarAnalysisResult analyzeGrammarWithoutStreaming(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model,
+            int batchNum,
+            int totalBatches,
+            Consumer<ConversationAnalysisProgress> onProgress) {
+        return analyzeGrammarJson(systemPrompt, userPrompt, model, batchNum, totalBatches, false, onProgress);
+    }
+
+    private GrammarAnalysisResult analyzeGrammarJson(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model,
+            int batchNum,
+            int totalBatches,
+            boolean streaming,
             Consumer<ConversationAnalysisProgress> onProgress) {
 
         boolean batched = totalBatches > 1;
@@ -78,31 +106,52 @@ public class ConversationAnalysisStreamingHelper {
                 ? String.format("正在分析第 %d 批（共 %d 批）...", batchNum, totalBatches)
                 : "正在分析用户英文表达...";
 
-        progressSink.accept(ConversationAnalysisProgress.builder()
-                .status(ConversationAnalysisProgress.STATUS_ANALYZING)
-                .message(startMessage)
-                .streamingOriginal("...")
-                .build());
+        ConversationAnalysisProgress.ConversationAnalysisProgressBuilder startBuilder =
+                ConversationAnalysisProgress.builder()
+                        .status(ConversationAnalysisProgress.STATUS_ANALYZING)
+                        .message(startMessage);
+        if (streaming) {
+            startBuilder.streamingOriginal("...");
+        }
+        progressSink.accept(startBuilder.build());
 
         GrammarAnalysisResult result = null;
-        for (int attempt = 1; attempt <= GRAMMAR_PARSE_MAX_ATTEMPTS; attempt++) {
-            StreamedGrammarJson streamed = attempt == 1
-                    ? streamJsonText(systemPrompt, userPrompt, model, progressSink)
-                    : fetchGrammarJsonSync(systemPrompt, userPrompt, model);
-            if (attempt == 1 && !streamed.streamCompletedNormally()) {
-                log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
-                        streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
-                streamed = fetchGrammarJsonSync(systemPrompt, userPrompt, model);
+        AtomicInteger nextAttempt = new AtomicInteger(1);
+        for (int parseAttempt = 1; parseAttempt <= GRAMMAR_PARSE_MAX_ATTEMPTS; parseAttempt++) {
+            StreamedGrammarJson streamed;
+            if (streaming && parseAttempt == 1) {
+                try {
+                    streamed = streamJsonText(
+                            systemPrompt, userPrompt, model, progressSink, nextAttempt, batchNum, totalBatches);
+                    if (!streamed.streamCompletedNormally()) {
+                        log.warn("语法分析流式响应未正常结束 (finishReason={}, tokenUsage={}, batchNum={}, totalBatches:{})，改用非流式请求",
+                                streamed.finishReason(), streamed.tokenUsage(), batchNum, totalBatches);
+                        streamed = fetchGrammarJsonSync(
+                                systemPrompt, userPrompt, model, nextAttempt, batchNum, totalBatches);
+                    }
+                } catch (BadRequestException ex) {
+                    if (!ConversationAnalysisIoRetryPolicy.isRetryable(ex)) {
+                        throw ex;
+                    }
+                    log.warn("语法分析流式 I/O 失败，改用非流式 (batchNum={}, totalBatches={}, cause={})",
+                            batchNum, totalBatches,
+                            ex.getCause() != null ? ex.getCause().toString() : ex.getMessage());
+                    streamed = fetchGrammarJsonSync(
+                            systemPrompt, userPrompt, model, nextAttempt, batchNum, totalBatches);
+                }
+            } else {
+                streamed = fetchGrammarJsonSync(
+                        systemPrompt, userPrompt, model, nextAttempt, batchNum, totalBatches);
             }
             try {
                 result = parseGrammarJson(streamed.text(), streamed.finishReason());
                 break;
             } catch (BadRequestException ex) {
-                if (attempt >= GRAMMAR_PARSE_MAX_ATTEMPTS) {
+                if (parseAttempt >= GRAMMAR_PARSE_MAX_ATTEMPTS) {
                     throw ex;
                 }
                 log.warn("语法分析 JSON 解析失败，准备重试 ({}/{}): finishReason={}, length={}",
-                        attempt, GRAMMAR_PARSE_MAX_ATTEMPTS, streamed.finishReason(), streamed.text().length());
+                        parseAttempt, GRAMMAR_PARSE_MAX_ATTEMPTS, streamed.finishReason(), streamed.text().length());
             }
         }
         progressSink.accept(ConversationAnalysisProgress.builder()
@@ -147,7 +196,62 @@ public class ConversationAnalysisStreamingHelper {
         return prefix + value;
     }
 
+    private StreamedGrammarJson loggedGrammarCall(
+            ResolvedLlmModel model,
+            int attempt,
+            int batchNum,
+            int totalBatches,
+            String mode,
+            java.util.function.Supplier<StreamedGrammarJson> call) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            StreamedGrammarJson streamed = call.get();
+            String result = ConversationAnalysisCallLog.MODE_STREAM.equals(mode) && !streamed.streamCompletedNormally()
+                    ? ConversationAnalysisCallLog.RESULT_INCOMPLETE
+                    : ConversationAnalysisCallLog.RESULT_OK;
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_GRAMMAR,
+                    model != null ? model.getId() : null,
+                    attempt,
+                    System.currentTimeMillis() - startedAt,
+                    result,
+                    batchNum,
+                    totalBatches,
+                    mode);
+            return streamed;
+        } catch (RuntimeException ex) {
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_GRAMMAR,
+                    model != null ? model.getId() : null,
+                    attempt,
+                    System.currentTimeMillis() - startedAt,
+                    ConversationAnalysisCallLog.resultOf(ex),
+                    batchNum,
+                    totalBatches,
+                    mode);
+            throw ex;
+        }
+    }
+
     private StreamedGrammarJson streamJsonText(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model,
+            Consumer<ConversationAnalysisProgress> onProgress,
+            AtomicInteger nextAttempt,
+            int batchNum,
+            int totalBatches) {
+
+        return loggedGrammarCall(
+                model,
+                nextAttempt.getAndIncrement(),
+                batchNum,
+                totalBatches,
+                ConversationAnalysisCallLog.MODE_STREAM,
+                () -> doStreamJsonText(systemPrompt, userPrompt, model, onProgress));
+    }
+
+    private StreamedGrammarJson doStreamJsonText(
             String systemPrompt,
             String userPrompt,
             ResolvedLlmModel model,
@@ -196,7 +300,7 @@ public class ConversationAnalysisStreamingHelper {
         });
 
         try {
-            if (!latch.await(streamTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+            if (!latch.await(streamWallClockTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
                 throw new BadRequestException("AI 分析超时，请缩短对话内容或稍后重试");
             }
         } catch (InterruptedException ex) {
@@ -205,7 +309,8 @@ public class ConversationAnalysisStreamingHelper {
         }
 
         if (errorRef.get() != null) {
-            throw new BadRequestException("AI 分析失败: " + errorRef.get().getMessage());
+            Throwable error = errorRef.get();
+            throw new BadRequestException("AI 分析失败，请稍后重试", error);
         }
         String finalText = resolveFinalStreamText(accumulated.toString(), completeTextRef.get());
         if (!StringUtils.hasText(finalText)) {
@@ -219,6 +324,23 @@ public class ConversationAnalysisStreamingHelper {
     }
 
     private StreamedGrammarJson fetchGrammarJsonSync(
+            String systemPrompt,
+            String userPrompt,
+            ResolvedLlmModel model,
+            AtomicInteger nextAttempt,
+            int batchNum,
+            int totalBatches) {
+
+        return loggedGrammarCall(
+                model,
+                nextAttempt.getAndIncrement(),
+                batchNum,
+                totalBatches,
+                ConversationAnalysisCallLog.MODE_CHAT,
+                () -> doFetchGrammarJsonSync(systemPrompt, userPrompt, model));
+    }
+
+    private StreamedGrammarJson doFetchGrammarJsonSync(
             String systemPrompt,
             String userPrompt,
             ResolvedLlmModel model) {

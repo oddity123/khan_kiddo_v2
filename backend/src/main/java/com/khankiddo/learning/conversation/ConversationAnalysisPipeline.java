@@ -14,6 +14,7 @@ import com.khankiddo.learning.llm.EducationalSummaryClient;
 import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
+import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.model.enums.ErrorLevel;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.prompt.PromptLoader;
@@ -55,55 +56,62 @@ public class ConversationAnalysisPipeline {
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
                                                Consumer<ConversationAnalysisProgress> onProgress) {
+        boolean ownedMdc = ConversationAnalysisCallLog.putIfAbsent(analysisId);
         long start = System.currentTimeMillis();
+        try {
+            onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_START, "开始对话分析..."));
+            onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_VALIDATING, "正在验证请求内容..."));
+            validateRequest(request);
 
-        onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_START, "开始对话分析..."));
-        onProgress.accept(ConversationAnalysisProgress.of(ConversationAnalysisProgress.STATUS_VALIDATING, "正在验证请求内容..."));
-        validateRequest(request);
+            ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(request.getModelId());
+            SeparationContext separation = separateConversation(request, onProgress);
+            requireUserSentences(separation);
 
-        ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(request.getModelId());
-        SeparationContext separation = separateConversation(request, onProgress);
-        requireUserSentences(separation);
+            UtteranceRouter.RoutedUtterances routed = utteranceRouter.route(separation.userSentences());
+            if (routed.chineseCount() > 0) {
+                onProgress.accept(ConversationAnalysisProgress.of(
+                        ConversationAnalysisProgress.STATUS_ANALYZING,
+                        "检测到 " + routed.chineseCount() + " 句中文表达，已跳过语法分析"));
+            }
 
-        UtteranceRouter.RoutedUtterances routed = utteranceRouter.route(separation.userSentences());
-        if (routed.chineseCount() > 0) {
-            onProgress.accept(ConversationAnalysisProgress.of(
-                    ConversationAnalysisProgress.STATUS_ANALYZING,
-                    "检测到 " + routed.chineseCount() + " 句中文表达，已跳过语法分析"));
+            List<ChineseExpressionDto> chineseExpressions = reviewChineseExpressions(routed, selectedModel, onProgress);
+
+            GrammarAnalysisResult grammar = analyzeGrammar(
+                    routed.englishSentences(), selectedModel, analysisId, onProgress);
+            grammar = grammarAnalysisSanitizer.sanitize(grammar);
+            List<AnalysisItemDto> items = toDisplayItems(grammar);
+            List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
+            HabitCardScorer.HabitScoreResult habitScoreResult =
+                    buildHabitScoreResult(grammar, chineseExpressions);
+
+            int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());
+            SummaryOutcome summaryOutcome = buildEducationalSummary(
+                    grammar,
+                    separation.userCount(),
+                    englishPracticeCount,
+                    routed.chineseCount(),
+                    chineseExpressions,
+                    habitScoreResult.actionCards(),
+                    selectedModel,
+                    onProgress);
+
+            return assembleResult(
+                    analysisId,
+                    start,
+                    selectedModel,
+                    separation.userCount(),
+                    englishPracticeCount,
+                    items,
+                    grammar,
+                    distribution,
+                    chineseExpressions,
+                    habitScoreResult,
+                    summaryOutcome);
+        } finally {
+            if (ownedMdc) {
+                ConversationAnalysisCallLog.clear();
+            }
         }
-
-        List<ChineseExpressionDto> chineseExpressions = reviewChineseExpressions(routed, selectedModel, onProgress);
-
-        GrammarAnalysisResult grammar = analyzeGrammar(routed.englishSentences(), selectedModel, onProgress);
-        grammar = grammarAnalysisSanitizer.sanitize(grammar);
-        List<AnalysisItemDto> items = toDisplayItems(grammar);
-        List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
-        HabitCardScorer.HabitScoreResult habitScoreResult =
-                buildHabitScoreResult(grammar, chineseExpressions);
-
-        int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());
-        SummaryOutcome summaryOutcome = buildEducationalSummary(
-                grammar,
-                separation.userCount(),
-                englishPracticeCount,
-                routed.chineseCount(),
-                chineseExpressions,
-                habitScoreResult.actionCards(),
-                selectedModel,
-                onProgress);
-
-        return assembleResult(
-                analysisId,
-                start,
-                selectedModel,
-                separation.userCount(),
-                englishPracticeCount,
-                items,
-                grammar,
-                distribution,
-                chineseExpressions,
-                habitScoreResult,
-                summaryOutcome);
     }
 
     /**
@@ -120,7 +128,7 @@ public class ConversationAnalysisPipeline {
         Consumer<ConversationAnalysisProgress> progress =
                 onProgress == null ? p -> {} : onProgress;
         ResolvedLlmModel selectedModel = modelCatalog.resolveOrDefault(modelId);
-        GrammarAnalysisResult grammar = analyzeGrammar(englishSentences, selectedModel, progress);
+        GrammarAnalysisResult grammar = analyzeGrammar(englishSentences, selectedModel, null, progress);
         if (grammar == null) {
             grammar = GrammarAnalysisResult.builder().build();
         }
@@ -131,10 +139,28 @@ public class ConversationAnalysisPipeline {
                                                     Consumer<ConversationAnalysisProgress> onProgress) {
         onProgress.accept(ConversationAnalysisProgress.of(
                 ConversationAnalysisProgress.STATUS_SEPARATING, "正在分离对话消息..."));
-        SeparationResult separation = separationAi.separate(
-                promptLoader.getSystemPromptConversationSeparation(),
-                promptLoader.getConversationSeparationTemplate(),
-                request.getConversationContent().trim());
+        long llmStartedAt = System.currentTimeMillis();
+        SeparationResult separation;
+        try {
+            separation = separationAi.separate(
+                    promptLoader.getSystemPromptConversationSeparation(),
+                    promptLoader.getConversationSeparationTemplate(),
+                    request.getConversationContent().trim());
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_SEPARATION,
+                    properties.getSeparationModelName(),
+                    1,
+                    System.currentTimeMillis() - llmStartedAt,
+                    ConversationAnalysisCallLog.RESULT_OK);
+        } catch (RuntimeException ex) {
+            ConversationAnalysisCallLog.record(
+                    ConversationAnalysisCallLog.STAGE_SEPARATION,
+                    properties.getSeparationModelName(),
+                    1,
+                    System.currentTimeMillis() - llmStartedAt,
+                    ConversationAnalysisCallLog.resultOf(ex));
+            throw ex;
+        }
         List<ConversationMessageDto> messages = ObjectUtils.defaultIfNull(separation.getMessages(), List.of());
         if (CollectionUtils.isEmpty(messages)) {
             throw new BadRequestException("未能从字幕中分离出有效对话");
@@ -179,6 +205,7 @@ public class ConversationAnalysisPipeline {
 
     private GrammarAnalysisResult analyzeGrammar(List<String> englishSentences,
                                                   ResolvedLlmModel model,
+                                                  String analysisId,
                                                   Consumer<ConversationAnalysisProgress> onProgress) {
         if (CollectionUtils.isEmpty(englishSentences)) {
             onProgress.accept(ConversationAnalysisProgress.of(
@@ -191,8 +218,12 @@ public class ConversationAnalysisPipeline {
 
         GrammarAnalysisResult grammar;
         if (englishSentences.size() > properties.getBatchThreshold()) {
-            grammar = batchAnalyzer.analyzeInBatches(englishSentences, systemPrompt, model, onProgress);
+            log.info("Stage2 grammar analysis mode=chat (batched), analysisId={}, sentences={}, batchSize={}",
+                    analysisId, englishSentences.size(), properties.getBatchSize());
+            grammar = batchAnalyzer.analyzeInBatches(
+                    englishSentences, systemPrompt, model, analysisId, onProgress);
         } else {
+            log.info("Stage2 grammar analysis mode=stream (preview), sentences={}", englishSentences.size());
             String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(englishSentences);
             grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, model, onProgress);
         }
@@ -221,8 +252,26 @@ public class ConversationAnalysisPipeline {
                     summaryParser.formatActionCardsForDiagnosis(actionCards));
             summaryPrompt = promptLoader.fillTemplate(summaryPrompt, "itemsSummary",
                     summaryParser.formatItemsForSummary(grammar));
-            ActionCardDiagnosisResultDto diagnosisResult = summaryClient.diagnose(
-                    promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, model);
+            long llmStartedAt = System.currentTimeMillis();
+            ActionCardDiagnosisResultDto diagnosisResult;
+            try {
+                diagnosisResult = summaryClient.diagnose(
+                        promptLoader.getSystemPromptEducationalSummary(), summaryPrompt, model);
+                ConversationAnalysisCallLog.record(
+                        ConversationAnalysisCallLog.STAGE_SUMMARY,
+                        model.getId(),
+                        1,
+                        System.currentTimeMillis() - llmStartedAt,
+                        ConversationAnalysisCallLog.RESULT_OK);
+            } catch (RuntimeException ex) {
+                ConversationAnalysisCallLog.record(
+                        ConversationAnalysisCallLog.STAGE_SUMMARY,
+                        model.getId(),
+                        1,
+                        System.currentTimeMillis() - llmStartedAt,
+                        ConversationAnalysisCallLog.resultOf(ex));
+                throw ex;
+            }
             EducationalSummaryDto report = summaryParser.parseActionCardDiagnosisSummary(
                     diagnosisResult, grammar, userCount, englishPracticeCount, chineseExpressionCount, actionCards);
             report.setChineseExpressions(chineseExpressions);

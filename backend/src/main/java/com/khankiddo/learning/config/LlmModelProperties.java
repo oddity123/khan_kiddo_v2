@@ -83,7 +83,7 @@ public class LlmModelProperties {
         private Integer maxTokens = 10240;
 
         /**
-         * 单次请求超时；未配置时使用 {@code langchain4j.open-ai.chat-model.timeout}。
+         * 单次非流式请求超时；未配置时使用 {@code app.conversation-analysis.chat-timeout}。
          */
         private Duration timeout;
 
