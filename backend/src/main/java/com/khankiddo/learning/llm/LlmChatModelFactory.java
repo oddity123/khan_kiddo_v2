@@ -1,6 +1,7 @@
 package com.khankiddo.learning.llm;
 
 import com.khankiddo.learning.config.AiLlmProperties;
+import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.config.LlmModelProperties;
 import com.khankiddo.learning.util.SchemaLoader;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -37,11 +38,10 @@ public class LlmChatModelFactory {
     public LlmChatModelFactory(
             LlmModelCatalog modelCatalog,
             AiLlmProperties aiLlmProperties,
+            ConversationAnalysisProperties conversationAnalysisProperties,
             SchemaLoader schemaLoader,
             List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
-            @Value("${langchain4j.open-ai.chat-model.timeout:60s}") Duration defaultChatTimeout,
-            @Value("${langchain4j.open-ai.streaming-chat-model.timeout:45s}") Duration defaultStreamingTimeout,
             @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer defaultMaxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean defaultLogRequests,
             @Value("${langchain4j.open-ai.chat-model.log-responses:true}") boolean defaultLogResponses) {
@@ -50,8 +50,8 @@ public class LlmChatModelFactory {
         this.schemaLoader = schemaLoader;
         this.grammarStructuredOutputPolicies = grammarStructuredOutputPolicies;
         this.httpClientBuilder = httpClientBuilder;
-        this.defaultChatTimeout = defaultChatTimeout;
-        this.defaultStreamingTimeout = defaultStreamingTimeout;
+        this.defaultChatTimeout = conversationAnalysisProperties.getChatTimeout();
+        this.defaultStreamingTimeout = conversationAnalysisProperties.getHttpReadTimeout();
         this.defaultMaxRetries = defaultMaxRetries;
         this.defaultLogRequests = defaultLogRequests;
         this.defaultLogResponses = defaultLogResponses;
