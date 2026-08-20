@@ -232,7 +232,7 @@ async function deleteCurrent() {
                 <button
                     v-if="evidenceCount(item)"
                     type="button"
-                    class="growth-evidence-btn"
+                    class="kk-btn-blue kk-btn-blue--compact growth-evidence-btn"
                     @click.stop="openEvidence(item, $event)"
                     @pointerdown.stop
                     @pointerup.stop
@@ -253,7 +253,7 @@ async function deleteCurrent() {
                 <button
                     v-if="evidenceCount(item)"
                     type="button"
-                    class="growth-evidence-btn"
+                    class="kk-btn-blue kk-btn-blue--compact growth-evidence-btn"
                     @click.stop="openEvidence(item, $event)"
                     @pointerdown.stop
                     @pointerup.stop
@@ -540,24 +540,8 @@ async function deleteCurrent() {
   flex-shrink: 0;
   align-self: flex-start;
   margin: 0.15rem 0 0;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--kk-radius-pill);
-  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 18%, var(--kk-color-border));
-  background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
-  font-family: var(--kk-font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--kk-color-primary);
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
   position: relative;
   z-index: 2;
-}
-
-.growth-evidence-btn:hover {
-  background: color-mix(in srgb, var(--kk-color-primary) 12%, white);
-  border-color: color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
 }
 
 .growth-empty {
