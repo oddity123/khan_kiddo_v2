@@ -1,5 +1,6 @@
 import {createRouter, createWebHistory} from 'vue-router'
 
+import {ADMIN_BASE_PATH} from '@/constants/admin'
 import {useAuthStore} from '@/stores/auth'
 import {applySeo} from '@/utils/seo'
 
@@ -118,6 +119,67 @@ const router = createRouter({
           name: 'conversation-grammar-rag',
           redirect: {path: '/review', query: {chat: '1'}},
       },
+      {
+          path: ADMIN_BASE_PATH,
+          component: () => import('@/layouts/AdminLayout.vue'),
+          meta: {
+            requiresAuth: true,
+            requiresAdmin: true,
+            adminShell: true,
+            robots: 'noindex, nofollow',
+          },
+          children: [
+              {
+                  path: '',
+                  name: 'admin-home',
+                  component: () => import('@/views/admin/AdminHomeView.vue'),
+                  meta: {
+                    title: '概览',
+                  },
+              },
+              {
+                  path: 'users',
+                  name: 'admin-users',
+                  component: () => import('@/views/admin/AdminUserListView.vue'),
+                  meta: {
+                    title: '用户管理',
+                  },
+              },
+              {
+                  path: 'analyses',
+                  name: 'admin-analyses',
+                  component: () => import('@/views/admin/AdminAnalysisListView.vue'),
+                  meta: {
+                    title: '对话管理',
+                  },
+              },
+              {
+                  path: 'knowledge/points',
+                  name: 'admin-knowledge-points',
+                  component: () => import('@/views/admin/AdminKnowledgeDictionaryView.vue'),
+                  meta: {
+                    title: '知识点字典',
+                  },
+              },
+              {
+                  path: 'users/:userId/analyses',
+                  name: 'admin-user-analyses',
+                  component: () => import('@/views/admin/AdminUserAnalysesView.vue'),
+                  meta: {
+                    title: '用户对话',
+                  },
+              },
+              {
+                  path: 'users/:userId/analyses/:id',
+                  name: 'admin-analysis-detail',
+                  component: () => import('@/views/conversation/AnalysisDetailView.vue'),
+                  meta: {
+                    title: '对话详情',
+                    adminAnalysis: true,
+                  },
+              },
+          ],
+      },
   ],
 })
 
@@ -126,11 +188,16 @@ router.beforeEach(async (to) => {
     if (!auth.initialized) {
         await auth.initialize()
     }
+    const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+    const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
     if (to.meta.guestOnly && auth.isAuthenticated) {
         return {path: '/'}
     }
-    if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    if (requiresAuth && !auth.isAuthenticated) {
         return {path: '/login', query: {redirect: to.fullPath}}
+    }
+    if (requiresAdmin && !auth.isAdmin) {
+        return {path: '/'}
     }
     return true
 })

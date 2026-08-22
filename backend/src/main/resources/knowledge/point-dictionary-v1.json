@@ -144,10 +144,7 @@
       "fixability": 0.6,
       "errorLevel": "BASIC",
       "problemType": "Article",
-      "titleZh": "泛指一类人或事物时，不用 the",
-      "whyZh": "中文没有冠词；英文泛指用零冠词（常配复数）：users，不是 the users。若名词单复数本身也错，优先打 PLURAL_COUNTABLE。",
-      "topTitleZh": "泛指一类人或事物时，不用 the",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "泛指一类人或事物时，不用 the"
     },
     {
       "pointId": "ARTICLE_FIRST_MENTION",
@@ -160,10 +157,7 @@
       "fixability": 0.65,
       "errorLevel": "BASIC",
       "problemType": "Article",
-      "titleZh": "第一次提到的单数可数名词，用 a / an",
-      "whyZh": "中文「我买了手机」不加标记；英文首次提及用 a phone，再次提及才用 the phone。",
-      "topTitleZh": "第一次提到的单数可数名词，用 a / an",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "第一次提到的单数可数名词，用 a / an"
     },
     {
       "pointId": "ARTICLE_A_AN",
@@ -176,10 +170,7 @@
       "fixability": 0.9,
       "errorLevel": "BASIC",
       "problemType": "Article",
-      "titleZh": "a / an 看后面单词的读音，不看字母",
-      "whyZh": "元音音素开头用 an（an hour），辅音音素开头用 a（a university）。",
-      "topTitleZh": "a / an 看后面单词的读音，不看字母",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "a / an 看后面单词的读音，不看字母"
     },
     {
       "pointId": "PLURAL_COUNTABLE",
@@ -192,10 +183,7 @@
       "fixability": 0.75,
       "errorLevel": "BASIC",
       "problemType": "Plural",
-      "titleZh": "可数名词表示「多个/一类」时要用复数",
-      "whyZh": "中文名词无复数形态；英文 some users / different ideas 必须加 s。",
-      "topTitleZh": "可数名词表示「多个/一类」时要用复数",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "可数名词表示「多个/一类」时要用复数"
     },
     {
       "pointId": "UNCOUNTABLE_NO_PLURAL",
@@ -208,10 +196,7 @@
       "fixability": 0.8,
       "errorLevel": "BASIC",
       "problemType": "Plural",
-      "titleZh": "不可数名词没有复数，也不能用 a / these",
-      "whyZh": "advice / knowledge / information / stuff 不可数。中文「建议、知识」看起来像可数，最容易加 s。",
-      "topTitleZh": "不可数名词没有复数，也不能用 a / these",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "不可数名词没有复数，也不能用 a / these"
     },
     {
       "pointId": "SVA_THIRD_PERSON",
@@ -224,10 +209,7 @@
       "fixability": 0.9,
       "errorLevel": "FATAL",
       "problemType": "Agreement",
-      "titleZh": "一般现在时：第三人称单数动词要加 s",
-      "whyZh": "he / she / it / 单数名词后，一般现在时用 wants / has / goes。",
-      "topTitleZh": "一般现在时：第三人称单数动词要加 s",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "一般现在时：第三人称单数动词要加 s"
     },
     {
       "pointId": "SVA_RELATIVE_CLAUSE",
@@ -240,10 +222,7 @@
       "fixability": 0.85,
       "errorLevel": "FATAL",
       "problemType": "Agreement",
-      "titleZh": "定语从句的谓语跟着先行词变，不看 who",
-      "whyZh": "users who want（不是 wants）。",
-      "topTitleZh": "定语从句的谓语跟着先行词变，不看 who",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "定语从句的谓语跟着先行词变，不看 who"
     },
     {
       "pointId": "PAST_SIMPLE_DONE",
@@ -256,10 +235,7 @@
       "fixability": 0.9,
       "errorLevel": "FATAL",
       "problemType": "Tense",
-      "titleZh": "已经发生的事，用一般过去时",
-      "whyZh": "yesterday / last week / two days ago 出现时，动词用过去式。若已有 did 却写成 did went，改打 AUX_DID_BASE。",
-      "topTitleZh": "已经发生的事，用一般过去时",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "已经发生的事，用一般过去时"
     },
     {
       "pointId": "PRESENT_PERFECT_FORM",
@@ -272,10 +248,7 @@
       "fixability": 0.8,
       "errorLevel": "FATAL",
       "problemType": "Tense",
-      "titleZh": "现在完成时：have / has + 过去分词",
-      "whyZh": "have done，不是 have did / have do。管形式；『该不该用完成时』见完全体 PAST_VS_PERFECT。",
-      "topTitleZh": "现在完成时：have / has + 过去分词",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "现在完成时：have / has + 过去分词"
     },
     {
       "pointId": "PRESENT_CONTINUOUS",
@@ -288,10 +261,7 @@
       "fixability": 0.85,
       "errorLevel": "BASIC",
       "problemType": "Tense",
-      "titleZh": "正在做的动作：be + doing",
-      "whyZh": "此刻/临时进行的事用 am/is/are + doing，不能漏 be。",
-      "topTitleZh": "正在做的动作：be + doing",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "正在做的动作：be + doing"
     },
     {
       "pointId": "AUX_DID_BASE",
@@ -304,10 +274,7 @@
       "fixability": 0.95,
       "errorLevel": "FATAL",
       "problemType": "Tense",
-      "titleZh": "did 后面必须接动词原形",
-      "whyZh": "过去时已由 did 承担：did go，不是 did went。",
-      "topTitleZh": "did 后面必须接动词原形",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "did 后面必须接动词原形"
     },
     {
       "pointId": "AUX_MODAL_BASE",
@@ -320,10 +287,7 @@
       "fixability": 0.95,
       "errorLevel": "FATAL",
       "problemType": "Structure",
-      "titleZh": "will / can / must / should 后面直接接原形，不加 to",
-      "whyZh": "must use，不是 must to use；will finish，不是 will finished。",
-      "topTitleZh": "will / can / must / should 后面直接接原形，不加 to",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "will / can / must / should 后面直接接原形，不加 to"
     },
     {
       "pointId": "THERE_BE",
@@ -336,10 +300,7 @@
       "fixability": 0.85,
       "errorLevel": "FATAL",
       "problemType": "Structure",
-      "titleZh": "表示『有…』用 there is / there are，注意随后面名词单复数",
-      "whyZh": "中文『有很多用户』常直译成 have many users；英文存在句用 there are many users。",
-      "topTitleZh": "表示『有…』用 there is / there are，注意随后面名词单复数",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "表示『有…』用 there is / there are，注意随后面名词单复数"
     },
     {
       "pointId": "MISSING_SUBJECT_BE",
@@ -352,10 +313,7 @@
       "fixability": 0.8,
       "errorLevel": "FATAL",
       "problemType": "Structure",
-      "titleZh": "英文句子要有主语；形容词/名词谓语前常需要 be",
-      "whyZh": "中文可省略主语或系词（『很好』『是学生』）；英文需要 It is good / I am a student。",
-      "topTitleZh": "英文句子要有主语；形容词/名词谓语前常需要 be",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "英文句子要有主语；形容词/名词谓语前常需要 be"
     },
     {
       "pointId": "PREP_FIXED",
@@ -368,10 +326,7 @@
       "fixability": 0.3,
       "errorLevel": "BASIC",
       "problemType": "Preposition",
-      "titleZh": "介词多半是固定搭配，要一个个攒",
-      "whyZh": "on the website / in this situation / pay for。分类用，默认不占 Top3。",
-      "topTitleZh": "介词多半是固定搭配，要一个个攒",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "介词多半是固定搭配，要一个个攒"
     },
     {
       "pointId": "COLLOCATION",
@@ -384,10 +339,7 @@
       "fixability": 0.35,
       "errorLevel": "NATURAL",
       "problemType": "Collocation",
-      "titleZh": "动词/名词有固定搭配，不能按中文直译拼",
-      "whyZh": "spoken English（不是 speaking English）、do a role-play、look forward to doing。与单纯 in/on/at 误用区分开。",
-      "topTitleZh": "动词/名词有固定搭配，不能按中文直译拼",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "动词/名词有固定搭配，不能按中文直译拼"
     },
     {
       "pointId": "FEEL_ED_ADJ",
@@ -400,10 +352,7 @@
       "fixability": 0.9,
       "errorLevel": "NATURAL",
       "problemType": "Word Form",
-      "titleZh": "说『我感到…』要用 -ed，不用动词原形或 -ing",
-      "whyZh": "excited 是人的感受，exciting 是事物性质。",
-      "topTitleZh": "说『我感到…』要用 -ed，不用动词原形或 -ing",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "说『我感到…』要用 -ed，不用动词原形或 -ing"
     },
     {
       "pointId": "GERUND_AS_SUBJECT",
@@ -416,10 +365,7 @@
       "fixability": 0.9,
       "errorLevel": "BASIC",
       "problemType": "Word Form",
-      "titleZh": "动词做主语时要变成 -ing",
-      "whyZh": "Interrupting is bad，不是 Interrupt is bad。",
-      "topTitleZh": "动词做主语时要变成 -ing",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "动词做主语时要变成 -ing"
     },
     {
       "pointId": "GERUND_AFTER_PREP",
@@ -432,10 +378,7 @@
       "fixability": 0.9,
       "errorLevel": "BASIC",
       "problemType": "Word Form",
-      "titleZh": "介词后面的动词要用 -ing",
-      "whyZh": "look forward to doing / about improving；to 若是介词不是不定式。",
-      "topTitleZh": "介词后面的动词要用 -ing",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "介词后面的动词要用 -ing"
     },
     {
       "pointId": "WORD_FORM_POS",
@@ -448,10 +391,7 @@
       "fixability": 0.85,
       "errorLevel": "BASIC",
       "problemType": "Word Form",
-      "titleZh": "名词、形容词、动词别放错位置",
-      "whyZh": "该用名词的地方不要放形容词，该用动词的地方不要放形容词。例如 the confident → the confidence；accurate → check。",
-      "topTitleZh": "名词、形容词、动词别放错位置",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "名词、形容词、动词别放错位置"
     },
     {
       "pointId": "NOUN_CLAUSE_ORDER",
@@ -464,10 +404,7 @@
       "fixability": 0.75,
       "errorLevel": "FATAL",
       "problemType": "Clause",
-      "titleZh": "宾语从句用陈述语序，不要用疑问语序",
-      "whyZh": "I wonder who he is，不是 who is he。",
-      "topTitleZh": "宾语从句用陈述语序，不要用疑问语序",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "宾语从句用陈述语序，不要用疑问语序"
     },
     {
       "pointId": "QUESTION_STRUCTURE",
@@ -480,10 +417,7 @@
       "fixability": 0.75,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "特殊疑问句要有助动词，别直译中文语序",
-      "whyZh": "What does it mean? 不是 What it means?",
-      "topTitleZh": "特殊疑问句要有助动词，别直译中文语序",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "特殊疑问句要有助动词，别直译中文语序"
     },
     {
       "pointId": "SENTENCE_LOOSE_AND",
@@ -496,10 +430,7 @@
       "fixability": 0.45,
       "errorLevel": "STYLE",
       "problemType": "Structure",
-      "titleZh": "少用一串 and 把句子粘成一长条",
-      "whyZh": "口语『然后然后然后』；更接近组织习惯，默认可分类但不占 Top3。",
-      "topTitleZh": "少用一串 and 把句子粘成一长条",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "少用一串 and 把句子粘成一长条"
     },
     {
       "pointId": "PRONOUN_NUMBER",
@@ -512,10 +443,7 @@
       "fixability": 0.75,
       "errorLevel": "BASIC",
       "problemType": "Pronoun",
-      "titleZh": "代词的单复数要跟它指的东西一致",
-      "whyZh": "users → they/them/their；不可数 → it。",
-      "topTitleZh": "代词的单复数要跟它指的东西一致",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "代词的单复数要跟它指的东西一致"
     },
     {
       "pointId": "RELATIVE_NO_RESUMPTIVE",
@@ -528,10 +456,7 @@
       "fixability": 0.8,
       "errorLevel": "BASIC",
       "problemType": "Pronoun",
-      "titleZh": "定语从句里 which/that 已经代替先行词，不要再加 it",
-      "whyZh": "the app which I use，不是 which I use it。",
-      "topTitleZh": "定语从句里 which/that 已经代替先行词，不要再加 it",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "定语从句里 which/that 已经代替先行词，不要再加 it"
     },
     {
       "pointId": "FLUENCY_INCOMPLETE",
@@ -544,10 +469,7 @@
       "fixability": null,
       "errorLevel": "BASIC",
       "problemType": "Incomplete",
-      "titleZh": "句子说到一半就断了",
-      "whyZh": "不出规则卡；提示『说完一句再开口下一句』。",
-      "topTitleZh": "句子常说到一半就断",
-      "actionHintZh": "按策略把这句再说一遍"
+      "titleZh": "句子说到一半就断了"
     },
     {
       "pointId": "FLUENCY_REDUNDANCY",
@@ -560,10 +482,7 @@
       "fixability": null,
       "errorLevel": "STYLE",
       "problemType": "Redundancy",
-      "titleZh": "口头重复 / 语义叠词",
-      "whyZh": "improve your improve your、helpful and useful。不出规则卡。",
-      "topTitleZh": "启动时重复或叠词拖慢表达",
-      "actionHintZh": "按策略把这句再说一遍"
+      "titleZh": "口头重复 / 语义叠词"
     },
     {
       "pointId": "FLUENCY_OTHER",
@@ -576,10 +495,7 @@
       "fixability": null,
       "errorLevel": "BASIC",
       "problemType": "Incomplete",
-      "titleZh": "口语流利度（其它）",
-      "whyZh": "无法归入 incomplete / redundancy 细叶子时的流利度兜底。",
-      "topTitleZh": "口语流利度还有一些零散问题",
-      "actionHintZh": "按策略把这句再说一遍"
+      "titleZh": "口语流利度（其它）"
     },
     {
       "pointId": "LEXICAL_GAP",
@@ -592,10 +508,7 @@
       "fixability": null,
       "errorLevel": "NATURAL",
       "problemType": "Word Choice",
-      "titleZh": "一次性词汇缺口（想不起词 / 说错词 / 转写噪音）",
-      "whyZh": "含多数 Unnatural / Chinglish 里『换一个词就好』的情况；一词一张词汇卡。固定搭配走 COLLOCATION。",
-      "topTitleZh": "关键概念缺少可出口的表达",
-      "actionHintZh": "用目标说法重说一句"
+      "titleZh": "一次性词汇缺口（想不起词 / 说错词 / 转写噪音）"
     },
     {
       "pointId": "CHINESE_CODE_SWITCH",
@@ -608,10 +521,7 @@
       "fixability": null,
       "errorLevel": "STYLE",
       "problemType": "Chinese",
-      "titleZh": "说着说着插入中文 / 用中文提问词汇",
-      "whyZh": "对接现有中文表达知识卡片；不出规则卡。",
-      "topTitleZh": "想不到词时容易切回中文",
-      "actionHintZh": "不用中文，用英文绕行重说一句"
+      "titleZh": "说着说着插入中文 / 用中文提问词汇"
     },
     {
       "pointId": "ARTICLE_OTHER",
@@ -624,10 +534,7 @@
       "fixability": 0.6,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "冠词（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "冠词还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "冠词（其它）"
     },
     {
       "pointId": "NOUN_NUMBER_OTHER",
@@ -640,10 +547,7 @@
       "fixability": 0.75,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "单复数与可数性（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "单复数与可数性还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "单复数与可数性（其它）"
     },
     {
       "pointId": "AGREEMENT_OTHER",
@@ -656,10 +560,7 @@
       "fixability": 0.85,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "主谓一致（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "主谓一致还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "主谓一致（其它）"
     },
     {
       "pointId": "TENSE_OTHER",
@@ -672,10 +573,7 @@
       "fixability": 0.85,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "时态（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "时态还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "时态（其它）"
     },
     {
       "pointId": "VERB_PATTERN_OTHER",
@@ -688,10 +586,7 @@
       "fixability": 0.9,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "动词句型（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "动词句型还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "动词句型（其它）"
     },
     {
       "pointId": "PREPOSITION_OTHER",
@@ -704,10 +599,7 @@
       "fixability": 0.3,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "介词与搭配（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "介词与搭配还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "介词与搭配（其它）"
     },
     {
       "pointId": "WORD_FORM_OTHER",
@@ -720,10 +612,7 @@
       "fixability": 0.85,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "词形与词类（其它）",
-      "whyZh": "本场还有一些词形/词类问题，先用纠正句把原句改对。",
-      "topTitleZh": "词形与词类还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "词形与词类（其它）"
     },
     {
       "pointId": "STRUCTURE_OTHER",
@@ -736,10 +625,7 @@
       "fixability": 0.65,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "句式结构（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "句式结构还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "句式结构（其它）"
     },
     {
       "pointId": "PRONOUN_OTHER",
@@ -752,10 +638,7 @@
       "fixability": 0.7,
       "errorLevel": "BASIC",
       "problemType": "Structure",
-      "titleZh": "代词与指代（其它）",
-      "whyZh": "无法归入更细叶子时的兜底。",
-      "topTitleZh": "代词与指代还有一些零散问题",
-      "actionHintZh": "用纠正句重说一句"
+      "titleZh": "代词与指代（其它）"
     }
   ]
 }

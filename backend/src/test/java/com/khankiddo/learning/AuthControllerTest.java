@@ -35,7 +35,7 @@ class AuthControllerTest {
     @Test
     void register_duplicateUsername() throws Exception {
         String body = """
-                {"username":"dupuser","password":"secret12"}
+                {"username":"dupuser","password":"secret12","email":"dup@example.com"}
                 """;
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

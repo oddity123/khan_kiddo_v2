@@ -17,15 +17,18 @@ public final class PointDictionary {
     public static final String FALLBACK_POINT_ID = "STRUCTURE_OTHER";
 
     private final String version;
+    private final List<PointDiscriminator> discriminators;
     private final Map<String, PointDefinition> pointsById;
     private final Map<String, FamilyDefinition> familiesById;
     private final List<String> allPointIds;
 
     private PointDictionary(
             String version,
+            List<PointDiscriminator> discriminators,
             Map<String, PointDefinition> pointsById,
             Map<String, FamilyDefinition> familiesById) {
         this.version = version;
+        this.discriminators = List.copyOf(discriminators);
         this.pointsById = Map.copyOf(pointsById);
         this.familiesById = Map.copyOf(familiesById);
         this.allPointIds = List.copyOf(pointsById.keySet());
@@ -99,11 +102,19 @@ public final class PointDictionary {
             }
         }
 
-        return new PointDictionary(document.version(), pointsById, familiesById);
+        return new PointDictionary(
+                document.version(),
+                document.discriminators() == null ? List.of() : document.discriminators(),
+                pointsById,
+                familiesById);
     }
 
     public String version() {
         return version;
+    }
+
+    public List<PointDiscriminator> discriminators() {
+        return discriminators;
     }
 
     public PointDefinition require(String pointId) {
@@ -143,6 +154,7 @@ public final class PointDictionary {
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record PointDictionaryDocument(
             String version,
+            List<PointDiscriminator> discriminators,
             List<FamilyDefinition> families,
             List<PointDefinition> points
     ) {

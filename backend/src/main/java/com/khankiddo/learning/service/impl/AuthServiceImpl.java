@@ -5,6 +5,7 @@ import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.exception.UnauthorizedException;
 import com.khankiddo.learning.mapper.UserMapper;
 import com.khankiddo.learning.model.User;
+import com.khankiddo.learning.model.UserRole;
 import com.khankiddo.learning.security.AuthenticatedUser;
 import com.khankiddo.learning.security.JwtService;
 import com.khankiddo.learning.security.SecurityUtils;
@@ -39,7 +40,7 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("用户名或密码错误");
         }
 
-        String token = jwtService.generateToken(user.getId(), user.getUsername());
+        String token = jwtService.generateToken(user.getId(), user.getUsername(), user.getRole());
         return LoginResponse.builder()
                 .token(token)
                 .tokenType("Bearer")
@@ -68,6 +69,7 @@ public class AuthServiceImpl implements AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .email(email)
                 .enabled(true)
+                .role(UserRole.USER)
                 .build();
         userMapper.insert(newUser);
 

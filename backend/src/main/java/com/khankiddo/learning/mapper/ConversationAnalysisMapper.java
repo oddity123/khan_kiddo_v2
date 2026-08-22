@@ -1,6 +1,7 @@
 package com.khankiddo.learning.mapper;
 
 import com.khankiddo.learning.model.ConversationAnalysis;
+import com.khankiddo.learning.model.ConversationAnalysisWithUsername;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -38,4 +39,11 @@ public interface ConversationAnalysisMapper {
                                                 @Param("keyword") String keyword);
 
     int deleteByAnalysisIdAndUserId(@Param("analysisId") String analysisId, @Param("userId") Long userId);
+
+    List<ConversationAnalysisWithUsername> findAllWithUsername(@Param("keyword") String keyword,
+                                                               @Param("username") String username,
+                                                               @Param("limit") int limit,
+                                                               @Param("offset") int offset);
+
+    long countAllWithKeyword(@Param("keyword") String keyword, @Param("username") String username);
 }

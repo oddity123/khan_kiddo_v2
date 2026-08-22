@@ -1,6 +1,8 @@
 package com.khankiddo.learning.security;
 
+import com.khankiddo.learning.exception.ForbiddenException;
 import com.khankiddo.learning.exception.UnauthorizedException;
+import com.khankiddo.learning.model.UserRole;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.http.HttpHeaders;
@@ -54,6 +56,21 @@ public final class SecurityUtils {
             throw new UnauthorizedException("未登录");
         }
         return user;
+    }
+
+    /**
+     * 要求当前用户为管理员，否则抛 {@link ForbiddenException}。
+     */
+    public static void requireAdmin() {
+        AuthenticatedUser user = requireCurrentUser();
+        if (!UserRole.ADMIN.equals(user.role())) {
+            throw new ForbiddenException("无管理员权限");
+        }
+    }
+
+    public static boolean isAdmin() {
+        AuthenticatedUser user = getCurrentUser();
+        return ObjectUtils.isNotEmpty(user) && UserRole.ADMIN.equals(user.role());
     }
 
     /**

@@ -13,10 +13,15 @@ CREATE TABLE IF NOT EXISTS `users`
     `password`   VARCHAR(100) NOT NULL,
     `email`      VARCHAR(100),
     `enabled`    TINYINT(1) DEFAULT 1,
+    `role`       VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT 'USER 或 ADMIN',
     `created_at` DATETIME   DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME   DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_username` (`username`)
 ) ENGINE = InnoDB COMMENT ='用户表';
+
+-- 已有库升级（新建库已通过 CREATE TABLE 包含 role 列）：
+-- ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT 'USER 或 ADMIN' AFTER enabled;
+-- UPDATE users SET role = 'ADMIN' WHERE username = 'admin';
 
 -- 对话分析主表
 CREATE TABLE IF NOT EXISTS `conversation_analysis`

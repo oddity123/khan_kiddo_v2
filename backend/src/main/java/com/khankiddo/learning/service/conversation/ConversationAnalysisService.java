@@ -1,5 +1,6 @@
 package com.khankiddo.learning.service.conversation;
 
+import com.khankiddo.learning.dto.admin.AdminAnalysisListResponse;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisDetailDto;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisListResponse;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisProgress;
@@ -31,7 +32,13 @@ public interface ConversationAnalysisService {
 
     ConversationAnalysisDetailDto getDetail(String analysisId);
 
+    ConversationAnalysisDetailDto getDetailAsAdmin(String analysisId);
+
     ConversationAnalysisListResponse list(int page, int size, String keyword);
+
+    ConversationAnalysisListResponse listForUser(Long userId, int page, int size, String keyword);
+
+    AdminAnalysisListResponse listAllAsAdmin(int page, int size, String keyword, String username);
 
     void delete(String analysisId);
 }

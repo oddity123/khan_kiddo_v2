@@ -1,5 +1,6 @@
 package com.khankiddo.learning.security;
 
+import com.khankiddo.learning.model.UserRole;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +15,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -28,10 +30,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
         resolveBearerToken(request).ifPresent(user -> {
+            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+            if (UserRole.ADMIN.equals(user.role())) {
+                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            }
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                     user,
                     null,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER")));
+                    authorities);
             SecurityContextHolder.getContext().setAuthentication(authentication);
         });
         filterChain.doFilter(request, response);

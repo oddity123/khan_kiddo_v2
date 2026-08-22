@@ -5,6 +5,7 @@ import com.khankiddo.learning.conversation.ConversationAnalysisErrorMessages;
 import com.khankiddo.learning.conversation.ConversationAnalysisPersistSupport;
 import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.conversation.EducationalSummaryParser;
+import com.khankiddo.learning.dto.admin.AdminAnalysisListResponse;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
@@ -16,6 +17,7 @@ import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
+import com.khankiddo.learning.model.ConversationAnalysisWithUsername;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.dto.growth.GrowthCardDto;
 import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
@@ -330,7 +332,18 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         Long userId = SecurityUtils.requireUserId();
         ConversationAnalysis analysis = analysisMapper.findByAnalysisIdAndUserId(analysisId, userId)
                 .orElseThrow(() -> new BadRequestException("分析记录不存在"));
+        return buildDetailFromAnalysis(analysis, analysisId);
+    }
 
+    @Override
+    public ConversationAnalysisDetailDto getDetailAsAdmin(String analysisId) {
+        SecurityUtils.requireAdmin();
+        ConversationAnalysis analysis = analysisMapper.findByAnalysisId(analysisId)
+                .orElseThrow(() -> new BadRequestException("分析记录不存在"));
+        return buildDetailFromAnalysis(analysis, analysisId);
+    }
+
+    private ConversationAnalysisDetailDto buildDetailFromAnalysis(ConversationAnalysis analysis, String analysisId) {
         List<ConversationAnalysisItem> rows = itemMapper.findByAnalysisId(analysisId);
         Map<Long, AnalysisItemDto> grouped = new LinkedHashMap<>();
         for (ConversationAnalysisItem row : rows) {
@@ -501,7 +514,11 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
     @Override
     public ConversationAnalysisListResponse list(int page, int size, String keyword) {
-        Long userId = SecurityUtils.requireUserId();
+        return listForUser(SecurityUtils.requireUserId(), page, size, keyword);
+    }
+
+    @Override
+    public ConversationAnalysisListResponse listForUser(Long userId, int page, int size, String keyword) {
         int safePage = Math.max(page, 1);
         int safeSize = Math.min(Math.max(size, 1), 50);
         int offset = (safePage - 1) * safeSize;
@@ -537,6 +554,45 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .collect(Collectors.toList());
 
         return ConversationAnalysisListResponse.builder().total(total).records(rows).build();
+    }
+
+    @Override
+    public AdminAnalysisListResponse listAllAsAdmin(int page, int size, String keyword, String username) {
+        int safePage = Math.max(page, 1);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        int offset = (safePage - 1) * safeSize;
+        String trimmedKeyword = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        String trimmedUsername = StringUtils.hasText(username) ? username.trim() : null;
+
+        List<ConversationAnalysisWithUsername> records =
+                analysisMapper.findAllWithUsername(trimmedKeyword, trimmedUsername, safeSize, offset);
+        long total = analysisMapper.countAllWithKeyword(trimmedKeyword, trimmedUsername);
+
+        List<AdminAnalysisListResponse.SummaryRow> rows = records.stream()
+                .map(record -> {
+                    EducationalSummaryStatsDto stats = summaryParser.readPersistedStats(record.getEducationalSummary());
+                    AdminAnalysisListResponse.SummaryRow.SummaryRowBuilder rowBuilder =
+                            AdminAnalysisListResponse.SummaryRow.builder()
+                                    .analysisId(record.getAnalysisId())
+                                    .userId(record.getUserId())
+                                    .username(record.getUsername())
+                                    .status(record.getStatus())
+                                    .processingTimeMs(record.getProcessingTimeMs())
+                                    .createdAt(record.getCreatedAt())
+                                    .preview(buildPreview(record.getConversationContent()))
+                                    .contentCharCount(contentCharCount(record.getConversationContent()))
+                                    .llmModelId(record.getLlmModelId())
+                                    .llmModelName(record.getLlmModelName())
+                                    .llmProvider(record.getLlmProvider());
+                    if (ObjectUtils.isNotEmpty(stats)) {
+                        rowBuilder.performanceScore(stats.getPerformanceScore())
+                                .dimensionScores(stats.getDimensionScores());
+                    }
+                    return rowBuilder.build();
+                })
+                .collect(Collectors.toList());
+
+        return AdminAnalysisListResponse.builder().total(total).records(rows).build();
     }
 
     @Override

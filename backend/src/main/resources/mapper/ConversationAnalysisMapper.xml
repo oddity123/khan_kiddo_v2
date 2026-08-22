@@ -112,4 +112,44 @@
           AND user_id = #{userId}
     </delete>
 
+    <resultMap id="ConversationAnalysisWithUsernameMap"
+               type="com.khankiddo.learning.model.ConversationAnalysisWithUsername"
+               extends="ConversationAnalysisResultMap">
+        <result column="username" property="username"/>
+    </resultMap>
+
+    <sql id="adminAnalysisKeywordFilter">
+        <if test="username != null and username != ''">
+            AND u.username LIKE CONCAT('%', #{username}, '%')
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (
+                ca.conversation_content LIKE CONCAT('%', #{keyword}, '%')
+                OR ca.analysis_id LIKE CONCAT('%', #{keyword}, '%')
+            )
+        </if>
+    </sql>
+
+    <select id="findAllWithUsername" resultMap="ConversationAnalysisWithUsernameMap">
+        SELECT ca.id, ca.user_id, ca.analysis_id, ca.conversation_content, ca.status, ca.error_message,
+               ca.processing_time_ms, ca.educational_summary, ca.llm_model_id, ca.llm_model_name,
+               ca.llm_provider, ca.created_at, ca.updated_at, u.username
+        FROM conversation_analysis ca
+        INNER JOIN users u ON ca.user_id = u.id
+        <where>
+            <include refid="adminAnalysisKeywordFilter"/>
+        </where>
+        ORDER BY ca.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAllWithKeyword" resultType="long">
+        SELECT COUNT(*)
+        FROM conversation_analysis ca
+        INNER JOIN users u ON ca.user_id = u.id
+        <where>
+            <include refid="adminAnalysisKeywordFilter"/>
+        </where>
+    </select>
+
 </mapper>

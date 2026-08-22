@@ -8,18 +8,23 @@
         <result column="password" property="password"/>
         <result column="email" property="email"/>
         <result column="enabled" property="enabled"/>
+        <result column="role" property="role"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
+    <sql id="UserColumns">
+        id, username, password, email, enabled, role, created_at, updated_at
+    </sql>
+
     <select id="findByUsername" resultMap="UserResultMap">
-        SELECT id, username, password, email, enabled, created_at, updated_at
+        SELECT <include refid="UserColumns"/>
         FROM users
         WHERE username = #{username}
     </select>
 
     <select id="findById" resultMap="UserResultMap">
-        SELECT id, username, password, email, enabled, created_at, updated_at
+        SELECT <include refid="UserColumns"/>
         FROM users
         WHERE id = #{id}
     </select>
@@ -30,9 +35,90 @@
         WHERE username = #{username}
     </select>
 
+    <select id="findAll" resultMap="UserResultMap">
+        SELECT <include refid="UserColumns"/>
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*)
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (username LIKE CONCAT('%', #{keyword}, '%')
+                OR email LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <resultMap id="UserWithAnalysisCountMap" type="com.khankiddo.learning.model.UserWithAnalysisCount"
+               extends="UserResultMap">
+        <result column="analysis_count" property="analysisCount"/>
+    </resultMap>
+
+    <sql id="adminUserAnalysisCountJoin">
+        FROM users u
+        LEFT JOIN (
+            SELECT user_id, COUNT(*) AS analysis_count
+            FROM conversation_analysis
+            GROUP BY user_id
+        ) ac ON u.id = ac.user_id
+    </sql>
+
+    <sql id="adminUserKeywordFilter">
+        <if test="keyword != null and keyword != ''">
+            AND (u.username LIKE CONCAT('%', #{keyword}, '%')
+            OR u.email LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </sql>
+
+    <sql id="adminUserAnalysisCountFilter">
+        <if test="minAnalysisCount != null">
+            AND COALESCE(ac.analysis_count, 0) &gt;= #{minAnalysisCount}
+        </if>
+        <if test="maxAnalysisCount != null">
+            AND COALESCE(ac.analysis_count, 0) &lt;= #{maxAnalysisCount}
+        </if>
+    </sql>
+
+    <select id="findAllForAdmin" resultMap="UserWithAnalysisCountMap">
+        SELECT u.id, u.username, u.password, u.email, u.enabled, u.role, u.created_at, u.updated_at,
+               COALESCE(ac.analysis_count, 0) AS analysis_count
+        <include refid="adminUserAnalysisCountJoin"/>
+        <where>
+            <include refid="adminUserKeywordFilter"/>
+            <include refid="adminUserAnalysisCountFilter"/>
+        </where>
+        ORDER BY u.created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAllForAdmin" resultType="long">
+        SELECT COUNT(*)
+        <include refid="adminUserAnalysisCountJoin"/>
+        <where>
+            <include refid="adminUserKeywordFilter"/>
+            <include refid="adminUserAnalysisCountFilter"/>
+        </where>
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password, email, enabled, created_at, updated_at)
-        VALUES (#{username}, #{password}, #{email}, #{enabled}, NOW(), NOW())
+        INSERT INTO users (username, password, email, enabled, role, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{email}, #{enabled}, #{role}, NOW(), NOW())
     </insert>
+
+    <update id="updateRoleByUsername">
+        UPDATE users
+        SET role = #{role}, updated_at = NOW()
+        WHERE username = #{username}
+    </update>
 
 </mapper>

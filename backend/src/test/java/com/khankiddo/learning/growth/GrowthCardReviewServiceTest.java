@@ -42,7 +42,7 @@ class GrowthCardReviewServiceTest {
     void setUp() {
         reviewService = new GrowthCardReviewService(store, gateway, evidenceHydrator);
         var auth = new UsernamePasswordAuthenticationToken(
-                new AuthenticatedUser(1L, "test"), null, List.of());
+                new AuthenticatedUser(1L, "test", "USER"), null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 

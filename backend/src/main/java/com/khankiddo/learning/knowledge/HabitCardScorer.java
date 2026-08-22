@@ -202,7 +202,7 @@ public class HabitCardScorer {
         PracticePromptDto practicePrompt = PracticePromptDto.builder()
                 .originalSentence(firstEvidence.originalSentence())
                 .targetSentence(resolveTargetSentence(firstEvidence))
-                .coachingZh(tipPoint.actionHintZh())
+                .coachingZh(resolveActionHintZh(tipPoint))
                 .build();
 
         return ActionCardDto.builder()
@@ -218,7 +218,7 @@ public class HabitCardScorer {
                 .score(totalScore)
                 .examples(examples)
                 .siblingPoints(siblingPoints)
-                .actionHintZh(tipPoint.actionHintZh())
+                .actionHintZh(resolveActionHintZh(tipPoint))
                 .practicePrompt(practicePrompt)
                 .build();
     }
@@ -264,21 +264,41 @@ public class HabitCardScorer {
      */
     private CardCopy resolveCardCopy(PointDefinition tipPoint) {
         if (tipPoint.habitUnit() != HabitUnit.FAMILY) {
-            return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
+            return new CardCopy(resolveTopTitleZh(tipPoint), tipPoint.titleZh(), resolveWhyZh(tipPoint));
         }
         FamilyDefinition family = dictionary.familiesById().get(tipPoint.familyId());
         if (family == null) {
-            return new CardCopy(tipPoint.topTitleZh(), tipPoint.titleZh(), tipPoint.whyZh());
+            return new CardCopy(resolveTopTitleZh(tipPoint), tipPoint.titleZh(), resolveWhyZh(tipPoint));
         }
 
         String familyHeadline = family.titleZh() + "容易用错";
         if (isCatchAllLeaf(tipPoint)) {
-            return new CardCopy(familyHeadline, family.titleZh(), tipPoint.whyZh());
+            return new CardCopy(familyHeadline, family.titleZh(), resolveWhyZh(tipPoint));
         }
+        String whySuffix = StringUtils.hasText(tipPoint.whyZh()) ? "。" + tipPoint.whyZh() : "";
         return new CardCopy(
                 familyHeadline,
                 family.titleZh(),
-                "其中可先练：" + tipPoint.titleZh() + "。" + tipPoint.whyZh());
+                "其中可先练：" + tipPoint.titleZh() + whySuffix);
+    }
+
+    private String resolveTopTitleZh(PointDefinition point) {
+        return StringUtils.hasText(point.topTitleZh()) ? point.topTitleZh() : point.titleZh();
+    }
+
+    private String resolveWhyZh(PointDefinition point) {
+        return StringUtils.hasText(point.whyZh()) ? point.whyZh() : "";
+    }
+
+    private String resolveActionHintZh(PointDefinition point) {
+        if (StringUtils.hasText(point.actionHintZh())) {
+            return point.actionHintZh();
+        }
+        return switch (point.channel()) {
+            case FLUENCY, CHINESE -> "按策略把这句再说一遍";
+            case LEXICAL -> "用目标说法重说一句";
+            default -> "用纠正句重说一句";
+        };
     }
 
     private static List<ResolvedHit> orderHitsForDisplay(List<ResolvedHit> hits, String tipPointId) {

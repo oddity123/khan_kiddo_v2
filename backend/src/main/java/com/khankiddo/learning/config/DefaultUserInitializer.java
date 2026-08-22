@@ -2,6 +2,7 @@ package com.khankiddo.learning.config;
 
 import com.khankiddo.learning.mapper.UserMapper;
 import com.khankiddo.learning.model.User;
+import com.khankiddo.learning.model.UserRole;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -23,7 +24,8 @@ public class DefaultUserInitializer {
     public void initDefaultUser() {
         String username = "admin";
         if (userMapper.existsByUsername(username) > 0) {
-            log.info("默认用户 {} 已存在，跳过初始化", username);
+            userMapper.updateRoleByUsername(username, UserRole.ADMIN);
+            log.info("默认用户 {} 已存在，已确保管理员角色", username);
             return;
         }
 
@@ -32,6 +34,7 @@ public class DefaultUserInitializer {
                 .password(passwordEncoder.encode("admin123"))
                 .email("admin@khankiddo.com")
                 .enabled(true)
+                .role(UserRole.ADMIN)
                 .build();
 
         try {

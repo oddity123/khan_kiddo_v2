@@ -20,6 +20,14 @@ import {computed, nextTick, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {deleteConversationAnalysis, getConversationAnalysisDetail,} from '@/api/conversationAnalysis'
+import {getAdminAnalysisDetail} from '@/api/admin'
+import {
+  ADMIN_ANALYSES_PATH,
+  ADMIN_USERS_PATH,
+  adminUserAnalysesPath,
+  isAdminDetailFromGlobalAnalyses,
+  parseAdminReturnTo,
+} from '@/constants/admin'
 import {deleteGrowthCard} from '@/api/growthCard'
 import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
@@ -47,7 +55,39 @@ const detail = ref<ConversationAnalysisDetail | null>(null)
 const pageReady = ref(false)
 
 const isEphemeral = computed(() => Boolean(route.meta.ephemeralAnalysis))
+const isAdminView = computed(() => Boolean(route.meta.adminAnalysis))
 const analysisId = computed(() => (isEphemeral.value ? '' : String(route.params.id ?? '')))
+const adminUserId = computed(() => (isAdminView.value ? String(route.params.userId ?? '') : ''))
+const adminBackFallback = computed(() => {
+  if (isAdminDetailFromGlobalAnalyses(route.query)) {
+    return ADMIN_ANALYSES_PATH
+  }
+  if (adminUserId.value) {
+    return {
+      path: adminUserAnalysesPath(adminUserId.value),
+      query: {username: route.query.username},
+    }
+  }
+  return ADMIN_USERS_PATH
+})
+const adminBackLabel = computed(() => (isAdminView.value ? '返回' : '返回列表'))
+
+function onBackClick() {
+  if (isEphemeral.value) {
+    router.push('/conversation/analyze')
+    return
+  }
+  if (isAdminView.value) {
+    const returnTo = parseAdminReturnTo(route.query)
+    if (returnTo) {
+      router.push(returnTo)
+      return
+    }
+    router.push(adminBackFallback.value)
+    return
+  }
+  router.push('/conversation/analyses')
+}
 const summaryReport = computed(() => detail.value?.educationalSummary?.report)
 
 const overallStats = computed(() => summaryReport.value?.overallStats)
@@ -69,7 +109,8 @@ async function refreshDetailSilent() {
     return undefined
   }
   try {
-    const {data} = await getConversationAnalysisDetail(analysisId.value)
+    const fetchDetail = isAdminView.value ? getAdminAnalysisDetail : getConversationAnalysisDetail
+    const {data} = await fetchDetail(analysisId.value)
     detail.value = data
     return data
   } catch {
@@ -333,7 +374,8 @@ async function loadDetail() {
   fanOrderIds.value = []
   activeFilters.value = []
   try {
-    const {data} = await getConversationAnalysisDetail(analysisId.value)
+    const fetchDetail = isAdminView.value ? getAdminAnalysisDetail : getConversationAnalysisDetail
+    const {data} = await fetchDetail(analysisId.value)
     detail.value = data
     fanOrderIds.value = sortGrowthCardsNewestFirst(data.growthCards ?? []).map((card) => card.cardId)
     requestAnimationFrame(() => {
@@ -370,7 +412,7 @@ async function onDelete() {
 }
 
 onMounted(loadDetail)
-watch([analysisId, isEphemeral], loadDetail)
+watch([analysisId, isEphemeral, isAdminView], loadDetail)
 </script>
 
 <template>
@@ -380,16 +422,13 @@ watch([analysisId, isEphemeral], loadDetail)
       :class="{ 'detail-page--ready': pageReady }"
   >
     <header class="detail-topbar kk-glass">
-      <router-link
-          :to="isEphemeral ? '/conversation/analyze' : '/conversation/analyses'"
-          class="back-link"
-      >
+      <button type="button" class="back-link" @click="onBackClick">
         <el-icon><ArrowLeft/></el-icon>
-        {{ isEphemeral ? '返回分析' : '返回列表' }}
-      </router-link>
-      <h1 class="topbar-title">{{ isEphemeral ? '分析预览' : '对话分析详情' }}</h1>
+        {{ isEphemeral ? '返回分析' : isAdminView ? adminBackLabel : '返回列表' }}
+      </button>
+      <h1 class="topbar-title">{{ isEphemeral ? '分析预览' : isAdminView ? '对话详情（管理）' : '对话分析详情' }}</h1>
       <el-button
-          v-if="!isEphemeral"
+          v-if="!isEphemeral && !isAdminView"
           type="danger"
           plain
           :icon="Delete"
@@ -736,6 +775,12 @@ watch([analysisId, isEphemeral], loadDetail)
   color: var(--kk-color-primary);
   font-weight: 600;
   text-decoration: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
   transition: color 0.2s ease, transform 0.2s ease;
 }
 
