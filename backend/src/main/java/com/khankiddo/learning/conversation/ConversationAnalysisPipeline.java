@@ -7,6 +7,7 @@ import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
+import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.llm.ChineseExpressionReviewClient;
@@ -386,6 +387,7 @@ public class ConversationAnalysisPipeline {
                 .point(error.getPoint())
                 .errorLevel(level.name())
                 .familyId(definition.familyId())
+                .familyTitleZh(KnowledgePointStatsSupport.familyTitle(pointDictionary, definition.familyId()))
                 .channel(definition.channel().getJsonValue())
                 .build();
     }

@@ -35,8 +35,8 @@ class HabitCardDetailAssemblyTest {
     @Test
     void allRowsWithPointId_producesTopHabitAndActionCards() {
         List<ConversationAnalysisItem> rows = List.of(
-                row(1L, "ARTICLE_A_AN", "Tense", "a apple", "an apple"),
-                row(1L, "ARTICLE_A_AN", "Tense", "a hour", "an hour")
+                row(1L, "ARTICLE_A_AN", "a apple", "an apple"),
+                row(1L, "ARTICLE_A_AN", "a hour", "an hour")
         );
 
         HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, List.of());
@@ -50,8 +50,8 @@ class HabitCardDetailAssemblyTest {
     @Test
     void allRowsMissingPointId_skipsScoringEntirely() {
         List<ConversationAnalysisItem> rows = List.of(
-                row(1L, null, "Tense", "a apple", "an apple"),
-                row(1L, null, "Tense", "a hour", "an hour")
+                row(1L, null, "a apple", "an apple"),
+                row(1L, null, "a hour", "an hour")
         );
 
         HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, List.of());
@@ -73,8 +73,8 @@ class HabitCardDetailAssemblyTest {
     @Test
     void mixedPointIds_stillScoresUsingFallbackForMissingOnes() {
         List<ConversationAnalysisItem> rows = List.of(
-                row(1L, "ARTICLE_A_AN", "Tense", "a apple", "an apple"),
-                row(2L, null, "Tense", "some odd error", null)
+                row(1L, "ARTICLE_A_AN", "a apple", "an apple"),
+                row(2L, null, "some odd error", null)
         );
 
         HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, List.of());
@@ -86,8 +86,8 @@ class HabitCardDetailAssemblyTest {
     @Test
     void chineseContentExpressionsArePassedThroughToScorer() {
         List<ConversationAnalysisItem> rows = List.of(
-                row(1L, "ARTICLE_A_AN", "Tense", "a apple", "an apple"),
-                row(1L, "ARTICLE_A_AN", "Tense", "a hour", "an hour")
+                row(1L, "ARTICLE_A_AN", "a apple", "an apple"),
+                row(1L, "ARTICLE_A_AN", "a hour", "an hour")
         );
         // 内容表达（无 focusPhrase）才计入习惯打分；词汇求助不进 Top
         List<ChineseExpressionDto> chinese = List.of(
@@ -120,8 +120,8 @@ class HabitCardDetailAssemblyTest {
     @Test
     void diagnosisIsMergedIntoActionCardByHabitKey() {
         List<ConversationAnalysisItem> rows = List.of(
-                row(1L, "ARTICLE_A_AN", "Article", "a apple", "an apple"),
-                row(2L, "ARTICLE_A_AN", "Article", "a hour", "an hour")
+                row(1L, "ARTICLE_A_AN", "a apple", "an apple"),
+                row(2L, "ARTICLE_A_AN", "a hour", "an hour")
         );
 
         HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(
@@ -141,12 +141,11 @@ class HabitCardDetailAssemblyTest {
     }
 
     private static ConversationAnalysisItem row(
-            Long sentenceId, String pointId, String problemType, String errorPoint, String suggestion) {
+            Long sentenceId, String pointId, String errorPoint, String suggestion) {
         return ConversationAnalysisItem.builder()
                 .analysisId("a1")
                 .sentenceId(sentenceId)
                 .originalSentence("I eat " + errorPoint + ".")
-                .problemTypes(problemType)
                 .pointId(pointId)
                 .errorPoint(errorPoint)
                 .suggestion(suggestion)

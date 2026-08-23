@@ -29,6 +29,17 @@ class KnowledgePointStatsSupportTest {
         assertThat(stats.get(1).getCount()).isEqualTo(4L);
     }
 
+    @Test
+    void mergePointFilters_unionsPointIdsAndFamilyIds() {
+        List<String> merged = KnowledgePointStatsSupport.mergePointFilters(
+                DICTIONARY,
+                List.of("PAST_SIMPLE_DONE"),
+                List.of("FAM_ARTICLE"));
+
+        assertThat(merged).contains("PAST_SIMPLE_DONE", "ARTICLE_GENERIC_ZERO");
+        assertThat(merged.size()).isGreaterThan(2);
+    }
+
     private static PointIdCount row(String pointId, long count) {
         PointIdCount row = new PointIdCount();
         row.setPointId(pointId);

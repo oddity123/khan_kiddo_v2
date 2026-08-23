@@ -7,7 +7,6 @@
         <result column="analysis_id" property="analysisId"/>
         <result column="sentence_id" property="sentenceId"/>
         <result column="original_sentence" property="originalSentence"/>
-        <result column="problem_types" property="problemTypes"/>
         <result column="point_id" property="pointId"/>
         <result column="error_point" property="errorPoint"/>
         <result column="suggestion" property="suggestion"/>
@@ -97,7 +96,6 @@
                cai.analysis_id,
                cai.sentence_id,
                cai.original_sentence,
-               cai.problem_types,
                cai.point_id,
                cai.error_point,
                cai.suggestion,
@@ -121,7 +119,6 @@
                analysis_id,
                sentence_id,
                original_sentence,
-               problem_types,
                point_id,
                error_point,
                suggestion,
@@ -137,7 +134,6 @@
                analysis_id,
                sentence_id,
                original_sentence,
-               problem_types,
                point_id,
                error_point,
                suggestion,
@@ -167,7 +163,6 @@
         cai.analysis_id,
         cai.sentence_id,
         cai.original_sentence,
-        cai.problem_types,
         cai.point_id,
         cai.error_point,
         cai.suggestion,
@@ -213,76 +208,6 @@
             AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
         </if>
         GROUP BY cai.point_id
-        ORDER BY count DESC
-        LIMIT 1
-    </select>
-
-    <!-- deprecated legacy queries -->
-    <select id="countByUserIdAndProblemTypes" resultType="long">
-        SELECT COUNT(*)
-        FROM conversation_analysis_item cai
-        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
-        WHERE ca.user_id = #{userId}
-          AND ca.status = 'success'
-        <if test="problemTypes != null and problemTypes.size() > 0">
-            AND cai.problem_types IN
-            <foreach collection="problemTypes" item="pt" open="(" separator="," close=")">
-                #{pt}
-            </foreach>
-        </if>
-    </select>
-
-    <select id="getMostCommonProblemTypeByUserId" resultType="map">
-        SELECT cai.problem_types AS problemType, COUNT(*) AS count
-        FROM conversation_analysis_item cai
-            INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
-        WHERE ca.user_id = #{userId}
-          AND ca.status = 'success'
-          AND cai.problem_types IS NOT NULL
-        GROUP BY cai.problem_types
-        ORDER BY count DESC
-        LIMIT 1
-    </select>
-
-    <select id="countProblemTypesByUserId" resultType="com.khankiddo.learning.model.ProblemTypeCount">
-        SELECT cai.problem_types AS problemType, COUNT(*) AS count
-        FROM conversation_analysis_item cai
-            INNER JOIN conversation_analysis ca
-        ON cai.analysis_id = ca.analysis_id
-        WHERE ca.user_id = #{userId}
-          AND ca.status = 'success'
-          AND cai.problem_types IS NOT NULL
-        GROUP BY cai.problem_types
-        ORDER BY count DESC
-            LIMIT 20
-    </select>
-
-    <select id="countProblemTypesByUserIdAndDays" resultType="com.khankiddo.learning.model.ProblemTypeCount">
-        SELECT cai.problem_types AS problemType, COUNT(*) AS count
-        FROM conversation_analysis_item cai
-        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
-        WHERE ca.user_id = #{userId}
-        AND ca.status = 'success'
-        AND cai.problem_types IS NOT NULL
-        <if test="days != null and days > 0">
-            AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
-        </if>
-        GROUP BY cai.problem_types
-        ORDER BY count DESC
-        LIMIT 20
-    </select>
-
-    <select id="getMostCommonProblemTypeByUserIdAndDays" resultType="map">
-        SELECT cai.problem_types AS problemType, COUNT(*) AS count
-        FROM conversation_analysis_item cai
-        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
-        WHERE ca.user_id = #{userId}
-        AND ca.status = 'success'
-        AND cai.problem_types IS NOT NULL
-        <if test="days != null and days > 0">
-            AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
-        </if>
-        GROUP BY cai.problem_types
         ORDER BY count DESC
         LIMIT 1
     </select>

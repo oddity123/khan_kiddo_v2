@@ -9,7 +9,6 @@ import org.springframework.util.StringUtils;
 public final class ConversationAnalysisPersistSupport {
 
     public static final int ANALYSIS_ID_MAX = 64;
-    public static final int PROBLEM_TYPES_MAX = 100;
     public static final int POINT_ID_MAX = 48;
     public static final int ERROR_POINT_MAX = 500;
     public static final int LLM_MODEL_ID_MAX = 100;
@@ -35,7 +34,6 @@ public final class ConversationAnalysisPersistSupport {
             return null;
         }
         item.setAnalysisId(truncate(item.getAnalysisId(), ANALYSIS_ID_MAX));
-        item.setProblemTypes(truncate(item.getProblemTypes(), PROBLEM_TYPES_MAX));
         item.setPointId(truncate(item.getPointId(), POINT_ID_MAX));
         item.setErrorPoint(truncate(item.getErrorPoint(), ERROR_POINT_MAX));
         return item;

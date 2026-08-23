@@ -10,7 +10,7 @@ class PointScoringSupportTest {
             PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
 
     @Test
-    void resolvesScoreProfileFromProblemTypeLabel() {
+    void resolvesScoreProfileFromDictionaryField() {
         PointDefinition tense = DICTIONARY.require("PAST_SIMPLE_DONE");
         assertThat(PointScoringSupport.scoreProfile(tense)).isEqualTo("TENSE");
         assertThat(PointScoringSupport.errorLevel(tense)).isEqualTo("FATAL");

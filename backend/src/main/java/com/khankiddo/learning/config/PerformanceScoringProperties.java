@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * 口语自然度评分配置，权重与维度定义见 {@code classpath:scoring/performance-scoring.yml}。
- * 权重键为字典 {@code scoreProfile}，不再依赖 {@link com.khankiddo.learning.model.enums.ProblemType}。
+ * 权重键为字典 {@code scoreProfile}。
  */
 @Data
 @Component

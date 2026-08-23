@@ -46,7 +46,7 @@ export interface AdminPointLeafView {
   impactWeight: number
   fixability?: number | null
   errorLevel?: string | null
-  problemType?: string | null
+  scoreProfile?: string | null
   titleZh?: string | null
   catchAllLeaf: boolean
   globalFallback: boolean

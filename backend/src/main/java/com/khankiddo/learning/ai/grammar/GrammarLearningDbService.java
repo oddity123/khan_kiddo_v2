@@ -7,7 +7,6 @@ import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.PointIdCount;
-import com.khankiddo.learning.model.enums.ProblemType;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
@@ -91,12 +90,11 @@ public class GrammarLearningDbService {
             PointDefinition definition = StringUtils.hasText(item.getPointId())
                     ? pointDictionary.resolveOrFallback(item.getPointId())
                     : null;
-            String typeLabel = definition != null
-                    ? definition.titleZh()
-                    : ProblemType.translate(item.getProblemTypes());
-            String meta = definition != null
-                    ? definition.pointId() + " / " + definition.familyId()
-                    : item.getProblemTypes();
+            if (definition == null) {
+                continue;
+            }
+            String typeLabel = definition.titleZh();
+            String meta = definition.pointId() + " / " + definition.familyId();
             builder.append(index++).append(". [").append(typeLabel)
                     .append(" / ").append(meta).append("]\n");
             builder.append("   原句：").append(nullToEmpty(item.getOriginalSentence())).append('\n');

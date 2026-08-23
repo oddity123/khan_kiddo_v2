@@ -21,36 +21,28 @@ app:
 
     profile-weights:
       INCOMPLETE: 3.5
-      CHINGLISH: 3.2
+      CHINESE: 3.2
       COLLOCATION: 3.0
-      UNNATURAL: 2.8
       STRUCTURE: 2.8
       WORD_CHOICE: 2.4
+      CLAUSE: 2.4
       TENSE: 2.2
       AGREEMENT: 2.1
       PREPOSITION: 1.9
-      CLAUSE: 2.4
-      FORMAL: 1.8
-      VOCABULARY: 1.8
       WORD_FORM: 1.6
       PRONOUN: 1.5
       ARTICLE: 1.2
       PLURAL: 1.2
       REDUNDANCY: 1.1
-      TONE: 1.4
-      COMPARISON: 1.4
 
     dimensions:
       naturalness:
         weight-in-overall: 0.40
         profiles:
-          - CHINGLISH
+          - CHINESE
           - COLLOCATION
-          - UNNATURAL
           - WORD_CHOICE
           - REDUNDANCY
-          - TONE
-          - FORMAL
       accuracy:
         weight-in-overall: 0.25
         profiles:
@@ -63,7 +55,6 @@ app:
           - ARTICLE
           - PRONOUN
           - WORD_FORM
-          - COMPARISON
       fluency:
         weight-in-overall: 0.20
         profiles:
@@ -72,6 +63,5 @@ app:
       lexical:
         weight-in-overall: 0.15
         profiles:
-          - VOCABULARY
           - WORD_CHOICE
           - COLLOCATION

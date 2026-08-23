@@ -29,7 +29,6 @@ class ConversationAnalysisPersistSupportTest {
     void truncatesItemVarcharFieldsToColumnLimits() {
         ConversationAnalysisItem item = ConversationAnalysisItem.builder()
                 .analysisId("a".repeat(80))
-                .problemTypes("t".repeat(120))
                 .pointId("p".repeat(60))
                 .errorPoint("e".repeat(600))
                 .suggestion("keep me")
@@ -39,7 +38,6 @@ class ConversationAnalysisPersistSupportTest {
         ConversationAnalysisPersistSupport.truncateItem(item);
 
         assertThat(item.getAnalysisId()).hasSize(64);
-        assertThat(item.getProblemTypes()).hasSize(100);
         assertThat(item.getPointId()).hasSize(48);
         assertThat(item.getErrorPoint()).hasSize(500);
         assertThat(item.getSuggestion()).isEqualTo("keep me");

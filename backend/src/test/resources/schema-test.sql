@@ -35,7 +35,6 @@ CREATE TABLE IF NOT EXISTS conversation_analysis_item
     analysis_id       VARCHAR(64)  NOT NULL,
     sentence_id       BIGINT       NOT NULL,
     original_sentence TEXT         NOT NULL,
-    problem_types     VARCHAR(100),
     point_id          VARCHAR(48),
     error_point       VARCHAR(500) NOT NULL,
     suggestion        TEXT         NOT NULL,

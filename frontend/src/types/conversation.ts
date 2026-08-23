@@ -126,6 +126,8 @@ export interface AnalysisError {
   errorLevel?: string
   pointId?: string
   familyId?: string
+  /** 语法家族中文名（筛选标签） */
+  familyTitleZh?: string
   channel?: PointChannel
 }
 

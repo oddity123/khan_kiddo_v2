@@ -121,7 +121,7 @@ public class AdminKnowledgeServiceImpl implements AdminKnowledgeService {
                 .impactWeight(point.impactWeight())
                 .fixability(point.fixability())
                 .errorLevel(point.errorLevel())
-                .problemType(point.problemType())
+                .scoreProfile(point.scoreProfile())
                 .titleZh(point.titleZh())
                 .catchAllLeaf(catchAllLeaf)
                 .globalFallback(PointDictionary.FALLBACK_POINT_ID.equals(point.pointId()))

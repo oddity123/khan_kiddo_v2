@@ -47,7 +47,7 @@ Stage 2/3 可选 `doubao-seed` / `qwen-plus` / `glm-5.2`（`app.llm.models`）�
 
 综合自然度得分由 `conversation/scoring/WeightedNaturalnessPerformanceScorer.java` 按 `resources/scoring/performance-scoring.yml` 本地计算。LLM 只负责发现问题与写解释，**数字部分完全确定、可复现、可审计**。
 
-**输入**：英文练习句数 + 每句错误的 `ProblemType`（由知识点 `pointId` 反查）。无错误时四维与综合分均为满分 **98**（区间 45–98）。
+**输入**：英文练习句数 + 每句错误的 `scoreProfile`（由知识点 `pointId` 查字典）。无错误时四维与综合分均为满分 **98**（区间 45–98）。
 
 **四维各自计分**（只看该维度绑定的错误类型）：
 
@@ -61,10 +61,10 @@ Stage 2/3 可选 `doubao-seed` / `qwen-plus` / `glm-5.2`（`app.llm.models`）�
 
 | 维度 | 权重 | 主要错误类型 |
 | ---- | ---- | ------------ |
-| 表达自然 | 40% | 中式英语、搭配、不自然、用词、冗余、语气、正式度 |
+| 表达自然 | 40% | 中文夹杂、搭配、用词、冗余 |
 | 语法准确 | 25% | 时态、一致、介词、结构、从句、冠词等 |
 | 文本流畅 | 20% | 不完整、冗余 |
-| 词汇表达 | 15% | 词汇、用词、搭配 |
+| 词汇表达 | 15% | 用词、搭配 |
 
 短对话用「句数 + 2」平滑密度分母，避免一两句就暴跌；各类型权重与维度绑定见 `performance-scoring.yml`（改后重启生效）。
 

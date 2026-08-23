@@ -10,6 +10,7 @@ import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
+import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.knowledge.PointScoringSupport;
@@ -19,7 +20,6 @@ import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.ConversationAnalysisWithUsername;
-import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.dto.growth.GrowthCardDto;
 import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
 import com.khankiddo.learning.growth.GrowthCardReviewService;
@@ -357,24 +357,24 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             PointDefinition definition = StringUtils.hasText(row.getPointId())
                     ? pointDictionary.resolveOrFallback(row.getPointId())
                     : null;
-            String displayType = resolveDisplayType(definition, row);
+            String displayType = definition != null ? definition.titleZh() : null;
             String errorLevel = definition != null
                     ? PointScoringSupport.errorLevel(definition)
-                    : resolveLegacyErrorLevel(row.getProblemTypes());
+                    : "STYLE";
             item.getErrors().add(AnalysisErrorDto.builder()
                     .pointId(definition != null ? definition.pointId() : row.getPointId())
                     .type(displayType)
                     .point(row.getErrorPoint())
                     .errorLevel(errorLevel)
                     .familyId(definition != null ? definition.familyId() : null)
+                    .familyTitleZh(definition != null
+                            ? KnowledgePointStatsSupport.familyTitle(pointDictionary, definition.familyId())
+                            : null)
                     .channel(definition != null ? definition.channel().getJsonValue() : null)
                     .build());
         }
 
-        boolean hasPointIdRows = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
-        List<ErrorTypeDistributionDto> distribution = hasPointIdRows
-                ? List.of()
-                : buildLegacyErrorTypeDistribution(rows);
+        List<ErrorTypeDistributionDto> distribution = List.of();
 
         List<AnalysisItemDto> items = new ArrayList<>(grouped.values());
         EducationalSummaryDto summaryRoot = summaryParser.fromJson(analysis.getEducationalSummary());
@@ -414,9 +414,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     }
 
     /**
-     * 由持久化的错误行（含 {@code pointId}）+ 中文表达组装打分器输入。旧数据（无 {@code pointId}）
-     * 整体跳过打分：{@code actionCards} 为空，饼图交由调用方回退
-     * {@code errorTypeDistribution}。
+     * 由持久化的错误行（含 {@code pointId}）+ 中文表达组装打分器输入。
      */
     HabitCardScorer.HabitScoreResult buildHabitScoreResult(
             List<ConversationAnalysisItem> rows, List<ChineseExpressionDto> chineseExpressions) {
@@ -603,37 +601,6 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         if (!CollectionUtils.isEmpty(sentenceIds)) {
             eventPublisher.publishEvent(new GrammarErrorDeletedEvent(userId, analysisId, sentenceIds));
         }
-    }
-
-    private String resolveDisplayType(PointDefinition definition, ConversationAnalysisItem row) {
-        if (definition != null) {
-            return definition.titleZh();
-        }
-        if (!StringUtils.hasText(row.getProblemTypes())) {
-            return null;
-        }
-        ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
-        return problemType != null ? problemType.getChineseName() : row.getProblemTypes();
-    }
-
-    private String resolveLegacyErrorLevel(String problemTypesEnglish) {
-        ProblemType problemType = ProblemType.fromEnglishName(problemTypesEnglish);
-        return problemType != null ? problemType.getErrorLevel().name() : "STYLE";
-    }
-
-    private List<ErrorTypeDistributionDto> buildLegacyErrorTypeDistribution(List<ConversationAnalysisItem> rows) {
-        Map<String, Integer> distCounts = new HashMap<>();
-        for (ConversationAnalysisItem row : rows) {
-            ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
-            String label = problemType != null ? problemType.getChineseName() : row.getProblemTypes();
-            if (!StringUtils.hasText(label)) {
-                continue;
-            }
-            distCounts.merge(label, 1, Integer::sum);
-        }
-        return distCounts.entrySet().stream()
-                .map(e -> ErrorTypeDistributionDto.builder().type(e.getKey()).count(e.getValue()).build())
-                .toList();
     }
 
     private String buildPreview(String content) {

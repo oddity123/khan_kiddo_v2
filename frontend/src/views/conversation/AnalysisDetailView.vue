@@ -43,7 +43,7 @@ import type {
   ErrorTypeDistribution,
 } from '@/types/conversation'
 import type {GrowthCard, GrowthCardEvidence} from '@/types/growthCard'
-import {formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
+import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
 const route = useRoute()
@@ -185,7 +185,7 @@ interface FilterChip {
   label: string
 }
 
-/** 顶部筛选按 familyId 去重；旧数据无 familyId 时回退 type */
+/** 顶部筛选按 familyId 去重；无 familyId 时回退叶子标题 */
 function chipKeys(item: AnalysisItem): string[] {
   const keys: string[] = []
   const seen = new Set<string>()
@@ -203,11 +203,17 @@ function chipKeys(item: AnalysisItem): string[] {
 function chipLabel(key: string, item: AnalysisItem): string {
   for (const err of item.errors ?? []) {
     if (err.familyId === key) {
+      if (err.familyTitleZh?.trim()) {
+        return err.familyTitleZh.trim()
+      }
       const family = detail.value?.familyDistribution?.find((f) => f.familyId === key)
-      return family?.titleZh ?? err.type ?? key
+      if (family?.titleZh?.trim()) {
+        return family.titleZh.trim()
+      }
+      return key
     }
     if (err.type === key) {
-      return err.type
+      return displayTypeLabel(err.type)
     }
   }
   return key

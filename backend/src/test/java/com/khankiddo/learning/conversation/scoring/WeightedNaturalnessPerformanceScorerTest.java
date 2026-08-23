@@ -139,23 +139,21 @@ class WeightedNaturalnessPerformanceScorerTest {
     private static Map<String, Double> defaultProfileWeights() {
         Map<String, Double> weights = new LinkedHashMap<>();
         weights.put("INCOMPLETE", 3.5);
-        weights.put("CHINGLISH", 3.2);
+        weights.put("CHINESE", 3.2);
         weights.put("COLLOCATION", 3.0);
-        weights.put("UNNATURAL", 2.8);
         weights.put("STRUCTURE", 2.8);
+        weights.put("WORD_CHOICE", 2.4);
         weights.put("TENSE", 2.2);
         weights.put("ARTICLE", 1.2);
-        weights.put("TONE", 1.4);
-        weights.put("VOCABULARY", 1.8);
         return weights;
     }
 
     private static Map<String, PerformanceScoringProperties.DimensionConfig> defaultDimensions() {
         Map<String, PerformanceScoringProperties.DimensionConfig> dims = new LinkedHashMap<>();
-        dims.put("naturalness", dimension(0.40, List.of("CHINGLISH", "COLLOCATION", "UNNATURAL", "TONE")));
+        dims.put("naturalness", dimension(0.40, List.of("CHINESE", "COLLOCATION", "WORD_CHOICE", "REDUNDANCY")));
         dims.put("accuracy", dimension(0.25, List.of("TENSE", "ARTICLE", "STRUCTURE")));
-        dims.put("fluency", dimension(0.20, List.of("INCOMPLETE")));
-        dims.put("lexical", dimension(0.15, List.of("COLLOCATION", "VOCABULARY")));
+        dims.put("fluency", dimension(0.20, List.of("INCOMPLETE", "REDUNDANCY")));
+        dims.put("lexical", dimension(0.15, List.of("WORD_CHOICE", "COLLOCATION")));
         return dims;
     }
 

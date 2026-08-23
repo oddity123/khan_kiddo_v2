@@ -53,7 +53,6 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     `analysis_id`       VARCHAR(64)  NOT NULL COMMENT '分析ID（关联conversation_analysis.analysis_id）',
     `sentence_id`       BIGINT       NOT NULL COMMENT '句子ID（同一个句子的不同错误使用相同的sentenceId）',
     `original_sentence` TEXT         NOT NULL COMMENT '用户原句',
-    `problem_types`     VARCHAR(100)          DEFAULT NULL COMMENT '已废弃；仅旧数据只读',
     `point_id`          VARCHAR(48)           NULL COMMENT '知识点叶子 pointId',
     `error_point`       VARCHAR(500) NOT NULL COMMENT '错误点描述',
     `suggestion`        TEXT         NOT NULL COMMENT '修改建议或正确英文表达',
@@ -66,7 +65,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
 
 -- 已存在数据库需手动执行：
 -- ALTER TABLE conversation_analysis ADD COLUMN point_dictionary_version VARCHAR(64) NULL COMMENT '分析时知识点字典版本' AFTER llm_provider;
--- ALTER TABLE conversation_analysis_item MODIFY COLUMN problem_types VARCHAR(100) NULL COMMENT '已废弃；仅旧数据只读';
+-- ALTER TABLE conversation_analysis_item DROP COLUMN problem_types;
 -- ALTER TABLE conversation_analysis_item ADD INDEX idx_point_id (point_id);
 
 -- 用户反馈/留言表

@@ -80,7 +80,7 @@ public class AdminPointDictionaryResponse {
         private double impactWeight;
         private Double fixability;
         private String errorLevel;
-        private String problemType;
+        private String scoreProfile;
         private String titleZh;
         private boolean catchAllLeaf;
         private boolean globalFallback;

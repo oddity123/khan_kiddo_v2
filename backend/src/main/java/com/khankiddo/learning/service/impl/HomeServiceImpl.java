@@ -17,7 +17,6 @@ import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.DailyCount;
 import com.khankiddo.learning.model.GrowthCardStatusCount;
 import com.khankiddo.learning.model.PointIdCount;
-import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.service.HomeService;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
@@ -199,8 +198,6 @@ public class HomeServiceImpl implements HomeService {
                 if (StringUtils.hasText(row.getPointId())) {
                     PointDefinition definition = pointDictionary.resolveOrFallback(row.getPointId());
                     familyLabels.add(KnowledgePointStatsSupport.familyTitle(pointDictionary, definition.familyId()));
-                } else if (StringUtils.hasText(row.getProblemTypes())) {
-                    familyLabels.add(ProblemType.translate(row.getProblemTypes()));
                 }
             }
             result.add(RecentSentenceView.builder()

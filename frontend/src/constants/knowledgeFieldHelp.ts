@@ -21,7 +21,7 @@ export const KNOWLEDGE_POINT_FIELD_HELP: Record<string, string> = {
   impactWeight: '该叶子在习惯打分中的影响权重。',
   fixability: '可教性（0–1）；rule 通道使用，空则继承家族 fixability。',
   errorLevel: '严重度：FATAL / BASIC / NATURAL / STYLE，影响打分权重。',
-  problemType: '兼容旧 ProblemType 的英文类名。',
+  scoreProfile: '评分 profile 键，对应 performance-scoring.yml 中的权重配置。',
   titleZh: '一句人话规则标题，用于展示与家族卡副标题。',
   catchAllLeaf: '是否为兜底类叶子（含 *_OTHER、家族 other、WORD_FORM_POS）。',
   globalFallback: '是否为全字典全局 fallback（STRUCTURE_OTHER）。',

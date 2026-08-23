@@ -164,7 +164,7 @@ function pointFields(point: AdminPointLeafView): DetailField[] {
     field('impactWeight', point.impactWeight, KNOWLEDGE_POINT_FIELD_HELP),
     field('fixability', point.fixability ?? '—', KNOWLEDGE_POINT_FIELD_HELP),
     field('errorLevel', point.errorLevel ?? '—', KNOWLEDGE_POINT_FIELD_HELP),
-    field('problemType', point.problemType ?? '—', KNOWLEDGE_POINT_FIELD_HELP),
+    field('scoreProfile', point.scoreProfile ?? '—', KNOWLEDGE_POINT_FIELD_HELP),
     field('titleZh', point.titleZh ?? '—', KNOWLEDGE_POINT_FIELD_HELP),
     field('catchAllLeaf', point.catchAllLeaf ? '是' : '否', KNOWLEDGE_POINT_FIELD_HELP),
     field('globalFallback', point.globalFallback ? '是' : '否', KNOWLEDGE_POINT_FIELD_HELP),

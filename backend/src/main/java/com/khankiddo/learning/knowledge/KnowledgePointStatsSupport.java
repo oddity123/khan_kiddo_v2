@@ -6,8 +6,10 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 将 {@code point_id} 计数聚合为语法 family 统计（服务层反查字典，不落库 family_id）。
@@ -51,12 +53,12 @@ public final class KnowledgePointStatsSupport {
         if (CollectionUtils.isEmpty(expandedFamilies)) {
             return pointIds.stream().filter(StringUtils::hasText).map(String::trim).distinct().toList();
         }
-        return pointIds.stream()
+        Set<String> merged = new LinkedHashSet<>(expandedFamilies);
+        pointIds.stream()
                 .filter(StringUtils::hasText)
                 .map(String::trim)
-                .filter(expandedFamilies::contains)
-                .distinct()
-                .toList();
+                .forEach(merged::add);
+        return List.copyOf(merged);
     }
 
     public static List<KnowledgeFamilyStat> aggregateFamilies(

@@ -3,7 +3,6 @@ package com.khankiddo.learning.rag.grammar;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
-import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.rag.core.RagDocumentBuilder;
 import com.khankiddo.learning.rag.core.RagMetadataKeys;
 import dev.langchain4j.data.document.Metadata;
@@ -43,8 +42,6 @@ public class GrammarErrorDocumentBuilder implements RagDocumentBuilder<GrammarEr
                 pointIds.add(definition.pointId());
                 familyIds.add(definition.familyId());
                 knowledgeLabels.add(definition.titleZh());
-            } else if (StringUtils.hasText(item.getProblemTypes())) {
-                knowledgeLabels.add(ProblemType.translate(item.getProblemTypes()));
             }
             if (StringUtils.hasText(item.getErrorPoint())) {
                 errorPoints.add(item.getErrorPoint().trim());

@@ -16,5 +16,7 @@ public class AnalysisErrorDto {
     private String point;
     private String errorLevel;
     private String familyId;
+    /** 语法家族中文名，供筛选标签与卡片短标签使用 */
+    private String familyTitleZh;
     private String channel;
 }

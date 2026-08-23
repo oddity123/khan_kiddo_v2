@@ -13,7 +13,7 @@ class PointDictionaryTest {
         assertEquals("FAM_WORD_FORM", p.familyId());
         assertEquals(PointChannel.RULE, p.channel());
         assertEquals(CardKind.GRAMMAR, p.cardKind());
-        assertEquals("Word Form", p.problemType());
+        assertEquals("WORD_FORM", p.scoreProfile());
     }
 
     @Test

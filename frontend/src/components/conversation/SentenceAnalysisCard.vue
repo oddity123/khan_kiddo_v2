@@ -16,7 +16,7 @@ import {
   Reading,
 } from '@element-plus/icons-vue'
 
-import type {AnalysisItem} from '@/types/conversation'
+import type {AnalysisError, AnalysisItem} from '@/types/conversation'
 import {displayTypeLabel, errorPointText, sortErrors} from '@/utils/analysisDisplay'
 
 const props = defineProps<{
@@ -26,8 +26,31 @@ const props = defineProps<{
 
 const sortedErrors = computed(() => sortErrors(props.item.errors ?? []))
 const errorCount = computed(() => sortedErrors.value.length)
-const visibleChips = computed(() => sortedErrors.value.slice(0, 3))
-const hiddenChipCount = computed(() => Math.max(0, errorCount.value - 3))
+
+/** 卡片顶部短标签按家族去重，与详情页筛选一致 */
+const visibleChips = computed(() => {
+  const seen = new Set<string>()
+  const chips: AnalysisError[] = []
+  for (const err of sortedErrors.value) {
+    const key = err.familyId?.trim() || err.type?.trim() || String(chips.length)
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    chips.push(err)
+    if (chips.length >= 3) {
+      break
+    }
+  }
+  return chips
+})
+const hiddenChipCount = computed(() => {
+  const unique = new Set(
+      sortedErrors.value.map((err) => err.familyId?.trim() || err.type?.trim() || ''),
+  )
+  unique.delete('')
+  return Math.max(0, unique.size - visibleChips.value.length)
+})
 
 function errorBadgeClass(level?: string) {
   if (level === 'FATAL' || level === 'BASIC') {
@@ -44,30 +67,35 @@ function chipIcon(type?: string): Component {
   if (label.includes('时态')) {
     return Clock
   }
-  if (label.includes('句式') || label.includes('结构') || label.includes('从句')) {
+  if (label.includes('句式') || label.includes('结构') || label.includes('从句') || label.includes('句子')) {
     return Rank
   }
   if (
       label.includes('用词') ||
       label.includes('词汇') ||
       label.includes('搭配') ||
-      label.includes('词性')
+      label.includes('词性') ||
+      label.includes('词形')
   ) {
     return EditPen
   }
-  if (label.includes('语法') || label.includes('冠词') || label.includes('介词')) {
+  if (label.includes('语法') || label.includes('冠词') || label.includes('介词') || label.includes('名词') || label.includes('一致')) {
     return Document
   }
-  if (label.includes('语气') || label.includes('表达') || label.includes('口语')) {
+  if (label.includes('语气') || label.includes('表达') || label.includes('口语') || label.includes('流畅')) {
     return ChatLineSquare
   }
-  if (label.includes('中式') || label.includes('冗余')) {
+  if (label.includes('中式') || label.includes('冗余') || label.includes('中文')) {
     return Connection
   }
-  if (label.includes('流畅') || label.includes('自然')) {
+  if (label.includes('自然')) {
     return Promotion
   }
   return Reading
+}
+
+function chipLabel(err: AnalysisError): string {
+  return displayTypeLabel(err.familyTitleZh || err.type)
 }
 </script>
 
@@ -108,9 +136,9 @@ function chipIcon(type?: string): Component {
           :class="errorBadgeClass(err.errorLevel)"
       >
         <el-icon class="chip-icon">
-          <component :is="chipIcon(err.type)"/>
+          <component :is="chipIcon(chipLabel(err))"/>
         </el-icon>
-        {{ displayTypeLabel(err.type) }}
+        {{ chipLabel(err) }}
       </span>
       <span v-if="hiddenChipCount > 0" class="chip chip--more">+{{ hiddenChipCount }}</span>
     </div>
@@ -131,10 +159,13 @@ function chipIcon(type?: string): Component {
         >
           <span class="error-point-tag" :class="errorBadgeClass(err.errorLevel)">
             <el-icon class="error-point-tag-icon">
-              <component :is="chipIcon(err.type)"/>
+              <component :is="chipIcon(chipLabel(err))"/>
             </el-icon>
-            {{ displayTypeLabel(err.type) }}
+            {{ chipLabel(err) }}
           </span>
+          <p v-if="err.type && err.type !== chipLabel(err)" class="error-point-leaf">
+            {{ displayTypeLabel(err.type) }}
+          </p>
           <p class="error-point-text">{{ errorPointText(err) }}</p>
         </div>
       </div>
@@ -411,8 +442,16 @@ function chipIcon(type?: string): Component {
   font-size: 0.75rem;
 }
 
+.error-point-leaf {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--kk-color-text-secondary);
+}
+
 .error-point-text {
-  margin: 0;
+  margin: 0.35rem 0 0;
   font-size: 0.82rem;
   line-height: 1.55;
   color: var(--kk-color-text-muted);
