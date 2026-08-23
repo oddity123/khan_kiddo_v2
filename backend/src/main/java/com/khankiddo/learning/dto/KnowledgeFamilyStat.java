@@ -5,16 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * @deprecated 使用 {@link KnowledgeFamilyStat}；仅保留供旧测试/兼容引用。
- */
-@Deprecated(since = "3.0", forRemoval = true)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ProblemTypeStat {
+public class KnowledgeFamilyStat {
 
+    private String familyId;
     private String label;
     private long count;
 }

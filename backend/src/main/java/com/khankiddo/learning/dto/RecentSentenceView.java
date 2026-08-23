@@ -16,6 +16,6 @@ public class RecentSentenceView {
 
     private String originalSentence;
     private String suggestion;
-    private List<String> problemTypeTags;
+    private List<String> familyTags;
     private LocalDateTime createdAt;
 }

@@ -8,6 +8,9 @@ public final class RagMetadataKeys {
     public static final String USER_ID = "user_id";
     public static final String ANALYSIS_ID = "analysis_id";
     public static final String SENTENCE_ID = "sentence_id";
+    public static final String POINT_IDS = "point_ids";
+    public static final String FAMILY_IDS = "family_ids";
+    /** @deprecated 旧向量 metadata，新索引使用 {@link #POINT_IDS} / {@link #FAMILY_IDS} */
     public static final String PROBLEM_TYPES = "problem_types";
     public static final String CREATED_AT = "created_at";
 

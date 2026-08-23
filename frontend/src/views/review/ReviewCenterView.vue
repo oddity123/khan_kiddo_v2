@@ -4,7 +4,9 @@ import {ElMessage} from 'element-plus'
 import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 
+import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import {fetchHomePage} from '@/api/home'
+import type {ErrorTypeDistribution} from '@/types/conversation'
 import type {HomePageResponse} from '@/types/home'
 import {getErrorMessage} from '@/utils/error'
 
@@ -46,7 +48,7 @@ const dashboardMetricCards = computed(() => {
     {
       key: 'focus',
       kicker: 'FOCUS',
-      value: stats.mostCommonErrorType || '—',
+      value: stats.mostCommonFamilyLabel || '—',
       label: '最常见优化类型',
       hint: '历史高频薄弱点',
       text: true,
@@ -62,8 +64,15 @@ const weeklySentenceDelta = computed(
     () => home.value?.analysisStats?.weeklySentenceDelta ?? {current: 0, previous: 0, delta: 0, percent: 0},
 )
 
-const problemTypeDistribution = computed(
-    () => home.value?.analysisStats?.recent7DaysProblemTypeDistribution ?? [],
+const familyDistribution = computed(
+    () => home.value?.analysisStats?.recent7DaysFamilyDistribution ?? [],
+)
+
+const familyPieItems = computed((): ErrorTypeDistribution[] =>
+    familyDistribution.value.map((item) => ({
+      type: item.label,
+      count: item.count,
+    })),
 )
 
 const growthCardStatusCounts = computed(
@@ -92,8 +101,6 @@ const issueHeatmapCells = computed(() =>
       }
     }),
 )
-
-const chartColors = ['#0b1a7d', '#b8941f', '#2d6a4f', '#1f4da9', '#7a6200', '#7a8094'] as const
 
 const trendMax = computed(() =>
     Math.max(...dailyPracticeTrend.value.map((item) => item.count), 1),
@@ -143,24 +150,6 @@ const weeklyDeltaPercentText = computed(() => {
 const weeklyDeltaTone = computed(() =>
     weeklySentenceDelta.value.delta >= 0 ? 'up' : 'down',
 )
-
-const problemDistributionTotal = computed(() =>
-    problemTypeDistribution.value.reduce((sum, item) => sum + item.count, 0),
-)
-
-const problemDonutGradient = computed(() => {
-  if (!problemDistributionTotal.value) {
-    return 'conic-gradient(rgba(11, 26, 125, 0.1) 0 100%)'
-  }
-  let cursor = 0
-  const segments = problemTypeDistribution.value.map((item, index) => {
-    const start = cursor
-    const end = cursor + (item.count / problemDistributionTotal.value) * 100
-    cursor = end
-    return `${chartColors[index % chartColors.length]} ${start.toFixed(2)}% ${end.toFixed(2)}%`
-  })
-  return `conic-gradient(${segments.join(', ')})`
-})
 
 const growthDueCount = computed(() =>
     growthCardStatusCounts.value.find((item) => item.key === 'due')?.count ?? 0,
@@ -254,41 +243,35 @@ onMounted(() => {
               :key="metric.key"
               class="stat-card"
           >
-            <span class="stat-kicker">{{ metric.kicker }}</span>
+            <div class="stat-card-head">
+              <span class="stat-kicker">{{ metric.kicker }}</span>
+              <p class="stat-card-label">{{ metric.label }}</p>
+            </div>
             <p class="stat-card-value" :class="{ 'stat-card-value--text': metric.text }">
               {{ metric.value }}
             </p>
-            <p class="stat-card-label">{{ metric.label }}</p>
             <p class="stat-card-hint">{{ metric.hint }}</p>
           </article>
         </div>
       </div>
 
       <div class="dashboard-analytics">
-        <section class="analytics-card analytics-card--donut" aria-label="近 7 天问题类型分布">
+        <section class="analytics-card analytics-card--donut" aria-label="近 7 天知识点家族分布">
           <div class="analytics-card-head">
             <span class="stat-kicker">DONUT</span>
-            <p>问题类型分布</p>
+            <p>知识点家族分布</p>
             <span class="analytics-range">最近 7 天</span>
           </div>
-          <div class="donut-row">
-            <div class="problem-donut" :style="{ background: problemDonutGradient }">
-              <span>{{ problemDistributionTotal }}</span>
-              <small>优化点</small>
-            </div>
-            <div class="donut-legend">
-              <div
-                  v-for="(problem, index) in problemTypeDistribution"
-                  :key="problem.label"
-                  class="donut-legend-row"
-              >
-                <span class="donut-swatch" :style="{ background: chartColors[index % chartColors.length] }"></span>
-                <span class="donut-name">{{ problem.label }}</span>
-                <span class="donut-count">{{ problem.count }}</span>
-              </div>
-              <p v-if="!problemTypeDistribution.length" class="chart-empty">近 7 天暂无优化记录</p>
-            </div>
-          </div>
+          <ErrorTypePieChart
+              v-if="familyPieItems.length"
+              compact
+              legend-right
+              body-size="summary"
+              :size="148"
+              :items="familyPieItems"
+              :animate="!loading"
+          />
+          <p v-else class="chart-empty">近 7 天暂无优化记录</p>
         </section>
 
         <section class="analytics-card analytics-card--rank" aria-label="近 30 天优化热力图">
@@ -372,8 +355,8 @@ onMounted(() => {
                 <span class="recent-arrow" aria-hidden="true">→</span>
                 {{ item.suggestion }}
               </p>
-              <div v-if="item.problemTypeTags?.length" class="recent-tags">
-                <span v-for="tag in item.problemTypeTags.slice(0, 3)" :key="tag">{{ tag }}</span>
+              <div v-if="item.familyTags?.length" class="recent-tags">
+                <span v-for="tag in item.familyTags.slice(0, 3)" :key="tag">{{ tag }}</span>
               </div>
             </article>
           </template>
@@ -802,6 +785,19 @@ onMounted(() => {
   animation-delay: 260ms;
 }
 
+.stat-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.stat-card-label {
+  margin: 0;
+  color: var(--kk-color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .stat-card-value {
   margin: 0.55rem 0 0;
   font-family: var(--kk-font-display);
@@ -821,13 +817,6 @@ onMounted(() => {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-.stat-card-label {
-  margin: 0.25rem 0 0;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--kk-color-text-muted);
 }
 
 .stat-card-hint {
@@ -861,12 +850,6 @@ onMounted(() => {
 .analytics-card--donut .analytics-card-head {
   flex-shrink: 0;
   margin-bottom: 0.75rem;
-}
-
-.analytics-card--donut .donut-row {
-  flex: 1 1 auto;
-  min-height: 0;
-  align-content: center;
 }
 
 .analytics-card--rank {
@@ -938,96 +921,6 @@ onMounted(() => {
   font-size: 0.68rem;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.donut-row {
-  display: grid;
-  grid-template-columns: minmax(5.8rem, 6.6rem) minmax(0, 1fr);
-  align-items: center;
-  gap: 0.9rem;
-}
-
-.problem-donut {
-  width: 100%;
-  max-width: 6.6rem;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  position: relative;
-  box-shadow:
-      0 14px 24px rgba(11, 26, 125, 0.13),
-      inset 0 0 0 1px rgba(11, 26, 125, 0.08);
-}
-
-.problem-donut::after {
-  content: '';
-  position: absolute;
-  inset: 18%;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: inset 0 2px 8px rgba(11, 26, 125, 0.08);
-}
-
-.problem-donut span,
-.problem-donut small {
-  position: relative;
-  z-index: 1;
-}
-
-.problem-donut span {
-  align-self: end;
-  font-family: var(--kk-font-display);
-  font-size: clamp(1.15rem, 1.8vw, 1.4rem);
-  font-weight: 800;
-  line-height: 1;
-  color: var(--kk-color-primary);
-}
-
-.problem-donut small {
-  align-self: start;
-  margin-top: 0.12rem;
-  font-size: 0.64rem;
-  font-weight: 700;
-  color: var(--kk-color-text-subtle);
-}
-
-.donut-legend {
-  display: grid;
-  gap: 0.42rem;
-  min-width: 0;
-}
-
-.donut-legend-row {
-  display: grid;
-  grid-template-columns: 0.55rem minmax(0, 1fr) 1.8rem;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.donut-swatch {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.72);
-}
-
-.donut-name {
-  min-width: 0;
-  color: var(--kk-color-text-secondary);
-  font-size: 0.74rem;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.donut-count {
-  color: var(--kk-color-text-subtle);
-  font-family: var(--kk-font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-align: right;
 }
 
 .chart-empty {
@@ -1384,14 +1277,6 @@ onMounted(() => {
 
   .stat-grid {
     grid-template-columns: 1fr;
-  }
-
-  .donut-row {
-    grid-template-columns: minmax(4.8rem, 5.4rem) minmax(0, 1fr);
-  }
-
-  .problem-donut {
-    max-width: 5.4rem;
   }
 
   .github-heatmap-meta {

@@ -1,11 +1,12 @@
 export interface RecentSentenceView {
   originalSentence: string
   suggestion?: string
-  problemTypeTags: string[]
+  familyTags: string[]
   createdAt?: string
 }
 
-export interface ProblemTypeStat {
+export interface KnowledgeFamilyStat {
+  familyId: string
   label: string
   count: number
 }
@@ -32,12 +33,11 @@ export interface WeeklyDeltaStat {
 export interface AnalysisDashboardStats {
   analyzedSentenceCount: number
   seriousIssueCount: number
-  mostCommonErrorType: string
+  mostCommonFamilyLabel: string
   recent7DaysSentenceCount: number
   analysisCount: number
   dueGrowthCardCount: number
-  recent30DaysTopProblemTypes: ProblemTypeStat[]
-  recent7DaysProblemTypeDistribution: ProblemTypeStat[]
+  recent7DaysFamilyDistribution: KnowledgeFamilyStat[]
   dailyPracticeTrend: DailyPracticeStat[]
   dailyIssueHeatmap: DailyPracticeStat[]
   growthCardStatusCounts: GrowthCardStatusStat[]

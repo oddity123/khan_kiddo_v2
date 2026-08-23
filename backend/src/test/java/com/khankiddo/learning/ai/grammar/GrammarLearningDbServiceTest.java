@@ -1,9 +1,11 @@
 package com.khankiddo.learning.ai.grammar;
 
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
-import com.khankiddo.learning.model.ProblemTypeCount;
+import com.khankiddo.learning.model.PointIdCount;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,26 +33,28 @@ class GrammarLearningDbServiceTest {
 
     private GrammarLearningDbService service;
     private GrammarStatsProperties properties;
+    private PointDictionary dictionary;
 
     @BeforeEach
     void setUp() {
         properties = new GrammarStatsProperties();
-        service = new GrammarLearningDbService(itemMapper, analysisMapper, properties);
+        dictionary = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        service = new GrammarLearningDbService(itemMapper, analysisMapper, properties, dictionary);
     }
 
     @Test
     void buildStatsSummary_shouldIncludeTimeScopeAndFilter() {
-        ProblemTypeCount tense = typeCount("Tense", 5L);
-        ProblemTypeCount article = typeCount("Article", 2L);
-        when(itemMapper.countProblemTypesByUserIdAndDays(1L, 7))
-                .thenReturn(List.of(tense, article));
+        when(itemMapper.countPointIdsByUserIdAndDays(1L, 7))
+                .thenReturn(List.of(
+                        pointCount("PAST_SIMPLE_DONE", 5L),
+                        pointCount("ARTICLE_GENERIC_ZERO", 2L)));
 
-        String text = service.buildStatsSummary(1L, List.of("Tense"), 7);
+        String text = service.buildStatsSummary(1L, List.of("PAST_SIMPLE_DONE"), List.of(), 7);
 
         assertTrue(text.contains("近 7 天"));
-        assertTrue(text.contains("Tense"));
+        assertTrue(text.contains("PAST_SIMPLE_DONE"));
         assertTrue(text.contains("5 次"));
-        assertTrue(!text.contains("Article"));
+        assertTrue(!text.contains("ARTICLE_GENERIC_ZERO"));
     }
 
     @Test
@@ -58,17 +62,18 @@ class GrammarLearningDbServiceTest {
         when(itemMapper.findErrorExamplesByUserId(eq(1L), isNull(), isNull(), eq(10)))
                 .thenReturn(List.of(ConversationAnalysisItem.builder()
                         .analysisId("a1")
-                        .problemTypes("Tense")
+                        .pointId("PAST_SIMPLE_DONE")
                         .originalSentence("He go")
                         .errorPoint("go → goes")
                         .suggestion("He goes")
                         .build()));
 
-        String text = service.buildErrorExamples(1L, List.of(), null, 99);
+        String text = service.buildErrorExamples(1L, List.of(), List.of(), null, 99);
 
         verify(itemMapper).findErrorExamplesByUserId(1L, null, null, 10);
         assertTrue(text.contains("He go"));
         assertTrue(text.contains("go → goes"));
+        assertTrue(text.contains("PAST_SIMPLE_DONE"));
         assertTrue(text.contains("analysisId：a1"));
     }
 
@@ -76,14 +81,14 @@ class GrammarLearningDbServiceTest {
     void buildPracticeOverview_shouldAggregate() {
         when(analysisMapper.countByUserIdAndStatusAndDays(1L, "success", 7)).thenReturn(3L);
         when(itemMapper.countDistinctErrorSentencesByUserIdAndDays(1L, 7)).thenReturn(12L);
-        when(itemMapper.getMostCommonProblemTypeByUserIdAndDays(1L, 7))
-                .thenReturn(Map.of("problemType", "Article", "count", 4L));
+        when(itemMapper.getMostCommonPointIdByUserIdAndDays(1L, 7))
+                .thenReturn(Map.of("pointId", "ARTICLE_GENERIC_ZERO", "count", 4L));
 
         String text = service.buildPracticeOverview(1L, 7);
 
         assertTrue(text.contains("成功分析次数：3"));
         assertTrue(text.contains("有错误的句子数：12"));
-        assertTrue(text.contains("Article"));
+        assertTrue(text.contains("ARTICLE_GENERIC_ZERO"));
         assertTrue(text.contains("4 次"));
     }
 
@@ -94,9 +99,9 @@ class GrammarLearningDbServiceTest {
         assertEquals(7, service.normalizeDays(7));
     }
 
-    private static ProblemTypeCount typeCount(String type, Long count) {
-        ProblemTypeCount row = new ProblemTypeCount();
-        row.setProblemType(type);
+    private static PointIdCount pointCount(String pointId, Long count) {
+        PointIdCount row = new PointIdCount();
+        row.setPointId(pointId);
         row.setCount(count);
         return row;
     }

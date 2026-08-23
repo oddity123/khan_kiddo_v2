@@ -204,6 +204,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         result.getLlmModelName(), ConversationAnalysisPersistSupport.LLM_MODEL_NAME_MAX))
                 .llmProvider(ConversationAnalysisPersistSupport.truncate(
                         result.getLlmProvider(), ConversationAnalysisPersistSupport.LLM_PROVIDER_MAX))
+                .pointDictionaryVersion(pointDictionary.version())
                 .createdAt(analyzedAt)
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -356,15 +357,10 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             PointDefinition definition = StringUtils.hasText(row.getPointId())
                     ? pointDictionary.resolveOrFallback(row.getPointId())
                     : null;
-            ProblemType problemType = definition != null
-                    ? ProblemType.fromEnglishName(definition.problemType())
-                    : ProblemType.fromEnglishName(row.getProblemTypes());
-            String displayType = problemType != null
-                    ? problemType.getChineseName()
-                    : (definition != null ? definition.titleZh() : row.getProblemTypes());
-            String errorLevel = definition != null && StringUtils.hasText(definition.errorLevel())
-                    ? definition.errorLevel()
-                    : (problemType != null ? problemType.getErrorLevel().name() : "STYLE");
+            String displayType = resolveDisplayType(definition, row);
+            String errorLevel = definition != null
+                    ? PointScoringSupport.errorLevel(definition)
+                    : resolveLegacyErrorLevel(row.getProblemTypes());
             item.getErrors().add(AnalysisErrorDto.builder()
                     .pointId(definition != null ? definition.pointId() : row.getPointId())
                     .type(displayType)
@@ -375,15 +371,10 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                     .build());
         }
 
-        Map<String, Integer> distCounts = new HashMap<>();
-        for (ConversationAnalysisItem row : rows) {
-            ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
-            String label = problemType != null ? problemType.getChineseName() : row.getProblemTypes();
-            distCounts.merge(label, 1, Integer::sum);
-        }
-        List<ErrorTypeDistributionDto> distribution = distCounts.entrySet().stream()
-                .map(e -> ErrorTypeDistributionDto.builder().type(e.getKey()).count(e.getValue()).build())
-                .toList();
+        boolean hasPointIdRows = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
+        List<ErrorTypeDistributionDto> distribution = hasPointIdRows
+                ? List.of()
+                : buildLegacyErrorTypeDistribution(rows);
 
         List<AnalysisItemDto> items = new ArrayList<>(grouped.values());
         EducationalSummaryDto summaryRoot = summaryParser.fromJson(analysis.getEducationalSummary());
@@ -614,17 +605,35 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         }
     }
 
-    private String toEnglishProblemType(String type) {
-        if (!StringUtils.hasText(type)) {
-            return type;
+    private String resolveDisplayType(PointDefinition definition, ConversationAnalysisItem row) {
+        if (definition != null) {
+            return definition.titleZh();
         }
-        String trimmed = type.trim();
-        for (ProblemType problemType : ProblemType.values()) {
-            if (problemType.getChineseName().equals(trimmed) || problemType.getEnglishName().equals(trimmed)) {
-                return problemType.getEnglishName();
+        if (!StringUtils.hasText(row.getProblemTypes())) {
+            return null;
+        }
+        ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
+        return problemType != null ? problemType.getChineseName() : row.getProblemTypes();
+    }
+
+    private String resolveLegacyErrorLevel(String problemTypesEnglish) {
+        ProblemType problemType = ProblemType.fromEnglishName(problemTypesEnglish);
+        return problemType != null ? problemType.getErrorLevel().name() : "STYLE";
+    }
+
+    private List<ErrorTypeDistributionDto> buildLegacyErrorTypeDistribution(List<ConversationAnalysisItem> rows) {
+        Map<String, Integer> distCounts = new HashMap<>();
+        for (ConversationAnalysisItem row : rows) {
+            ProblemType problemType = ProblemType.fromEnglishName(row.getProblemTypes());
+            String label = problemType != null ? problemType.getChineseName() : row.getProblemTypes();
+            if (!StringUtils.hasText(label)) {
+                continue;
             }
+            distCounts.merge(label, 1, Integer::sum);
         }
-        return trimmed;
+        return distCounts.entrySet().stream()
+                .map(e -> ErrorTypeDistributionDto.builder().type(e.getKey()).count(e.getValue()).build())
+                .toList();
     }
 
     private String buildPreview(String content) {

@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis`
     `llm_model_id`         VARCHAR(100)         DEFAULT NULL COMMENT '用户选择的模型配置ID（ModelConfig#id）',
     `llm_model_name`       VARCHAR(160)         DEFAULT NULL COMMENT '厂商侧真实模型 ID（ModelConfig#modelName）',
     `llm_provider`         VARCHAR(60)          DEFAULT NULL COMMENT '模型供应商（ModelConfig#provider）',
+    `point_dictionary_version` VARCHAR(64)      DEFAULT NULL COMMENT '分析时知识点字典版本',
     `created_at`           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX `idx_user_id` (`user_id`),
@@ -52,20 +53,21 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     `analysis_id`       VARCHAR(64)  NOT NULL COMMENT '分析ID（关联conversation_analysis.analysis_id）',
     `sentence_id`       BIGINT       NOT NULL COMMENT '句子ID（同一个句子的不同错误使用相同的sentenceId）',
     `original_sentence` TEXT         NOT NULL COMMENT '用户原句',
-    `problem_types`     VARCHAR(100) NOT NULL COMMENT '问题类型，如 "Tense"',
-    `point_id`          VARCHAR(48)  NULL COMMENT '知识点叶子 pointId',
+    `problem_types`     VARCHAR(100)          DEFAULT NULL COMMENT '已废弃；仅旧数据只读',
+    `point_id`          VARCHAR(48)           NULL COMMENT '知识点叶子 pointId',
     `error_point`       VARCHAR(500) NOT NULL COMMENT '错误点描述',
     `suggestion`        TEXT         NOT NULL COMMENT '修改建议或正确英文表达',
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX `idx_analysis_id` (`analysis_id`),
     INDEX `idx_sentence_id` (`sentence_id`),
     INDEX `idx_analysis_sentence` (`analysis_id`, `sentence_id`),
-    INDEX `idx_problem_types` (`problem_types`) COMMENT '问题类型索引，用于查询特定问题类型'
+    INDEX `idx_point_id` (`point_id`) COMMENT '知识点索引，用于统计与筛选'
 ) ENGINE = InnoDB COMMENT = '对话分析明细表';
 
--- 已存在数据库需手动执行（新建库通过上面的 CREATE TABLE IF NOT EXISTS 已包含该列）：
--- ALTER TABLE conversation_analysis_item
---   ADD COLUMN point_id VARCHAR(48) NULL COMMENT '知识点叶子 pointId' AFTER problem_types;
+-- 已存在数据库需手动执行：
+-- ALTER TABLE conversation_analysis ADD COLUMN point_dictionary_version VARCHAR(64) NULL COMMENT '分析时知识点字典版本' AFTER llm_provider;
+-- ALTER TABLE conversation_analysis_item MODIFY COLUMN problem_types VARCHAR(100) NULL COMMENT '已废弃；仅旧数据只读';
+-- ALTER TABLE conversation_analysis_item ADD INDEX idx_point_id (point_id);
 
 -- 用户反馈/留言表
 CREATE TABLE IF NOT EXISTS `user_feedback`

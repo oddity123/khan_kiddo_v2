@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS conversation_analysis
     llm_model_id         VARCHAR(100),
     llm_model_name       VARCHAR(160),
     llm_provider         VARCHAR(60),
+    point_dictionary_version VARCHAR(64),
     created_at           TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
     updated_at           TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
 );
@@ -34,7 +35,7 @@ CREATE TABLE IF NOT EXISTS conversation_analysis_item
     analysis_id       VARCHAR(64)  NOT NULL,
     sentence_id       BIGINT       NOT NULL,
     original_sentence TEXT         NOT NULL,
-    problem_types     VARCHAR(100) NOT NULL,
+    problem_types     VARCHAR(100),
     point_id          VARCHAR(48),
     error_point       VARCHAR(500) NOT NULL,
     suggestion        TEXT         NOT NULL,

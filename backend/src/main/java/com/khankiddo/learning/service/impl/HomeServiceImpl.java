@@ -4,17 +4,19 @@ import com.khankiddo.learning.dto.AnalysisDashboardStats;
 import com.khankiddo.learning.dto.DailyPracticeStat;
 import com.khankiddo.learning.dto.GrowthCardStatusStat;
 import com.khankiddo.learning.dto.HomePageResponse;
-import com.khankiddo.learning.dto.ProblemTypeStat;
+import com.khankiddo.learning.dto.KnowledgeFamilyStat;
 import com.khankiddo.learning.dto.RecentSentenceView;
 import com.khankiddo.learning.dto.WeeklyDeltaStat;
+import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.GrowthCardMapper;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.DailyCount;
 import com.khankiddo.learning.model.GrowthCardStatusCount;
-import com.khankiddo.learning.model.ProblemTypeCount;
-import com.khankiddo.learning.model.enums.ErrorLevel;
+import com.khankiddo.learning.model.PointIdCount;
 import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.service.HomeService;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +28,11 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,13 +43,14 @@ public class HomeServiceImpl implements HomeService {
     private static final String DEFAULT_DESCRIPTION = "让 AI 对话练习真正变得有效";
     private static final int DAILY_TREND_DAYS = 14;
     private static final int ISSUE_HEATMAP_DAYS = 30;
-    private static final int PROBLEM_DISTRIBUTION_LIMIT = 5;
+    private static final int FAMILY_DISTRIBUTION_LIMIT = 5;
     private static final DateTimeFormatter DATE_KEY_FORMAT = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final DateTimeFormatter DATE_LABEL_FORMAT = DateTimeFormatter.ofPattern("M/d");
 
     private final ConversationAnalysisItemMapper conversationAnalysisItemMapper;
     private final ConversationAnalysisMapper conversationAnalysisMapper;
     private final GrowthCardMapper growthCardMapper;
+    private final PointDictionary pointDictionary;
 
     @Override
     public HomePageResponse getHomePage(Long userId) {
@@ -62,17 +65,12 @@ public class HomeServiceImpl implements HomeService {
 
     private AnalysisDashboardStats getAnalysisDashboardStats(Long userId) {
         long analyzedSentenceCount = conversationAnalysisItemMapper.countDistinctSentencesByUserId(userId);
-        List<String> seriousProblemTypes = Arrays.stream(ProblemType.values())
-                .filter(pt -> pt.getErrorLevel() == ErrorLevel.FATAL || pt.getErrorLevel() == ErrorLevel.BASIC)
-                .map(ProblemType::getEnglishName)
-                .collect(Collectors.toList());
-        long seriousIssueCount = conversationAnalysisItemMapper.countByUserIdAndProblemTypes(userId, seriousProblemTypes);
+        List<String> seriousPointIds = KnowledgePointStatsSupport.seriousPointIds(pointDictionary);
+        long seriousIssueCount = conversationAnalysisItemMapper.countByUserIdAndPointIds(userId, seriousPointIds);
 
-        Map<String, Object> topType = conversationAnalysisItemMapper.getMostCommonProblemTypeByUserId(userId);
-        String mostCommonErrorType = "—";
-        if (topType != null && topType.get("problemType") != null) {
-            mostCommonErrorType = ProblemType.translate(String.valueOf(topType.get("problemType")));
-        }
+        KnowledgeFamilyStat topFamily = resolveTopFamily(
+                conversationAnalysisItemMapper.countPointIdsByUserIdAndDays(userId, null));
+        String mostCommonFamilyLabel = topFamily != null ? topFamily.getLabel() : "—";
 
         long recent7DaysSentenceCount =
                 conversationAnalysisItemMapper.countDistinctSentencesInLast7DaysByUserId(userId);
@@ -80,28 +78,23 @@ public class HomeServiceImpl implements HomeService {
         long dueGrowthCardCount = growthCardMapper.countDueByUserId(userId, LocalDate.now());
         long previous7DaysSentenceCount =
                 conversationAnalysisItemMapper.countDistinctSentencesBetweenDaysAgo(userId, 14, 7);
-        List<ProblemTypeCount> recent30DaysProblemRows = conversationAnalysisItemMapper
-                .countProblemTypesByUserIdAndDays(userId, 30);
-        List<ProblemTypeCount> recent7DaysProblemRows = conversationAnalysisItemMapper
-                .countProblemTypesByUserIdAndDays(userId, 7);
-        List<ProblemTypeStat> recent30DaysProblemTypes = recent30DaysProblemRows.stream()
-                .map(this::toProblemTypeStat)
-                .collect(Collectors.toList());
-        List<ProblemTypeStat> recent7DaysProblemTypes = recent7DaysProblemRows.stream()
-                .map(this::toProblemTypeStat)
-                .collect(Collectors.toList());
+
+        List<PointIdCount> recent7DaysPointRows = conversationAnalysisItemMapper
+                .countPointIdsByUserIdAndDays(userId, 7);
+        List<KnowledgeFamilyStat> recent7DaysFamilyDistribution = KnowledgePointStatsSupport
+                .aggregateFamilies(recent7DaysPointRows, pointDictionary, FAMILY_DISTRIBUTION_LIMIT);
+
         List<ConversationAnalysisItem> rawRecent =
                 conversationAnalysisItemMapper.findRecentSentencesByUserId(userId, 3);
 
         return AnalysisDashboardStats.builder()
                 .analyzedSentenceCount(analyzedSentenceCount)
                 .seriousIssueCount(seriousIssueCount)
-                .mostCommonErrorType(mostCommonErrorType)
+                .mostCommonFamilyLabel(mostCommonFamilyLabel)
                 .recent7DaysSentenceCount(recent7DaysSentenceCount)
                 .analysisCount(analysisCount)
                 .dueGrowthCardCount(dueGrowthCardCount)
-                .recent30DaysTopProblemTypes(recent30DaysProblemTypes.stream().limit(3).collect(Collectors.toList()))
-                .recent7DaysProblemTypeDistribution(buildProblemTypeDistribution(recent7DaysProblemTypes))
+                .recent7DaysFamilyDistribution(recent7DaysFamilyDistribution)
                 .dailyPracticeTrend(buildDailyPracticeTrend(userId))
                 .dailyIssueHeatmap(buildDailyIssueHeatmap(userId))
                 .growthCardStatusCounts(buildGrowthCardStatusCounts(userId, dueGrowthCardCount))
@@ -110,31 +103,8 @@ public class HomeServiceImpl implements HomeService {
                 .build();
     }
 
-    private ProblemTypeStat toProblemTypeStat(ProblemTypeCount row) {
-        return ProblemTypeStat.builder()
-                .label(ProblemType.translate(row.getProblemType()))
-                .count(row.getCount() == null ? 0L : row.getCount())
-                .build();
-    }
-
-    private List<ProblemTypeStat> buildProblemTypeDistribution(List<ProblemTypeStat> rows) {
-        if (CollectionUtils.isEmpty(rows)) {
-            return Collections.emptyList();
-        }
-        List<ProblemTypeStat> visible = new ArrayList<>(rows.stream()
-                .limit(PROBLEM_DISTRIBUTION_LIMIT)
-                .toList());
-        long otherCount = rows.stream()
-                .skip(PROBLEM_DISTRIBUTION_LIMIT)
-                .mapToLong(ProblemTypeStat::getCount)
-                .sum();
-        if (otherCount > 0) {
-            visible.add(ProblemTypeStat.builder()
-                    .label("其他")
-                    .count(otherCount)
-                    .build());
-        }
-        return visible;
+    private KnowledgeFamilyStat resolveTopFamily(List<PointIdCount> rows) {
+        return KnowledgePointStatsSupport.topFamily(rows, pointDictionary);
     }
 
     private List<DailyPracticeStat> buildDailyPracticeTrend(Long userId) {
@@ -218,22 +188,25 @@ public class HomeServiceImpl implements HomeService {
 
     private List<RecentSentenceView> buildRecentSentenceViews(List<ConversationAnalysisItem> rawRecent) {
         if (CollectionUtils.isEmpty(rawRecent)) {
-            return Collections.emptyList();
+            return List.of();
         }
         List<RecentSentenceView> result = new ArrayList<>();
         for (ConversationAnalysisItem first : rawRecent) {
             List<ConversationAnalysisItem> allForSentence = conversationAnalysisItemMapper
                     .findByAnalysisIdAndSentenceId(first.getAnalysisId(), first.getSentenceId());
-            List<String> tags = allForSentence.stream()
-                    .map(ConversationAnalysisItem::getProblemTypes)
-                    .filter(StringUtils::hasText)
-                    .distinct()
-                    .map(ProblemType::translate)
-                    .collect(Collectors.toList());
+            Set<String> familyLabels = new LinkedHashSet<>();
+            for (ConversationAnalysisItem row : allForSentence) {
+                if (StringUtils.hasText(row.getPointId())) {
+                    PointDefinition definition = pointDictionary.resolveOrFallback(row.getPointId());
+                    familyLabels.add(KnowledgePointStatsSupport.familyTitle(pointDictionary, definition.familyId()));
+                } else if (StringUtils.hasText(row.getProblemTypes())) {
+                    familyLabels.add(ProblemType.translate(row.getProblemTypes()));
+                }
+            }
             result.add(RecentSentenceView.builder()
                     .originalSentence(first.getOriginalSentence())
                     .suggestion(first.getSuggestion())
-                    .problemTypeTags(tags)
+                    .familyTags(new ArrayList<>(familyLabels))
                     .createdAt(first.getCreatedAt())
                     .build());
         }

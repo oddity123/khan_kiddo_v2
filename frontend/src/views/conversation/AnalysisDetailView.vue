@@ -43,7 +43,7 @@ import type {
   ErrorTypeDistribution,
 } from '@/types/conversation'
 import type {GrowthCard, GrowthCardEvidence} from '@/types/growthCard'
-import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
+import {formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
 
 const route = useRoute()
@@ -185,27 +185,40 @@ interface FilterChip {
   label: string
 }
 
-/** 顶部筛选按展示类型去重；同一 type 下多个 point 合并为一个标签 */
-function chipTypes(item: AnalysisItem): string[] {
-  const types: string[] = []
+/** 顶部筛选按 familyId 去重；旧数据无 familyId 时回退 type */
+function chipKeys(item: AnalysisItem): string[] {
+  const keys: string[] = []
   const seen = new Set<string>()
   for (const err of item.errors ?? []) {
-    const key = err.type?.trim()
+    const key = (err.familyId?.trim() || err.type?.trim())
     if (!key || seen.has(key)) {
       continue
     }
     seen.add(key)
-    types.push(key)
+    keys.push(key)
   }
-  return types
+  return keys
+}
+
+function chipLabel(key: string, item: AnalysisItem): string {
+  for (const err of item.errors ?? []) {
+    if (err.familyId === key) {
+      const family = detail.value?.familyDistribution?.find((f) => f.familyId === key)
+      return family?.titleZh ?? err.type ?? key
+    }
+    if (err.type === key) {
+      return err.type
+    }
+  }
+  return key
 }
 
 const filterChips = computed((): FilterChip[] => {
   const seen = new Map<string, string>()
   for (const item of sortedItems.value) {
-    for (const type of chipTypes(item)) {
-      if (!seen.has(type)) {
-        seen.set(type, displayTypeLabel(type))
+    for (const key of chipKeys(item)) {
+      if (!seen.has(key)) {
+        seen.set(key, chipLabel(key, item))
       }
     }
   }
@@ -220,7 +233,7 @@ const filteredItems = computed(() => {
     return sortedItems.value
   }
   const selected = new Set(activeFilters.value)
-  return sortedItems.value.filter((item) => chipTypes(item).some((type) => selected.has(type)))
+  return sortedItems.value.filter((item) => chipKeys(item).some((key) => selected.has(key)))
 })
 
 function toggleFilter(key: string) {

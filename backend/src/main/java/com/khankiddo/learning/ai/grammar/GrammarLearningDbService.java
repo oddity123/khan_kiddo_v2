@@ -1,9 +1,12 @@
 package com.khankiddo.learning.ai.grammar;
 
+import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
-import com.khankiddo.learning.model.ProblemTypeCount;
+import com.khankiddo.learning.model.PointIdCount;
 import com.khankiddo.learning.model.enums.ProblemType;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
@@ -26,33 +29,40 @@ public class GrammarLearningDbService {
     private final ConversationAnalysisItemMapper itemMapper;
     private final ConversationAnalysisMapper analysisMapper;
     private final GrammarStatsProperties properties;
+    private final PointDictionary pointDictionary;
 
-    public String buildStatsSummary(Long userId, List<String> filterTypes, Integer days) {
+    public String buildStatsSummary(
+            Long userId, List<String> pointIds, List<String> familyIds, Integer days) {
         Integer effectiveDays = normalizeDays(days);
-        List<ProblemTypeCount> rows = itemMapper.countProblemTypesByUserIdAndDays(userId, effectiveDays);
+        List<PointIdCount> rows = itemMapper.countPointIdsByUserIdAndDays(userId, effectiveDays);
         if (CollectionUtils.isEmpty(rows)) {
             return emptyStatsMessage(effectiveDays);
         }
-        Set<String> filterSet = toFilterSet(filterTypes);
 
-        List<ProblemTypeCount> filtered = rows.stream()
+        List<String> filterPointIds = KnowledgePointStatsSupport.mergePointFilters(
+                pointDictionary, pointIds, familyIds);
+        Set<String> filterSet = toFilterSet(filterPointIds);
+
+        List<PointIdCount> filtered = rows.stream()
                 .filter(row -> CollectionUtils.isEmpty(filterSet)
-                        || filterSet.contains(row.getProblemType()))
+                        || filterSet.contains(row.getPointId()))
                 .limit(properties.getDb().getStatsTopN())
                 .toList();
 
         if (CollectionUtils.isEmpty(filtered)) {
-            return "（指定类型在" + timeScopeLabel(effectiveDays) + "暂无统计，可去掉类型过滤重试）";
+            return "（指定知识点在" + timeScopeLabel(effectiveDays) + "暂无统计，可去掉过滤重试）";
         }
 
         StringBuilder builder = new StringBuilder();
         builder.append("时间范围：").append(timeScopeLabel(effectiveDays)).append('\n');
-        for (ProblemTypeCount row : filtered) {
-            String label = ProblemType.translate(row.getProblemType());
+        for (PointIdCount row : filtered) {
+            PointDefinition definition = pointDictionary.resolveOrFallback(row.getPointId());
             builder.append("- ")
-                    .append(label)
+                    .append(definition.titleZh())
                     .append(" (")
-                    .append(row.getProblemType())
+                    .append(definition.pointId())
+                    .append(" / ")
+                    .append(definition.familyId())
                     .append("): ")
                     .append(row.getCount())
                     .append(" 次\n");
@@ -60,10 +70,13 @@ public class GrammarLearningDbService {
         return builder.toString().trim();
     }
 
-    public String buildErrorExamples(Long userId, List<String> filterTypes, Integer days, Integer limit) {
+    public String buildErrorExamples(
+            Long userId, List<String> pointIds, List<String> familyIds, Integer days, Integer limit) {
         Integer effectiveDays = normalizeDays(days);
         int effectiveLimit = normalizeLimit(limit);
-        List<String> types = CollectionUtils.isEmpty(filterTypes) ? null : filterTypes;
+        List<String> filterPointIds = KnowledgePointStatsSupport.mergePointFilters(
+                pointDictionary, pointIds, familyIds);
+        List<String> types = CollectionUtils.isEmpty(filterPointIds) ? null : filterPointIds;
         List<ConversationAnalysisItem> items = itemMapper.findErrorExamplesByUserId(
                 userId, types, effectiveDays, effectiveLimit);
         if (CollectionUtils.isEmpty(items)) {
@@ -75,9 +88,17 @@ public class GrammarLearningDbService {
                 .append("；返回 ").append(items.size()).append(" 条\n\n");
         int index = 1;
         for (ConversationAnalysisItem item : items) {
-            String typeLabel = ProblemType.translate(item.getProblemTypes());
+            PointDefinition definition = StringUtils.hasText(item.getPointId())
+                    ? pointDictionary.resolveOrFallback(item.getPointId())
+                    : null;
+            String typeLabel = definition != null
+                    ? definition.titleZh()
+                    : ProblemType.translate(item.getProblemTypes());
+            String meta = definition != null
+                    ? definition.pointId() + " / " + definition.familyId()
+                    : item.getProblemTypes();
             builder.append(index++).append(". [").append(typeLabel)
-                    .append(" / ").append(item.getProblemTypes()).append("]\n");
+                    .append(" / ").append(meta).append("]\n");
             builder.append("   原句：").append(nullToEmpty(item.getOriginalSentence())).append('\n');
             builder.append("   错误点：").append(nullToEmpty(item.getErrorPoint())).append('\n');
             builder.append("   建议：").append(nullToEmpty(item.getSuggestion())).append('\n');
@@ -93,21 +114,24 @@ public class GrammarLearningDbService {
         Integer effectiveDays = normalizeDays(days);
         long analysisCount = analysisMapper.countByUserIdAndStatusAndDays(userId, "success", effectiveDays);
         long errorSentenceCount = itemMapper.countDistinctErrorSentencesByUserIdAndDays(userId, effectiveDays);
-        Map<String, Object> topType = itemMapper.getMostCommonProblemTypeByUserIdAndDays(userId, effectiveDays);
+        Map<String, Object> topPoint = itemMapper.getMostCommonPointIdByUserIdAndDays(userId, effectiveDays);
 
         StringBuilder builder = new StringBuilder();
         builder.append("时间范围：").append(timeScopeLabel(effectiveDays)).append('\n');
         builder.append("- 成功分析次数：").append(analysisCount).append('\n');
         builder.append("- 有错误的句子数：").append(errorSentenceCount).append('\n');
-        if (ObjectUtils.isEmpty(topType) || topType.get("problemType") == null) {
-            builder.append("- 最高频错误类型：暂无");
+        if (ObjectUtils.isEmpty(topPoint) || topPoint.get("pointId") == null) {
+            builder.append("- 最高频知识点：暂无");
         } else {
-            String problemType = String.valueOf(topType.get("problemType"));
-            Object count = topType.get("count");
-            builder.append("- 最高频错误类型：")
-                    .append(ProblemType.translate(problemType))
+            String pointId = String.valueOf(topPoint.get("pointId"));
+            Object count = topPoint.get("count");
+            PointDefinition definition = pointDictionary.resolveOrFallback(pointId);
+            builder.append("- 最高频知识点：")
+                    .append(definition.titleZh())
                     .append(" (")
-                    .append(problemType)
+                    .append(pointId)
+                    .append(" / ")
+                    .append(definition.familyId())
                     .append(")，")
                     .append(count)
                     .append(" 次");
@@ -130,11 +154,11 @@ public class GrammarLearningDbService {
         return Math.min(limit, db.getMaxExampleLimit());
     }
 
-    private static Set<String> toFilterSet(List<String> filterTypes) {
-        if (CollectionUtils.isEmpty(filterTypes)) {
+    private static Set<String> toFilterSet(List<String> filterPointIds) {
+        if (CollectionUtils.isEmpty(filterPointIds)) {
             return Set.of();
         }
-        return filterTypes.stream()
+        return filterPointIds.stream()
                 .filter(StringUtils::hasText)
                 .map(String::trim)
                 .collect(Collectors.toSet());

@@ -2,6 +2,7 @@ package com.khankiddo.learning.mapper;
 
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.DailyCount;
+import com.khankiddo.learning.model.PointIdCount;
 import com.khankiddo.learning.model.ProblemTypeCount;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -14,10 +15,10 @@ public interface ConversationAnalysisItemMapper {
 
     long countDistinctSentencesByUserId(@Param("userId") Long userId);
 
-    long countByUserIdAndProblemTypes(@Param("userId") Long userId,
-                                      @Param("problemTypes") List<String> problemTypes);
+    long countByUserIdAndPointIds(@Param("userId") Long userId,
+                                  @Param("pointIds") List<String> pointIds);
 
-    Map<String, Object> getMostCommonProblemTypeByUserId(@Param("userId") Long userId);
+    Map<String, Object> getMostCommonPointIdByUserId(@Param("userId") Long userId);
 
     long countDistinctSentencesInLast7DaysByUserId(@Param("userId") Long userId);
 
@@ -39,25 +40,40 @@ public interface ConversationAnalysisItemMapper {
 
     List<ConversationAnalysisItem> findByAnalysisId(@Param("analysisId") String analysisId);
 
-    List<ProblemTypeCount> countProblemTypesByUserId(@Param("userId") Long userId);
+    List<PointIdCount> countPointIdsByUserIdAndDays(@Param("userId") Long userId,
+                                                    @Param("days") Integer days);
 
-    /**
-     * 按用户统计错误类型；{@code days} 为空或 ≤0 表示不限时间。
-     */
-    List<ProblemTypeCount> countProblemTypesByUserIdAndDays(@Param("userId") Long userId,
-                                                            @Param("days") Integer days);
-
-    /**
-     * 最近错句样例（按错误行）；可按类型与近 N 天过滤。
-     */
     List<ConversationAnalysisItem> findErrorExamplesByUserId(@Param("userId") Long userId,
-                                                             @Param("problemTypes") List<String> problemTypes,
+                                                             @Param("pointIds") List<String> pointIds,
                                                              @Param("days") Integer days,
                                                              @Param("limit") int limit);
 
     long countDistinctErrorSentencesByUserIdAndDays(@Param("userId") Long userId,
                                                     @Param("days") Integer days);
 
+    Map<String, Object> getMostCommonPointIdByUserIdAndDays(@Param("userId") Long userId,
+                                                            @Param("days") Integer days);
+
+    /** @deprecated 仅旧数据兼容；新统计请用 {@link #countPointIdsByUserIdAndDays} */
+    @Deprecated
+    long countByUserIdAndProblemTypes(@Param("userId") Long userId,
+                                      @Param("problemTypes") List<String> problemTypes);
+
+    /** @deprecated 仅旧数据兼容 */
+    @Deprecated
+    Map<String, Object> getMostCommonProblemTypeByUserId(@Param("userId") Long userId);
+
+    /** @deprecated 仅旧数据兼容 */
+    @Deprecated
+    List<ProblemTypeCount> countProblemTypesByUserId(@Param("userId") Long userId);
+
+    /** @deprecated 仅旧数据兼容 */
+    @Deprecated
+    List<ProblemTypeCount> countProblemTypesByUserIdAndDays(@Param("userId") Long userId,
+                                                            @Param("days") Integer days);
+
+    /** @deprecated 仅旧数据兼容 */
+    @Deprecated
     Map<String, Object> getMostCommonProblemTypeByUserIdAndDays(@Param("userId") Long userId,
                                                                 @Param("days") Integer days);
 

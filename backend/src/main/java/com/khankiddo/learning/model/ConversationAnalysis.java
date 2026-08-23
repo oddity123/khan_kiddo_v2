@@ -24,6 +24,7 @@ public class ConversationAnalysis {
     private String llmModelId;
     private String llmModelName;
     private String llmProvider;
+    private String pointDictionaryVersion;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

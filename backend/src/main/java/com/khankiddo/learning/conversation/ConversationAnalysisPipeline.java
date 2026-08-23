@@ -16,7 +16,6 @@ import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
 import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.model.enums.ErrorLevel;
-import com.khankiddo.learning.model.enums.ProblemType;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -80,7 +79,6 @@ public class ConversationAnalysisPipeline {
                     routed.englishSentences(), selectedModel, analysisId, onProgress);
             grammar = grammarAnalysisSanitizer.sanitize(grammar);
             List<AnalysisItemDto> items = toDisplayItems(grammar);
-            List<ErrorTypeDistributionDto> distribution = buildDistribution(grammar);
             HabitCardScorer.HabitScoreResult habitScoreResult =
                     buildHabitScoreResult(grammar, chineseExpressions);
 
@@ -103,7 +101,6 @@ public class ConversationAnalysisPipeline {
                     englishPracticeCount,
                     items,
                     grammar,
-                    distribution,
                     chineseExpressions,
                     habitScoreResult,
                     summaryOutcome);
@@ -299,7 +296,6 @@ public class ConversationAnalysisPipeline {
                                                           int englishPracticeCount,
                                                           List<AnalysisItemDto> items,
                                                           GrammarAnalysisResult grammar,
-                                                          List<ErrorTypeDistributionDto> distribution,
                                                           List<ChineseExpressionDto> chineseExpressions,
                                                           HabitCardScorer.HabitScoreResult habitScoreResult,
                                                           SummaryOutcome summaryOutcome) {
@@ -311,7 +307,6 @@ public class ConversationAnalysisPipeline {
         analysisResults.put("totalErrors", countErrors(grammar));
         analysisResults.put("chineseExpressionCount", chineseExpressions.size());
         analysisResults.put("educationalSummary", summaryOutcome.report());
-        analysisResults.put("errorTypeDistribution", distribution);
         analysisResults.put("actionCards", habitScoreResult.actionCards());
         analysisResults.put("familyDistribution", habitScoreResult.familyDistribution());
         analysisResults.put("summaryDegraded", summaryOutcome.degraded());
@@ -387,7 +382,7 @@ public class ConversationAnalysisPipeline {
         ErrorLevel level = resolveErrorLevel(definition.errorLevel());
         return AnalysisErrorDto.builder()
                 .pointId(definition.pointId())
-                .type(ProblemType.translate(definition.problemType()))
+                .type(definition.titleZh())
                 .point(error.getPoint())
                 .errorLevel(level.name())
                 .familyId(definition.familyId())
@@ -404,26 +399,6 @@ public class ConversationAnalysisPipeline {
         } catch (IllegalArgumentException ex) {
             return ErrorLevel.STYLE;
         }
-    }
-
-    private List<ErrorTypeDistributionDto> buildDistribution(GrammarAnalysisResult grammar) {
-        Map<String, Integer> counts = new HashMap<>();
-        if (grammar != null && !CollectionUtils.isEmpty(grammar.getItems())) {
-            for (GrammarSentenceItemDto item : grammar.getItems()) {
-                if (CollectionUtils.isEmpty(item.getErrors())) {
-                    continue;
-                }
-                for (GrammarErrorDto error : item.getErrors()) {
-                    PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
-                    String label = ProblemType.translate(definition.problemType());
-                    counts.merge(label, 1, Integer::sum);
-                }
-            }
-        }
-        return counts.entrySet().stream()
-                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
-                .map(entry -> ErrorTypeDistributionDto.builder().type(entry.getKey()).count(entry.getValue()).build())
-                .toList();
     }
 
     private HabitCardScorer.HabitScoreResult buildHabitScoreResult(
