@@ -1,8 +1,9 @@
 package com.khankiddo.learning.conversation.scoring;
 
 import com.khankiddo.learning.config.PerformanceScoringProperties;
-import com.khankiddo.learning.model.enums.ErrorLevel;
-import com.khankiddo.learning.model.enums.ProblemType;
+import com.khankiddo.learning.knowledge.PointDefinition;
+import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.knowledge.PointScoringSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -17,9 +18,9 @@ import java.util.Set;
  * 基于配置权重的口语自然度评分：各子维度独立扣分 + 加权汇总综合分。
  *
  * <ul>
- *   <li>naturalness / accuracy / fluency / lexical 各自按维度错误类型独立计分；</li>
+ *   <li>naturalness / accuracy / fluency / lexical 各自按维度 scoreProfile 独立计分；</li>
  *   <li>overall = Σ(维度分 × weight-in-overall)，可解释且与展示维度一致；</li>
- *   <li>「高严重度句子」与 {@link ErrorLevel#FATAL} 对齐；</li>
+ *   <li>「高严重度句子」与字典 {@code errorLevel=FATAL} 对齐；</li>
  *   <li>自然度句子占比修正仅作用于 naturalness 维度（overall 由其加权得出）；</li>
  *   <li>密度分母使用 totalSentences + densitySmoothingK 平滑短对话。</li>
  * </ul>
@@ -29,6 +30,7 @@ import java.util.Set;
 public class WeightedNaturalnessPerformanceScorer implements PerformanceScorer {
 
     private final PerformanceScoringProperties properties;
+    private final PointDictionary pointDictionary;
 
     @Override
     public PerformanceScoreResult score(PerformanceScoringInput input) {
@@ -41,13 +43,13 @@ public class WeightedNaturalnessPerformanceScorer implements PerformanceScorer {
         }
 
         double naturalness = computeDimensionScore(
-                sentences, totalSentences, dimensionTypes("naturalness"), true);
+                sentences, totalSentences, dimensionProfiles("naturalness"), true);
         double accuracy = computeDimensionScore(
-                sentences, totalSentences, dimensionTypes("accuracy"), false);
+                sentences, totalSentences, dimensionProfiles("accuracy"), false);
         double fluency = computeDimensionScore(
-                sentences, totalSentences, dimensionTypes("fluency"), false);
+                sentences, totalSentences, dimensionProfiles("fluency"), false);
         double lexical = computeDimensionScore(
-                sentences, totalSentences, dimensionTypes("lexical"), false);
+                sentences, totalSentences, dimensionProfiles("lexical"), false);
 
         int naturalnessScore = clampRound(naturalness);
         int accuracyScore = clampRound(accuracy);
@@ -89,31 +91,33 @@ public class WeightedNaturalnessPerformanceScorer implements PerformanceScorer {
     private double computeDimensionScore(
             List<PerformanceScoringInput.SentenceErrors> allSentences,
             int totalSentences,
-            Set<String> allowedTypes,
+            Set<String> allowedProfiles,
             boolean applyNaturalnessSentencePenalty) {
-        if (CollectionUtils.isEmpty(allSentences) || CollectionUtils.isEmpty(allowedTypes)) {
+        if (CollectionUtils.isEmpty(allSentences) || CollectionUtils.isEmpty(allowedProfiles)) {
             return properties.getMaxScore();
         }
 
         double totalWeightedPenalty = 0;
         int severeSentenceCount = 0;
         int naturalnessSentenceCount = 0;
-        Set<String> naturalnessTypes = dimensionTypes("naturalness");
+        Set<String> naturalnessProfiles = dimensionProfiles("naturalness");
 
         for (PerformanceScoringInput.SentenceErrors sentence : allSentences) {
             double sentencePenalty = 0;
             boolean severe = false;
             boolean naturalnessHit = false;
 
-            for (String typeKey : sentence.problemTypeKeys()) {
-                if (!allowedTypes.contains(typeKey)) {
+            for (String pointId : sentence.pointIds()) {
+                PointDefinition definition = pointDictionary.resolveOrFallback(pointId);
+                String profile = PointScoringSupport.scoreProfile(definition);
+                if (!allowedProfiles.contains(profile)) {
                     continue;
                 }
-                sentencePenalty += weightForType(typeKey);
-                if (isFatalType(typeKey)) {
+                sentencePenalty += weightForProfile(profile);
+                if (PointScoringSupport.isFatal(definition)) {
                     severe = true;
                 }
-                if (naturalnessTypes.contains(typeKey)) {
+                if (naturalnessProfiles.contains(profile)) {
                     naturalnessHit = true;
                 }
             }
@@ -151,38 +155,27 @@ public class WeightedNaturalnessPerformanceScorer implements PerformanceScorer {
         return score;
     }
 
-    private boolean isFatalType(String typeKey) {
-        if (!StringUtils.hasText(typeKey)) {
-            return false;
-        }
-        try {
-            return ProblemType.valueOf(typeKey.trim()).getErrorLevel() == ErrorLevel.FATAL;
-        } catch (IllegalArgumentException ex) {
-            return false;
-        }
-    }
-
-    private Set<String> dimensionTypes(String dimensionKey) {
+    private Set<String> dimensionProfiles(String dimensionKey) {
         Map<String, PerformanceScoringProperties.DimensionConfig> dims = properties.getDimensions();
         if (CollectionUtils.isEmpty(dims)) {
             return Set.of();
         }
         PerformanceScoringProperties.DimensionConfig config = dims.get(dimensionKey);
-        if (config == null || CollectionUtils.isEmpty(config.getTypes())) {
+        if (config == null || CollectionUtils.isEmpty(config.getProfiles())) {
             return Set.of();
         }
-        return new HashSet<>(config.getTypes());
+        return new HashSet<>(config.getProfiles());
     }
 
-    private double weightForType(String typeKey) {
-        if (!StringUtils.hasText(typeKey)) {
-            return properties.getDefaultTypeWeight();
+    private double weightForProfile(String profileKey) {
+        if (!StringUtils.hasText(profileKey)) {
+            return properties.getDefaultProfileWeight();
         }
-        Map<String, Double> weights = properties.getTypeWeights();
-        if (!CollectionUtils.isEmpty(weights) && weights.containsKey(typeKey)) {
-            return weights.get(typeKey);
+        Map<String, Double> weights = properties.getProfileWeights();
+        if (!CollectionUtils.isEmpty(weights) && weights.containsKey(profileKey)) {
+            return weights.get(profileKey);
         }
-        return properties.getDefaultTypeWeight();
+        return properties.getDefaultProfileWeight();
     }
 
     private int clampRound(double value) {

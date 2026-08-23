@@ -17,6 +17,8 @@ public class ConversationAnalysisItem {
     private String analysisId;
     private Long sentenceId;
     private String originalSentence;
+    /** @deprecated 新分析不再写入；仅旧行只读兼容 */
+    @Deprecated(since = "3.0", forRemoval = true)
     private String problemTypes;
     private String pointId;
     private String errorPoint;

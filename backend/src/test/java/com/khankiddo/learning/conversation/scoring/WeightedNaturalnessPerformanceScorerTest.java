@@ -1,8 +1,8 @@
 package com.khankiddo.learning.conversation.scoring;
 
 import com.khankiddo.learning.config.PerformanceScoringProperties;
-import com.khankiddo.learning.model.enums.ErrorLevel;
-import com.khankiddo.learning.model.enums.ProblemType;
+import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.knowledge.PointScoringSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,15 +14,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class WeightedNaturalnessPerformanceScorerTest {
 
+    private static final PointDictionary DICTIONARY =
+            PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+
     private WeightedNaturalnessPerformanceScorer scorer;
 
     @BeforeEach
     void setUp() {
         PerformanceScoringProperties properties = new PerformanceScoringProperties();
         properties.setMinScore(45);
-        properties.setTypeWeights(defaultTypeWeights());
+        properties.setProfileWeights(defaultProfileWeights());
         properties.setDimensions(defaultDimensions());
-        scorer = new WeightedNaturalnessPerformanceScorer(properties);
+        scorer = new WeightedNaturalnessPerformanceScorer(properties, DICTIONARY);
     }
 
     @Test
@@ -37,8 +40,10 @@ class WeightedNaturalnessPerformanceScorerTest {
         PerformanceScoringInput input = new PerformanceScoringInput(
                 8,
                 List.of(
-                        new PerformanceScoringInput.SentenceErrors(List.of("CHINGLISH", "TENSE")),
-                        new PerformanceScoringInput.SentenceErrors(List.of("ARTICLE"))));
+                        new PerformanceScoringInput.SentenceErrors(
+                                List.of("COLLOCATION", "PAST_SIMPLE_DONE")),
+                        new PerformanceScoringInput.SentenceErrors(
+                                List.of("ARTICLE_GENERIC_ZERO"))));
         PerformanceScoreResult first = scorer.score(input);
         PerformanceScoreResult second = scorer.score(input);
         assertThat(second).isEqualTo(first);
@@ -49,10 +54,12 @@ class WeightedNaturalnessPerformanceScorerTest {
     void severeErrors_scoreLowerThanMinorErrors() {
         PerformanceScoringInput severe = new PerformanceScoringInput(
                 5,
-                List.of(new PerformanceScoringInput.SentenceErrors(List.of("STRUCTURE", "TENSE", "INCOMPLETE"))));
+                List.of(new PerformanceScoringInput.SentenceErrors(
+                        List.of("AUX_MODAL_BASE", "PAST_SIMPLE_DONE", "FLUENCY_INCOMPLETE"))));
         PerformanceScoringInput minor = new PerformanceScoringInput(
                 5,
-                List.of(new PerformanceScoringInput.SentenceErrors(List.of("ARTICLE", "TONE"))));
+                List.of(new PerformanceScoringInput.SentenceErrors(
+                        List.of("ARTICLE_GENERIC_ZERO", "FLUENCY_REDUNDANCY"))));
         assertThat(scorer.score(severe).overall()).isLessThan(scorer.score(minor).overall());
     }
 
@@ -61,10 +68,10 @@ class WeightedNaturalnessPerformanceScorerTest {
         PerformanceScoringInput input = new PerformanceScoringInput(
                 10,
                 List.of(
-                        new PerformanceScoringInput.SentenceErrors(List.of("CHINGLISH")),
-                        new PerformanceScoringInput.SentenceErrors(List.of("TENSE")),
-                        new PerformanceScoringInput.SentenceErrors(List.of("INCOMPLETE")),
-                        new PerformanceScoringInput.SentenceErrors(List.of("VOCABULARY"))));
+                        new PerformanceScoringInput.SentenceErrors(List.of("COLLOCATION")),
+                        new PerformanceScoringInput.SentenceErrors(List.of("PAST_SIMPLE_DONE")),
+                        new PerformanceScoringInput.SentenceErrors(List.of("FLUENCY_INCOMPLETE")),
+                        new PerformanceScoringInput.SentenceErrors(List.of("LEXICAL_GAP"))));
 
         PerformanceScoreResult result = scorer.score(input);
 
@@ -79,26 +86,27 @@ class WeightedNaturalnessPerformanceScorerTest {
     void fatalTense_triggersSeverePenaltyInAccuracyDimension() {
         PerformanceScoringInput tenseOnly = new PerformanceScoringInput(
                 5,
-                List.of(new PerformanceScoringInput.SentenceErrors(List.of("TENSE"))));
+                List.of(new PerformanceScoringInput.SentenceErrors(List.of("PAST_SIMPLE_DONE"))));
         PerformanceScoringInput articleOnly = new PerformanceScoringInput(
                 5,
-                List.of(new PerformanceScoringInput.SentenceErrors(List.of("ARTICLE"))));
+                List.of(new PerformanceScoringInput.SentenceErrors(List.of("ARTICLE_GENERIC_ZERO"))));
 
         assertThat(scorer.score(tenseOnly).accuracy()).isLessThan(scorer.score(articleOnly).accuracy());
     }
 
     @Test
     void preposition_isBasicNotFatal() {
-        assertThat(ProblemType.PREPOSITION.getErrorLevel()).isEqualTo(ErrorLevel.BASIC);
+        assertThat(PointScoringSupport.isFatal(DICTIONARY.require("PREP_FIXED"))).isFalse();
+        assertThat(PointScoringSupport.errorLevel(DICTIONARY.require("PREP_FIXED"))).isEqualTo("BASIC");
     }
 
     @Test
-    void naturalnessPenalty_doesNotDeflateAccuracyWhenOnlyChinglishPresent() {
-        PerformanceScoringInput chinglishOnly = new PerformanceScoringInput(
+    void naturalnessPenalty_doesNotDeflateAccuracyWhenOnlyCollocationPresent() {
+        PerformanceScoringInput collocationOnly = new PerformanceScoringInput(
                 8,
-                List.of(new PerformanceScoringInput.SentenceErrors(List.of("CHINGLISH"))));
+                List.of(new PerformanceScoringInput.SentenceErrors(List.of("COLLOCATION"))));
 
-        PerformanceScoreResult result = scorer.score(chinglishOnly);
+        PerformanceScoreResult result = scorer.score(collocationOnly);
 
         assertThat(result.naturalness()).isLessThan(98);
         assertThat(result.accuracy()).isEqualTo(98);
@@ -109,25 +117,26 @@ class WeightedNaturalnessPerformanceScorerTest {
         PerformanceScoringProperties smooth = new PerformanceScoringProperties();
         smooth.setMinScore(45);
         smooth.setDensitySmoothingK(2.0);
-        smooth.setTypeWeights(defaultTypeWeights());
+        smooth.setProfileWeights(defaultProfileWeights());
         smooth.setDimensions(defaultDimensions());
 
         PerformanceScoringProperties harsh = new PerformanceScoringProperties();
         harsh.setMinScore(45);
         harsh.setDensitySmoothingK(0.0);
-        harsh.setTypeWeights(defaultTypeWeights());
+        harsh.setProfileWeights(defaultProfileWeights());
         harsh.setDimensions(defaultDimensions());
 
         PerformanceScoringInput input = new PerformanceScoringInput(
                 1,
-                List.of(new PerformanceScoringInput.SentenceErrors(List.of("INCOMPLETE", "STRUCTURE"))));
+                List.of(new PerformanceScoringInput.SentenceErrors(
+                        List.of("FLUENCY_INCOMPLETE", "AUX_MODAL_BASE"))));
 
-        int smoothScore = new WeightedNaturalnessPerformanceScorer(smooth).score(input).overall();
-        int harshScore = new WeightedNaturalnessPerformanceScorer(harsh).score(input).overall();
+        int smoothScore = new WeightedNaturalnessPerformanceScorer(smooth, DICTIONARY).score(input).overall();
+        int harshScore = new WeightedNaturalnessPerformanceScorer(harsh, DICTIONARY).score(input).overall();
         assertThat(smoothScore).isGreaterThan(harshScore);
     }
 
-    private static Map<String, Double> defaultTypeWeights() {
+    private static Map<String, Double> defaultProfileWeights() {
         Map<String, Double> weights = new LinkedHashMap<>();
         weights.put("INCOMPLETE", 3.5);
         weights.put("CHINGLISH", 3.2);
@@ -150,10 +159,10 @@ class WeightedNaturalnessPerformanceScorerTest {
         return dims;
     }
 
-    private static PerformanceScoringProperties.DimensionConfig dimension(double weight, List<String> types) {
+    private static PerformanceScoringProperties.DimensionConfig dimension(double weight, List<String> profiles) {
         PerformanceScoringProperties.DimensionConfig config = new PerformanceScoringProperties.DimensionConfig();
         config.setWeightInOverall(weight);
-        config.setTypes(types);
+        config.setProfiles(profiles);
         return config;
     }
 }

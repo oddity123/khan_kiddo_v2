@@ -2,6 +2,11 @@ package com.khankiddo.learning.model.enums;
 
 import org.springframework.util.StringUtils;
 
+/**
+ * @deprecated 分类真源已迁移至 {@code pointId} + {@link com.khankiddo.learning.knowledge.PointDictionary}。
+ * 仅保留供旧 {@code problem_types} 列读取、RAG 与首页统计兼容；新代码不得将其作为写入或评分依据。
+ */
+@Deprecated(since = "3.0", forRemoval = true)
 public enum ProblemType {
 
     TENSE("Tense", "时态错误"),

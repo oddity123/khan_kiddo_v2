@@ -10,6 +10,7 @@ import java.util.Map;
 
 /**
  * 口语自然度评分配置，权重与维度定义见 {@code classpath:scoring/performance-scoring.yml}。
+ * 权重键为字典 {@code scoreProfile}，不再依赖 {@link com.khankiddo.learning.model.enums.ProblemType}。
  */
 @Data
 @Component
@@ -29,10 +30,10 @@ public class PerformanceScoringProperties {
     private double maxWeightedPenaltyPerSentence = 6.0;
     private double severeSentencePenalty = 4.0;
     private double naturalnessSentencePenalty = 5.0;
-    private double defaultTypeWeight = 1.0;
+    private double defaultProfileWeight = 1.0;
 
-    /** ProblemType 枚举名 → 扣分权重 */
-    private Map<String, Double> typeWeights = new LinkedHashMap<>();
+    /** scoreProfile → 扣分权重 */
+    private Map<String, Double> profileWeights = new LinkedHashMap<>();
 
     /** 子维度：naturalness / accuracy / fluency / lexical */
     private Map<String, DimensionConfig> dimensions = new LinkedHashMap<>();
@@ -40,6 +41,6 @@ public class PerformanceScoringProperties {
     @Data
     public static class DimensionConfig {
         private double weightInOverall = 0.25;
-        private List<String> types = List.of();
+        private List<String> profiles = List.of();
     }
 }

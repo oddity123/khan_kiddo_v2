@@ -1,5 +1,5 @@
 # 口语自然度综合评分配置（修改后重启生效）
-# 权重键使用 ProblemType 枚举名（与 model.enums.ProblemType 一致）
+# 权重键使用知识点字典 scoreProfile（见 PointScoringSupport / point-dictionary-v1.json）
 app:
   performance-scoring:
     base-score: 98
@@ -12,14 +12,14 @@ app:
     density-smoothing-k: 2.0
     # 单句加权扣分上限，避免一句多错过度拉低分数
     max-weighted-penalty-per-sentence: 6.0
-    # 含 FATAL 级错误句子的额外扣分系数（与 ProblemType.getErrorLevel 对齐）
+    # 含 FATAL 级错误句子的额外扣分系数（与字典 errorLevel 对齐）
     severe-sentence-penalty: 4.0
     # 含自然度类错误句子的额外扣分系数（仅作用于 naturalness 维度）
     naturalness-sentence-penalty: 5.0
-    # 未知错误类型默认权重
-    default-type-weight: 1.0
+    # 未知 scoreProfile 默认权重
+    default-profile-weight: 1.0
 
-    type-weights:
+    profile-weights:
       INCOMPLETE: 3.5
       CHINGLISH: 3.2
       COLLOCATION: 3.0
@@ -43,7 +43,7 @@ app:
     dimensions:
       naturalness:
         weight-in-overall: 0.40
-        types:
+        profiles:
           - CHINGLISH
           - COLLOCATION
           - UNNATURAL
@@ -53,7 +53,7 @@ app:
           - FORMAL
       accuracy:
         weight-in-overall: 0.25
-        types:
+        profiles:
           - TENSE
           - AGREEMENT
           - PREPOSITION
@@ -66,12 +66,12 @@ app:
           - COMPARISON
       fluency:
         weight-in-overall: 0.20
-        types:
+        profiles:
           - INCOMPLETE
           - REDUNDANCY
       lexical:
         weight-in-overall: 0.15
-        types:
+        profiles:
           - VOCABULARY
           - WORD_CHOICE
           - COLLOCATION

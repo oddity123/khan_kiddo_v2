@@ -10,7 +10,6 @@ import com.khankiddo.learning.conversation.scoring.PerformanceScoringInput;
 import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
-import com.khankiddo.learning.model.enums.ProblemType;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -297,7 +296,7 @@ public class EducationalSummaryParser {
             }
             for (GrammarErrorDto error : item.getErrors()) {
                 PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
-                String label = ProblemType.translate(definition.problemType());
+                String label = definition.titleZh();
                 counts.merge(label, 1, Integer::sum);
             }
         }
@@ -335,7 +334,7 @@ public class EducationalSummaryParser {
                 continue;
             }
             String types = item.getErrors().stream()
-                    .map(error -> ProblemType.translate(pointDictionary.resolveOrFallback(error.getPointId()).problemType()))
+                    .map(error -> pointDictionary.resolveOrFallback(error.getPointId()).titleZh())
                     .collect(Collectors.joining("、"));
             if (StringUtils.hasText(types)) {
                 lines.add(index++ + ". " + types);

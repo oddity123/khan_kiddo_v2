@@ -12,6 +12,7 @@ import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.knowledge.PointScoringSupport;
 import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
@@ -246,20 +247,16 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
                 String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
                 String resolvedPointId;
-                String englishType;
                 if (StringUtils.hasText(error.getPointId())) {
-                    PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
-                    resolvedPointId = definition.pointId();
-                    englishType = definition.problemType();
+                    resolvedPointId = pointDictionary.resolveOrFallback(error.getPointId()).pointId();
                 } else {
                     resolvedPointId = pointDictionary.resolveOrFallback(null).pointId();
-                    englishType = toEnglishProblemType(error.getType());
                 }
+                pointDictionary.require(resolvedPointId);
                 dbItems.add(ConversationAnalysisPersistSupport.truncateItem(ConversationAnalysisItem.builder()
                         .analysisId(analysisId)
                         .sentenceId(sentenceId)
                         .originalSentence(item.getOriginalSentence())
-                        .problemTypes(englishType)
                         .pointId(resolvedPointId)
                         .errorPoint(point)
                         .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
@@ -451,7 +448,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         row.getOriginalSentence(),
                         row.getErrorPoint(),
                         row.getSuggestion(),
-                        resolveErrorLevel(row.getProblemTypes())))
+                        resolveErrorLevel(row.getPointId())))
                 .toList();
 
         HabitCardScorer.HabitScoreResult result =
@@ -459,9 +456,12 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         return mergeActionCardDiagnoses(result, diagnoses);
     }
 
-    private String resolveErrorLevel(String problemTypesEnglish) {
-        ProblemType problemType = ProblemType.fromEnglishName(problemTypesEnglish);
-        return problemType != null ? problemType.getErrorLevel().name() : null;
+    private String resolveErrorLevel(String pointId) {
+        if (!StringUtils.hasText(pointId)) {
+            return null;
+        }
+        return PointScoringSupport.errorLevel(
+                pointDictionary.resolveOrFallback(pointId));
     }
 
     private HabitCardScorer.HabitScoreResult mergeActionCardDiagnoses(
