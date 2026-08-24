@@ -931,19 +931,17 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
     order: 0;
     position: sticky;
     top: calc(var(--kk-navbar-offset) + 0.65rem);
-    max-height: calc(100dvh - var(--kk-navbar-offset) - 1.25rem);
-    overflow-x: hidden;
-    overflow-y: auto;
+    /* 随内容撑开（如饼图展开其余类型），不在侧栏内滚动 */
+    overflow: visible;
     z-index: 5;
     align-self: start;
-    /* 给面板外阴影留空，避免 overflow 裁成底部硬边黑条 */
+    /* 给面板外阴影留空，避免裁成底部硬边黑条 */
     padding: 0.15rem 0.4rem 1.85rem;
     margin-inline: -0.4rem;
   }
 
-  /* 卡片滑走时放开裁切，让飞出层盖过侧栏与主栏 */
+  /* 卡片滑走时抬高层级，盖过侧栏与主栏 */
   .detail-aside:has(.cn-fan--lift) {
-    overflow: visible;
     z-index: 60;
   }
 

@@ -23,7 +23,7 @@ public class EducationalSummaryStatsDto {
     /** 含中文表达的用户句数（不计入语法错误） */
     private Integer chineseExpressionCount;
 
-    /** 主要挑战：出现频次最高的错误类型中文名（2–12 字短语） */
+    /** 主要挑战：出现频次最高的语法家族中文名（Top2，用「、」连接） */
     private String mainCategory;
 
     /**

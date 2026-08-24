@@ -46,22 +46,7 @@ const seenProgressKeys = new Set<string>()
 const abortController = ref<AbortController | null>(null)
 const guestQuota = ref<GuestQuota | null>(null)
 
-interface StreamingCommitRow {
-  original: string
-  suggestion: string
-  errorsHint: string
-}
-
-const streamingCommitted = ref<StreamingCommitRow[]>([])
-const streamingLive = ref({
-  original: '',
-  suggestion: '',
-  errorsHint: '',
-})
-let lastStreamingCommitKey = ''
-
 const progressListRef = ref<HTMLElement | null>(null)
-const streamingScrollRef = ref<HTMLElement | null>(null)
 const contentInputRef = ref<InputInstance | null>(null)
 
 async function focusContentInput() {
@@ -80,11 +65,6 @@ function scrollPaneToBottom(el: HTMLElement | null) {
 async function scrollProgressToLatest() {
   await nextTick()
   scrollPaneToBottom(progressListRef.value)
-}
-
-async function scrollStreamingToLatest() {
-  await nextTick()
-  scrollPaneToBottom(streamingScrollRef.value)
 }
 
 const charCount = computed(() => content.value.length)
@@ -205,45 +185,6 @@ const statusLabels: Record<string, { emoji: string; title: string }> = {
   [PROGRESS_STATUS.SUMMARIZING]: {emoji: '📝', title: '学习概要'},
 }
 
-function hasStreamingPreview(event: ConversationAnalysisProgress) {
-  return (
-      event.streamingOriginal != null ||
-      event.streamingSuggestion != null ||
-      event.streamingErrorsHint != null
-  )
-}
-
-function applyStreamingProgress(event: ConversationAnalysisProgress) {
-  streamingLive.value = {
-    original: event.streamingOriginal ?? '',
-    suggestion: event.streamingSuggestion ?? '',
-    errorsHint: event.streamingErrorsHint ?? '',
-  }
-
-  const commitOriginal = (event.streamingCommitOriginal ?? '').trim()
-  const commitSuggestion = (event.streamingCommitSuggestion ?? '').trim()
-  const commitErrors = (event.streamingCommitErrorsHint ?? '').trim()
-  if (!commitOriginal && !commitSuggestion) {
-    return
-  }
-  const key = `${commitOriginal}\u0000${commitSuggestion}\u0000${commitErrors}`
-  if (key === lastStreamingCommitKey) {
-    return
-  }
-  lastStreamingCommitKey = key
-  streamingCommitted.value.push({
-    original: commitOriginal,
-    suggestion: commitSuggestion,
-    errorsHint: commitErrors,
-  })
-}
-
-function resetStreamingPreview() {
-  streamingCommitted.value = []
-  streamingLive.value = {original: '', suggestion: '', errorsHint: ''}
-  lastStreamingCommitKey = ''
-}
-
 function progressLogKey(event: ConversationAnalysisProgress) {
   return `${event.status}\0${event.message ?? ''}`
 }
@@ -257,11 +198,6 @@ function onProgress(event: ConversationAnalysisProgress) {
     return
   }
 
-  if (hasStreamingPreview(event)) {
-    applyStreamingProgress(event)
-    return
-  }
-
   const key = progressLogKey(event)
   if (seenProgressKeys.has(key)) {
     return
@@ -270,32 +206,9 @@ function onProgress(event: ConversationAnalysisProgress) {
   progressLog.value.push(event)
 }
 
-const showStreamingPanel = computed(() => {
-  if (!analyzing.value) {
-    return false
-  }
-  const live = streamingLive.value
-  return (
-      streamingCommitted.value.length > 0 ||
-      !!live.original ||
-      !!live.suggestion ||
-      !!live.errorsHint
-  )
-})
-
 watch(progressLog, () => {
   void scrollProgressToLatest()
 }, {deep: true})
-
-watch([streamingCommitted, streamingLive, showStreamingPanel], () => {
-  void scrollStreamingToLatest()
-}, {deep: true})
-
-const isStreamingPlaceholder = computed(() => {
-  const orig = streamingLive.value.original.trim()
-  const sugg = streamingLive.value.suggestion.trim()
-  return (orig === '...' || orig === '') && !sugg
-})
 
 function resetForm() {
   if (analyzing.value) {
@@ -304,7 +217,6 @@ function resetForm() {
   content.value = ''
   progressLog.value = []
   seenProgressKeys.clear()
-  resetStreamingPreview()
   showProgress.value = false
 }
 
@@ -333,7 +245,6 @@ async function onAnalyze() {
   showProgress.value = true
   progressLog.value = []
   seenProgressKeys.clear()
-  resetStreamingPreview()
   abortController.value?.abort()
   abortController.value = new AbortController()
 
@@ -509,51 +420,8 @@ async function onAnalyze() {
             </div>
           </div>
 
-          <section
-              v-if="showStreamingPanel"
-              ref="streamingScrollRef"
-              class="streaming-panel"
-              aria-label="实时句子预览"
-          >
-            <span class="streaming-float-btn" role="status">实时分析</span>
-            <p v-if="streamingLive.errorsHint" class="streaming-errors-hint">
-              {{ streamingLive.errorsHint }}
-            </p>
-            <div
-                v-for="(row, idx) in streamingCommitted"
-                :key="`commit-${idx}`"
-                class="stream-card stream-card--done"
-            >
-              <p v-if="row.original" class="stream-line">
-                <span class="stream-label">原句</span>{{ row.original }}
-              </p>
-              <p class="stream-line">
-                <span class="stream-label">建议</span>
-                <span v-if="row.suggestion" class="stream-suggestion">{{ row.suggestion }}</span>
-                <span v-else class="stream-muted">—</span>
-              </p>
-            </div>
-            <div v-if="streamingLive.original || streamingLive.suggestion" class="stream-card stream-card--live">
-              <p v-if="isStreamingPlaceholder" class="stream-placeholder">
-                正在接收分析结果…
-              </p>
-              <template v-else>
-                <p v-if="streamingLive.original" class="stream-line">
-                  <span class="stream-label">原句</span>{{ streamingLive.original }}
-                </p>
-                <p class="stream-line">
-                  <span class="stream-label">建议</span>
-                  <span v-if="streamingLive.suggestion" class="stream-suggestion">{{
-                      streamingLive.suggestion
-                    }}</span>
-                  <span v-else class="stream-muted">—</span>
-                </p>
-              </template>
-            </div>
-          </section>
-
           <div v-else-if="analyzing" class="result-loading">
-            <el-skeleton :rows="4" animated/>
+            <el-skeleton :rows="6" animated/>
           </div>
         </div>
       </section>
@@ -751,20 +619,14 @@ async function onAnalyze() {
 }
 
 .progress-list {
-  flex: 0 1 auto;
-  max-height: 40%;
-  min-height: 5.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 0.15rem;
-}
-
-.result-panel-body:not(:has(.streaming-panel)) .progress-list {
-  flex: 1 1 auto;
-  max-height: none;
 }
 
 .progress-item {
@@ -799,105 +661,9 @@ async function onAnalyze() {
   color: var(--kk-color-danger, #b42318);
 }
 
-.streaming-panel {
-  position: relative;
+.result-loading {
   flex: 1 1 auto;
   min-height: 0;
-  margin-top: 0;
-  padding-top: 0.35rem;
-  border-top: 1px solid var(--kk-glass-inner-border);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 0.15rem;
-}
-
-.streaming-float-btn {
-  position: sticky;
-  top: 0.35rem;
-  float: right;
-  z-index: 2;
-  display: inline-flex;
-  align-items: center;
-  margin: 0 0.1rem 0.55rem 0.75rem;
-  padding: 0.28rem 0.72rem;
-  border-radius: var(--kk-radius-pill);
-  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 16%, transparent);
-  background: #fff;
-  color: var(--kk-color-primary);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  line-height: 1.2;
-  box-shadow: 0 4px 12px rgba(36, 39, 64, 0.1);
-  transition:
-      transform 0.16s ease,
-      box-shadow 0.16s ease,
-      background 0.16s ease,
-      border-color 0.16s ease;
-}
-
-.streaming-float-btn:hover {
-  transform: translateY(-1px);
-  background: color-mix(in srgb, var(--kk-color-primary) 6%, white);
-  border-color: color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
-  box-shadow: 0 8px 18px rgba(36, 39, 64, 0.14);
-}
-
-.streaming-errors-hint {
-  margin: 0 0 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--kk-color-warn);
-}
-
-.stream-card {
-  padding: 0.65rem 0.75rem;
-  margin-bottom: 0.5rem;
-  border-radius: var(--kk-radius-md);
-  background: var(--kk-glass-inner-bg);
-  border: 1px solid var(--kk-glass-inner-border);
-  font-size: 0.82rem;
-  line-height: 1.55;
-}
-
-.stream-card--live {
-  border-color: color-mix(in srgb, var(--kk-color-primary) 22%, var(--kk-glass-inner-border));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kk-color-primary) 8%, transparent);
-}
-
-.stream-line {
-  margin: 0 0 0.35rem;
-  color: var(--kk-color-text-muted);
-}
-
-.stream-line:last-child {
-  margin-bottom: 0;
-}
-
-.stream-label {
-  display: inline-block;
-  min-width: 2.2rem;
-  margin-right: 0.35rem;
-  font-weight: 700;
-  color: var(--kk-color-primary);
-}
-
-.stream-suggestion {
-  color: var(--kk-color-link);
-  font-weight: 600;
-}
-
-.stream-muted {
-  color: var(--kk-color-text-subtle);
-}
-
-.stream-placeholder {
-  margin: 0;
-  color: var(--kk-color-text-subtle);
-  font-style: italic;
-}
-
-.result-loading {
   padding: 0.5rem 0;
 }
 

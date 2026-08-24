@@ -8,6 +8,7 @@ import com.khankiddo.learning.conversation.scoring.PerformanceScoreResult;
 import com.khankiddo.learning.conversation.scoring.PerformanceScorer;
 import com.khankiddo.learning.conversation.scoring.PerformanceScoringInput;
 import com.khankiddo.learning.dto.conversation.*;
+import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import org.apache.commons.lang3.ObjectUtils;
@@ -282,8 +283,9 @@ public class EducationalSummaryParser {
     }
 
     /**
-     * 由实际错误分布确定性地推导「主要挑战」：取出现频次最高的前 {@value #MAIN_CATEGORY_TOP_N}
-     * 类错误，按频次降序（同频按名称排序保证稳定），用「、」连接。保证与 errorTypeDistribution 一致。
+     * 由实际错误分布确定性地推导「主要挑战」：按 {@code familyId} 聚合后取出现频次最高的前
+     * {@value #MAIN_CATEGORY_TOP_N} 个语法家族中文名，按频次降序（同频按名称排序保证稳定），用「、」连接。
+     * 与详情页家族饼图 / 筛选标签同一粒度。
      */
     private String computeMainCategory(GrammarAnalysisResult grammar) {
         Map<String, Integer> counts = new HashMap<>();
@@ -296,8 +298,7 @@ public class EducationalSummaryParser {
             }
             for (GrammarErrorDto error : item.getErrors()) {
                 PointDefinition definition = pointDictionary.resolveOrFallback(error.getPointId());
-                String label = definition.titleZh();
-                counts.merge(label, 1, Integer::sum);
+                counts.merge(definition.familyId(), 1, Integer::sum);
             }
         }
         String joined = counts.entrySet().stream()
@@ -306,7 +307,7 @@ public class EducationalSummaryParser {
                     return byCount != 0 ? byCount : a.getKey().compareTo(b.getKey());
                 })
                 .limit(MAIN_CATEGORY_TOP_N)
-                .map(Map.Entry::getKey)
+                .map(entry -> KnowledgePointStatsSupport.familyTitle(pointDictionary, entry.getKey()))
                 .collect(Collectors.joining("、"));
         if (!StringUtils.hasText(joined)) {
             return "无";
