@@ -25,7 +25,7 @@
     },
     {
       "id": "STRUCTURE_OVERFLOW",
-      "rule": "整句重写但说不清规则、或主要是卡壳/重复 → 不要硬打 STRUCTURE_*，改打 FLUENCY_* / LEXICAL_GAP / CHINESE_CODE_SWITCH"
+      "rule": "整句重写但说不清规则、或主要是卡壳/重复 → 不要硬打 STRUCTURE_*，改打 FLUENCY_* / LEXICAL_GAP"
     },
     {
       "id": "COLLOCATION_VS_PREP_VS_LEXICAL",
@@ -113,14 +113,6 @@
       "fixability": null,
       "otherPointId": "LEXICAL_GAP",
       "channel": "lexical"
-    },
-    {
-      "familyId": "FAM_CHINESE",
-      "titleZh": "中文夹杂",
-      "fixability": null,
-      "otherPointId": "CHINESE_CODE_SWITCH",
-      "channel": "chinese",
-      "note": "与现有中文表达知识卡片对接；不出规则卡"
     }
   ],
   "points": [
@@ -490,19 +482,6 @@
       "fixability": null
     },
     {
-      "pointId": "CHINESE_CODE_SWITCH",
-      "familyId": "FAM_CHINESE",
-      "channel": "chinese",
-      "v1Keep": true,
-      "cardPolicy": "channel",
-      "estimatedCount": 83,
-      "errorLevel": "STYLE",
-      "problemType": "Chinese",
-      "titleZh": "说着说着插入中文 / 用中文提问词汇",
-      "whyZh": "对接现有中文表达知识卡片；不出规则卡。",
-      "fixability": null
-    },
-    {
       "pointId": "PAST_VS_PERFECT",
       "familyId": "FAM_TENSE",
       "channel": "rule",
@@ -570,7 +549,7 @@
       "PRONOUN_OTHER",
       "FLUENCY_OTHER"
     ],
-    "note": "LEXICAL_GAP / CHINESE_CODE_SWITCH 已是通道叶子，不再另加 OTHER；Tone/Formal 等低频风格打 STRUCTURE_OTHER 或 LEXICAL_GAP"
+    "note": "LEXICAL_GAP 已是通道叶子，不再另加 OTHER；Tone/Formal 等低频风格打 STRUCTURE_OTHER 或 LEXICAL_GAP"
   },
   "scoringNotes": [
     "Top 卡片只从 channel=rule 且 cardPolicy=normal 的叶子所属家族中排序",

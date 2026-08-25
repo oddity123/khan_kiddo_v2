@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 详情装配：{@link ConversationAnalysisServiceImpl#buildHabitScoreResult} 从持久化的
- * {@code ConversationAnalysisItem} 行 + 中文表达组装 topHabit / actionCards / familyDistribution。
+ * {@code ConversationAnalysisItem} 行组装 topHabit / actionCards / familyDistribution。
  */
 class HabitCardDetailAssemblyTest {
 
@@ -39,7 +39,7 @@ class HabitCardDetailAssemblyTest {
                 row(1L, "ARTICLE_A_AN", "a hour", "an hour")
         );
 
-        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, List.of());
+        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows);
 
         assertNotNull(result.topHabit());
         assertEquals("ARTICLE_A_AN", result.topHabit().getPointId());
@@ -54,7 +54,7 @@ class HabitCardDetailAssemblyTest {
                 row(1L, null, "a hour", "an hour")
         );
 
-        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, List.of());
+        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows);
 
         assertNull(result.topHabit());
         assertTrue(result.actionCards().isEmpty());
@@ -63,11 +63,10 @@ class HabitCardDetailAssemblyTest {
 
     @Test
     void noRowsAtAll_skipsScoringEntirely() {
-        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(new ArrayList<>(), List.of());
+        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(new ArrayList<>());
 
         assertNull(result.topHabit());
         assertTrue(result.actionCards().isEmpty());
-        assertTrue(result.familyDistribution().isEmpty());
     }
 
     @Test
@@ -77,44 +76,46 @@ class HabitCardDetailAssemblyTest {
                 row(2L, null, "some odd error", null)
         );
 
-        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, List.of());
+        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows);
 
         // 混合数据仍应参与打分（不因个别行缺 pointId 而整体跳过）。
         assertTrue(result.familyDistribution().stream().mapToInt(d -> d.getCount()).sum() == 2);
     }
 
     @Test
-    void chineseContentExpressionsArePassedThroughToScorer() {
+    void chineseExpressionsDoNotEnterActionCards() {
         List<ConversationAnalysisItem> rows = List.of(
                 row(1L, "ARTICLE_A_AN", "a apple", "an apple"),
                 row(1L, "ARTICLE_A_AN", "a hour", "an hour")
         );
-        // 内容表达（无 focusPhrase）才计入习惯打分；词汇求助不进 Top
-        List<ChineseExpressionDto> chinese = List.of(
+        // 中文表达仍可存在于 summary，但不再传入 scorer；此处仅验证 grammar 决定 Top
+        List<ChineseExpressionDto> ignored = List.of(
                 ChineseExpressionDto.builder()
                         .originalIndex(0)
                         .originalSentence("我觉得立法很重要")
-                        .focusPhrase("")
-                        .suggestion("I think legislation is important.")
+                        .focusPhrase("立法")
+                        .suggestion("legislation")
                         .build(),
                 ChineseExpressionDto.builder()
                         .originalIndex(1)
                         .originalSentence("这个客商很有名")
-                        .focusPhrase("")
-                        .suggestion("This client is well known.")
+                        .focusPhrase("客商")
+                        .suggestion("client")
                         .build(),
                 ChineseExpressionDto.builder()
                         .originalIndex(2)
                         .originalSentence("他喜欢敲碗")
-                        .focusPhrase("")
-                        .suggestion("He likes to tap the bowl.")
+                        .focusPhrase("敲碗")
+                        .suggestion("tap the bowl")
                         .build()
         );
+        assertEquals(3, ignored.size());
 
-        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows, chinese);
+        HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(rows);
 
         assertTrue(result.actionCards().stream()
-                .anyMatch(card -> "CHINESE_CODE_SWITCH".equals(card.getPointId())));
+                .noneMatch(card -> "CHINESE_CODE_SWITCH".equals(card.getPointId())));
+        assertEquals("ARTICLE_A_AN", result.topHabit().getPointId());
     }
 
     @Test
@@ -126,7 +127,6 @@ class HabitCardDetailAssemblyTest {
 
         HabitCardScorer.HabitScoreResult result = service.buildHabitScoreResult(
                 rows,
-                List.of(),
                 List.of(ActionCardDiagnosisDto.builder()
                         .rank(1)
                         .habitKey("FAM_ARTICLE")

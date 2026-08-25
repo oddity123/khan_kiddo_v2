@@ -70,15 +70,28 @@ class UtteranceRouterTest {
     }
 
     @Test
-    void route_englishWithFewChinese_goesToGrammarChannel() {
+    void route_englishWithFewChinese_goesToChineseChannel() {
         UtteranceRouter.RoutedUtterances routed = router.route(List.of(
                 "I want to discuss 这个问题 with my manager.",
                 "I sit on a 楼梯."));
 
+        assertThat(routed.englishSentences()).isEmpty();
+        assertThat(routed.chineseSentences()).hasSize(2);
+        assertThat(routed.chineseSentences().get(0).sentence())
+                .isEqualTo("I want to discuss 这个问题 with my manager.");
+        assertThat(routed.chineseSentences().get(1).sentence()).isEqualTo("I sit on a 楼梯.");
+    }
+
+    @Test
+    void route_pureEnglish_staysInGrammarChannel() {
+        UtteranceRouter.RoutedUtterances routed = router.route(List.of(
+                "I want to discuss this with my manager.",
+                "I sit on a staircase."));
+
         assertThat(routed.chineseSentences()).isEmpty();
         assertThat(routed.englishSentences()).containsExactly(
-                "I want to discuss 这个问题 with my manager.",
-                "I sit on a 楼梯.");
+                "I want to discuss this with my manager.",
+                "I sit on a staircase.");
     }
 
     @Test

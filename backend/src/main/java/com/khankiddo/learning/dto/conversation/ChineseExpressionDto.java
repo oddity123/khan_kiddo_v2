@@ -21,13 +21,12 @@ public class ChineseExpressionDto {
     private String originalSentence;
 
     /**
-     * 词汇求助时抽出的中文目标词/短语；知识卡片正面优先展示。
-     * 内容表达场景可为空，此时正面回退为 {@link #originalSentence}。
+     * 本句最值得学的中文词/短语；知识卡片正面优先展示。
      */
     private String focusPhrase;
 
     /**
-     * 词汇求助：目标词的英文对应；内容表达：整句口语英文改写。
+     * 对准 {@link #focusPhrase} 的自然英文对应（词/短短语，或含该短语的口语改写）。
      */
     private String suggestion;
 }

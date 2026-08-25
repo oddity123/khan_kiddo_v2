@@ -26,8 +26,7 @@ public class AdminKnowledgeServiceImpl implements AdminKnowledgeService {
     private static final Map<PointChannel, String> CHANNEL_LABELS = Map.of(
             PointChannel.RULE, "语法规则",
             PointChannel.FLUENCY, "口语流利度",
-            PointChannel.LEXICAL, "词汇缺口",
-            PointChannel.CHINESE, "中文夹杂"
+            PointChannel.LEXICAL, "词汇缺口"
     );
 
     private final PointDictionary pointDictionary;
@@ -37,7 +36,7 @@ public class AdminKnowledgeServiceImpl implements AdminKnowledgeService {
         SecurityUtils.requireAdmin();
 
         Map<String, Integer> pointCountByChannel = new LinkedHashMap<>();
-        for (PointChannel channel : PointChannel.values()) {
+        for (PointChannel channel : CHANNEL_LABELS.keySet()) {
             pointCountByChannel.put(channel.getJsonValue(), 0);
         }
 
@@ -64,18 +63,21 @@ public class AdminKnowledgeServiceImpl implements AdminKnowledgeService {
         }
 
         Map<PointChannel, int[]> channelStats = new EnumMap<>(PointChannel.class);
-        for (PointChannel channel : PointChannel.values()) {
+        for (PointChannel channel : CHANNEL_LABELS.keySet()) {
             channelStats.put(channel, new int[]{0, 0});
         }
         for (AdminPointDictionaryResponse.FamilyView family : families) {
             PointChannel channel = PointChannel.fromJson(family.getChannel());
             int[] stats = channelStats.get(channel);
+            if (stats == null) {
+                continue;
+            }
             stats[0]++;
             stats[1] += family.getPointCount();
         }
 
         List<AdminPointDictionaryResponse.ChannelSummary> channels = new ArrayList<>();
-        for (PointChannel channel : PointChannel.values()) {
+        for (PointChannel channel : CHANNEL_LABELS.keySet()) {
             int[] stats = channelStats.get(channel);
             channels.add(AdminPointDictionaryResponse.ChannelSummary.builder()
                     .channel(channel.getJsonValue())

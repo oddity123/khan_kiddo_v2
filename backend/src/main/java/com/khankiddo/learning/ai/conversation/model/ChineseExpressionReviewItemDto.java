@@ -15,7 +15,7 @@ public class ChineseExpressionReviewItemDto {
     private int index;
 
     /**
-     * 词汇求助场景：抽出的中文目标词/短语；内容表达场景为空。
+     * 本句最值得学的中文词/短语（应非空）。
      */
     private String focusPhrase;
 

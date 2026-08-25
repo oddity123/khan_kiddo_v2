@@ -57,7 +57,7 @@ class ChineseExpressionReviewClientTest {
                 {
                   "items": [
                     { "index": 1, "focusPhrase": "楼梯", "suggestion": "stair / staircase" },
-                    { "index": 2, "focusPhrase": "", "suggestion": "I think this feature is not very useful." }
+                    { "index": 2, "focusPhrase": "不太好用", "suggestion": "not very useful" }
                   ]
                 }
                 """;
@@ -76,8 +76,8 @@ class ChineseExpressionReviewClientTest {
         assertThat(result.get(0).getFocusPhrase()).isEqualTo("楼梯");
         assertThat(result.get(0).getSuggestion()).isEqualTo("stair / staircase");
         assertThat(result.get(1).getOriginalIndex()).isEqualTo(2);
-        assertThat(result.get(1).getFocusPhrase()).isEmpty();
-        assertThat(result.get(1).getSuggestion()).isEqualTo("I think this feature is not very useful.");
+        assertThat(result.get(1).getFocusPhrase()).isEqualTo("不太好用");
+        assertThat(result.get(1).getSuggestion()).isEqualTo("not very useful");
 
         ArgumentCaptor<ChatRequest> captor = ArgumentCaptor.forClass(ChatRequest.class);
         verify(chatModel).chat(captor.capture());
@@ -85,7 +85,7 @@ class ChineseExpressionReviewClientTest {
     }
 
     @Test
-    void review_dedupesByFocusPhrase_keepsFirst() throws Exception {
+    void review_dedupesByFocusPhrase_keepsFirst_andDropsEmptyFocus() throws Exception {
         when(promptLoader.getSystemPromptChineseExpressionReview()).thenReturn("system");
         when(promptLoader.getChineseExpressionReviewTemplate()).thenReturn("{sentences}");
         when(promptLoader.fillTemplate(any(), any(), any())).thenReturn("user prompt");
@@ -97,7 +97,8 @@ class ChineseExpressionReviewClientTest {
                     { "index": 1, "focusPhrase": "直接主管", "suggestion": "direct supervisor" },
                     { "index": 2, "focusPhrase": "直 接 主 管", "suggestion": "immediate manager" },
                     { "index": 3, "focusPhrase": "", "suggestion": "I came to the office under the scorching sun." },
-                    { "index": 4, "focusPhrase": "纸巾", "suggestion": "tissue" }
+                    { "index": 4, "focusPhrase": "纸巾", "suggestion": "tissue" },
+                    { "index": 5, "focusPhrase": "顶着烈日", "suggestion": "under the scorching sun" }
                   ]
                 }
                 """;
@@ -108,16 +109,16 @@ class ChineseExpressionReviewClientTest {
                 new UtteranceRouter.RoutedChineseSentence(0, "直接主管怎么说"),
                 new UtteranceRouter.RoutedChineseSentence(1, "how to say 直接主管"),
                 new UtteranceRouter.RoutedChineseSentence(2, "我顶着烈日来到了公司"),
-                new UtteranceRouter.RoutedChineseSentence(3, "纸巾怎么说"));
+                new UtteranceRouter.RoutedChineseSentence(3, "纸巾怎么说"),
+                new UtteranceRouter.RoutedChineseSentence(4, "顶着烈日出门"));
 
         List<ChineseExpressionDto> result = client.review(input, null);
 
         assertThat(result).hasSize(3);
         assertThat(result.get(0).getFocusPhrase()).isEqualTo("直接主管");
         assertThat(result.get(0).getSuggestion()).isEqualTo("direct supervisor");
-        assertThat(result.get(1).getFocusPhrase()).isEmpty();
-        assertThat(result.get(1).getSuggestion()).isEqualTo("I came to the office under the scorching sun.");
-        assertThat(result.get(2).getFocusPhrase()).isEqualTo("纸巾");
+        assertThat(result.get(1).getFocusPhrase()).isEqualTo("纸巾");
+        assertThat(result.get(2).getFocusPhrase()).isEqualTo("顶着烈日");
     }
 
     @Test
@@ -135,6 +136,7 @@ class ChineseExpressionReviewClientTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getOriginalSentence()).isEqualTo("什么意思");
+        assertThat(result.get(0).getFocusPhrase()).isEmpty();
         assertThat(result.get(0).getSuggestion()).isEmpty();
     }
 }

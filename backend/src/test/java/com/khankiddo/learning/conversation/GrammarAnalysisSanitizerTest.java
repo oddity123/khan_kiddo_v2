@@ -86,18 +86,18 @@ class GrammarAnalysisSanitizerTest {
     }
 
     @Test
-    void keepsChineseCodeSwitch_whenFragmentInOriginal() {
+    void keepsLexicalGap_whenFragmentInOriginal() {
         GrammarAnalysisResult grammar = result(item(
                 "I sit down on a 楼梯.",
                 "I sat down on the stairs.",
-                error("CHINESE_CODE_SWITCH", "楼梯 → stairs（用中文表达，需替换为英文）")));
+                error("LEXICAL_GAP", "楼梯 → stairs（用中文表达，需替换为英文）")));
 
         GrammarAnalysisResult cleaned = sanitizer.sanitize(grammar);
 
         assertThat(cleaned.getItems()).hasSize(1);
         assertThat(cleaned.getItems().get(0).getErrors()).hasSize(1);
         assertThat(cleaned.getItems().get(0).getErrors().get(0).getPointId())
-                .isEqualTo("CHINESE_CODE_SWITCH");
+                .isEqualTo("LEXICAL_GAP");
     }
 
     @Test

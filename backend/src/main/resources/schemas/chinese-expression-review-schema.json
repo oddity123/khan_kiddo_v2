@@ -12,11 +12,13 @@
           },
           "focusPhrase": {
             "type": "string",
-            "description": "词汇求助时抽出的中文目标词/短语；内容表达场景填空字符串"
+            "minLength": 1,
+            "description": "本句最值得学的中文词/短语（非空）"
           },
           "suggestion": {
             "type": "string",
-            "description": "词汇求助：目标词的简洁英文对应；内容表达：整句口语英文改写"
+            "minLength": 1,
+            "description": "对准 focusPhrase 的自然英文对应"
           }
         },
         "required": [

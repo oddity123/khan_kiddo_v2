@@ -80,8 +80,7 @@ public class ConversationAnalysisPipeline {
                     routed.englishSentences(), selectedModel, analysisId, onProgress);
             grammar = grammarAnalysisSanitizer.sanitize(grammar);
             List<AnalysisItemDto> items = toDisplayItems(grammar);
-            HabitCardScorer.HabitScoreResult habitScoreResult =
-                    buildHabitScoreResult(grammar, chineseExpressions);
+            HabitCardScorer.HabitScoreResult habitScoreResult = buildHabitScoreResult(grammar);
 
             int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());
             SummaryOutcome summaryOutcome = buildEducationalSummary(
@@ -403,11 +402,9 @@ public class ConversationAnalysisPipeline {
         }
     }
 
-    private HabitCardScorer.HabitScoreResult buildHabitScoreResult(
-            GrammarAnalysisResult grammar,
-            List<ChineseExpressionDto> chineseExpressions) {
+    private HabitCardScorer.HabitScoreResult buildHabitScoreResult(GrammarAnalysisResult grammar) {
         if (grammar == null || CollectionUtils.isEmpty(grammar.getItems())) {
-            return habitCardScorer.score(new HabitScoreInput(List.of(), chineseExpressions));
+            return habitCardScorer.score(new HabitScoreInput(List.of()));
         }
         List<HabitScoreInput.ErrorHit> hits = new ArrayList<>();
         long sentenceId = 1;
@@ -426,7 +423,7 @@ public class ConversationAnalysisPipeline {
             }
             sentenceId++;
         }
-        return habitCardScorer.score(new HabitScoreInput(hits, chineseExpressions));
+        return habitCardScorer.score(new HabitScoreInput(hits));
     }
 
     private int countErrors(GrammarAnalysisResult grammar) {

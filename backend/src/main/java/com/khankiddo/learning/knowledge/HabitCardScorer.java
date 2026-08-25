@@ -1,7 +1,6 @@
 package com.khankiddo.learning.knowledge;
 
 import com.khankiddo.learning.dto.conversation.ActionCardDto;
-import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.dto.conversation.FamilyDistributionDto;
 import com.khankiddo.learning.dto.conversation.PracticePromptDto;
 import org.springframework.util.CollectionUtils;
@@ -14,13 +13,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 跨通道打分：语法家族 / 流利度策略 / 词汇缺口 / 中文夹杂竞争 Top1-3「本次最该改的说话习惯」。
+ * 跨通道打分：语法家族 / 流利度策略 / 词汇缺口竞争 Top1-3「本次最该改的说话习惯」。
+ * 中文表达走独立知识卡通道，不参与本打分器。
  * 算法锁定见 docs/achieved/conversation-analysis-action-cards/2026-08-01-design.md §4。
  */
 public class HabitCardScorer {
 
-    private static final String CHINESE_POINT_ID = "CHINESE_CODE_SWITCH";
-    private static final String CHINESE_INJECT_SEVERITY = "BASIC";
     private static final String HEADLINE_PREFIX = "本次最该改：";
     private static final int MIN_HIT_COUNT = 2;
     private static final int MAX_EXAMPLES = 5;
@@ -59,27 +57,6 @@ public class HabitCardScorer {
                         hit.errorPoint(),
                         hit.suggestion(),
                         errorLevel));
-            }
-        }
-
-        List<ChineseExpressionDto> chineseExpressions = input.chineseExpressions();
-        if (!CollectionUtils.isEmpty(chineseExpressions)) {
-            PointDefinition chinesePoint = dictionary.resolveOrFallback(CHINESE_POINT_ID);
-            for (ChineseExpressionDto expression : chineseExpressions) {
-                // 词汇求助（有 focusPhrase）不参与习惯打分 / Top3；仅内容表达计入
-                if (StringUtils.hasText(expression.getFocusPhrase())) {
-                    continue;
-                }
-                String sentenceId = expression.getOriginalIndex() != null
-                        ? String.valueOf(expression.getOriginalIndex())
-                        : null;
-                resolved.add(new ResolvedHit(
-                        chinesePoint,
-                        sentenceId,
-                        expression.getOriginalSentence(),
-                        expression.getOriginalSentence(),
-                        expression.getSuggestion(),
-                        CHINESE_INJECT_SEVERITY));
             }
         }
 
@@ -295,7 +272,7 @@ public class HabitCardScorer {
             return point.actionHintZh();
         }
         return switch (point.channel()) {
-            case FLUENCY, CHINESE -> "按策略把这句再说一遍";
+            case FLUENCY -> "按策略把这句再说一遍";
             case LEXICAL -> "用目标说法重说一句";
             default -> "用纠正句重说一句";
         };

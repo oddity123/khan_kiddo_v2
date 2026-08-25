@@ -21,7 +21,6 @@ app:
 
     profile-weights:
       INCOMPLETE: 3.5
-      CHINESE: 3.2
       COLLOCATION: 3.0
       STRUCTURE: 2.8
       WORD_CHOICE: 2.4
@@ -39,7 +38,6 @@ app:
       naturalness:
         weight-in-overall: 0.40
         profiles:
-          - CHINESE
           - COLLOCATION
           - WORD_CHOICE
           - REDUNDANCY

@@ -15,7 +15,7 @@
     },
     {
       "id": "STRUCTURE_OVERFLOW",
-      "rule": "整句重写但说不清规则、或主要是卡壳/重复 → 不要硬打 STRUCTURE_*，改打 FLUENCY_* / LEXICAL_GAP / CHINESE_CODE_SWITCH"
+      "rule": "整句重写但说不清规则、或主要是卡壳/重复 → 不要硬打 STRUCTURE_*，改打 FLUENCY_* / LEXICAL_GAP"
     },
     {
       "id": "COLLOCATION_VS_PREP_VS_LEXICAL",
@@ -120,15 +120,6 @@
       "fixability": null,
       "otherPointId": "LEXICAL_GAP",
       "impactWeight": 0.95,
-      "habitUnit": "channel"
-    },
-    {
-      "familyId": "FAM_CHINESE",
-      "titleZh": "中文夹杂",
-      "channel": "chinese",
-      "fixability": null,
-      "otherPointId": "CHINESE_CODE_SWITCH",
-      "impactWeight": 1.25,
       "habitUnit": "channel"
     }
   ],
@@ -509,19 +500,6 @@
       "errorLevel": "NATURAL",
       "titleZh": "一次性词汇缺口（想不起词 / 说错词 / 转写噪音）",
       "scoreProfile": "WORD_CHOICE"
-    },
-    {
-      "pointId": "CHINESE_CODE_SWITCH",
-      "familyId": "FAM_CHINESE",
-      "channel": "chinese",
-      "cardKind": "chinese_bypass",
-      "cardPolicy": "channel",
-      "habitUnit": "channel",
-      "impactWeight": 1.25,
-      "fixability": null,
-      "errorLevel": "STYLE",
-      "titleZh": "说着说着插入中文 / 用中文提问词汇",
-      "scoreProfile": "CHINESE"
     },
     {
       "pointId": "ARTICLE_OTHER",
