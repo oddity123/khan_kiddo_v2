@@ -96,8 +96,7 @@ public class GrowthCardMintGateway {
         if (CollectionUtils.isEmpty(rows)) {
             rows = List.of();
         }
-        List<ChineseExpressionDto> chineseExpressions = scoreResultChinese(analysis);
-        return analysisSupport.score(rows, chineseExpressions);
+        return analysisSupport.score(rows);
     }
 
     private List<ChineseExpressionDto> scoreResultChinese(ConversationAnalysis analysis) {

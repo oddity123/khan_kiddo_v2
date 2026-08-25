@@ -120,7 +120,7 @@ public class ChineseExpressionReviewClient {
     }
 
     /**
-     * 同一 {@code focusPhrase}（去空白后）只保留首次出现；无 focusPhrase 的内容表达项不去重。
+     * 同一 {@code focusPhrase}（去空白后）只保留首次出现；无 focusPhrase 的项跳过（不进入结果）。
      */
     static List<ChineseExpressionDto> dedupeByFocusPhrase(List<ChineseExpressionDto> items) {
         if (CollectionUtils.isEmpty(items)) {
@@ -129,11 +129,12 @@ public class ChineseExpressionReviewClient {
         Set<String> seenFocus = new HashSet<>();
         List<ChineseExpressionDto> result = new ArrayList<>();
         for (ChineseExpressionDto item : items) {
-            if (StringUtils.hasText(item.getFocusPhrase())) {
-                String key = normalizeFocusPhrase(item.getFocusPhrase());
-                if (!seenFocus.add(key)) {
-                    continue;
-                }
+            if (!StringUtils.hasText(item.getFocusPhrase())) {
+                continue;
+            }
+            String key = normalizeFocusPhrase(item.getFocusPhrase());
+            if (!seenFocus.add(key)) {
+                continue;
             }
             result.add(item);
         }

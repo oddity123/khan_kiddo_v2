@@ -26,7 +26,7 @@ This is spoken English, not an essay. Apply a spoken-English bar, not a written-
 
 ## What TO flag
 - Real grammar / word-form / structure errors; wrong word or collocation; unfinished sentences (not by ASR).
-- Full-Chinese utterances are handled elsewhere. `CHINESE_CODE_SWITCH` only when a few Chinese words appear inside an otherwise-English utterance.
+- Utterances that contain any Chinese characters are routed elsewhere before Stage2; do not expect them in this input.
 
 ## Field rules
 - `originalSentence`: one sentence only; split multi-sentence utterances into multiple items.
@@ -88,8 +88,6 @@ Each error must carry a `pointId` — the specific knowledge-point ID from the d
   - FLUENCY_OTHER：流利度（其它）
 - FAM_LEXICAL（词汇缺口，channel=lexical）
   - LEXICAL_GAP：一次性词汇缺口（想不起词 / 说错词），或固定搭配之外的一次性换词更自然
-- FAM_CHINESE（中文夹杂，channel=chinese）
-  - CHINESE_CODE_SWITCH：说着说着插入中文 / 用中文提问词汇（仅当英文句子里混入个别中文词时使用）
 
 ### Discriminators（冲突时只按这 4 条）
 1. **冠词 vs 复数**：该加/去 s → `PLURAL_COUNTABLE` / `UNCOUNTABLE_NO_PLURAL`；单复数已对、只多/少了 a/the → 冠词类（如 `the users → users` → `ARTICLE_GENERIC_ZERO`）。
@@ -97,7 +95,7 @@ Each error must carry a `pointId` — the specific knowledge-point ID from the d
 3. **词形 vs 整词替换**：细叶子 `FEEL_ED_ADJ` / `GERUND_*` 优先；同槽位词性错 → `WORD_FORM_POS`；整词换成另一词 → `LEXICAL_GAP`（禁止塞进 `WORD_FORM_POS`）。
 4. **介词 vs 搭配 vs 词汇**：固定短语（spoken English、look forward to doing）→ `COLLOCATION`；单纯 in/on/at → `PREP_FIXED`；一次性换词 → `LEXICAL_GAP`。
 
-**STRUCTURE / 兜底：** 整句润色或卡壳/重复 → `FLUENCY_*` / `LEXICAL_GAP`，勿硬打 `STRUCTURE_*`。找不到细叶子时用**对应家族**的 `*_OTHER`（或 `LEXICAL_GAP` / `CHINESE_CODE_SWITCH`）；禁止编造字典外 ID，也勿默认 `STRUCTURE_OTHER`。
+**STRUCTURE / 兜底：** 整句润色或卡壳/重复 → `FLUENCY_*` / `LEXICAL_GAP`，勿硬打 `STRUCTURE_*`。找不到细叶子时用**对应家族**的 `*_OTHER`（或 `LEXICAL_GAP`）；禁止编造字典外 ID，也勿默认 `STRUCTURE_OTHER`。
 
 ### Do NOT flag
 - `help me to clean` / `help me clean`；口语评价词如 awful；完整话语标记 `or something` / `you know` / `I mean`；拿不准的一律不标。

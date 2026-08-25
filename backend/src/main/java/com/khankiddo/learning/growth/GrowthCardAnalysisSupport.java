@@ -1,6 +1,5 @@
 package com.khankiddo.learning.growth;
 
-import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
 import com.khankiddo.learning.knowledge.PointDictionary;
@@ -14,10 +13,10 @@ import org.springframework.util.StringUtils;
 import java.util.List;
 
 /**
- * 成长卡铸卡用的分析装配：从持久化错误行 + 中文表达组装 {@link HabitCardScorer} 输入。
+ * 成长卡铸卡用的分析装配：从持久化错误行组装 {@link HabitCardScorer} 输入。
  * <p>
  * 逻辑与 {@code ConversationAnalysisServiceImpl#buildHabitScoreResult} 对齐，
- * 刻意放在 growth 包内以免 Gateway 依赖对话分析 Service。
+ * 刻意放在 growth 包内以免 Gateway 依赖对话分析 Service。中文表达不参与习惯打分。
  */
 @Component
 @RequiredArgsConstructor
@@ -26,8 +25,7 @@ public class GrowthCardAnalysisSupport {
     private final HabitCardScorer habitCardScorer;
     private final PointDictionary pointDictionary;
 
-    public HabitCardScorer.HabitScoreResult score(
-            List<ConversationAnalysisItem> rows, List<ChineseExpressionDto> chineseExpressions) {
+    public HabitCardScorer.HabitScoreResult score(List<ConversationAnalysisItem> rows) {
         if (CollectionUtils.isEmpty(rows)
                 || rows.stream().noneMatch(row -> StringUtils.hasText(row.getPointId()))) {
             return new HabitCardScorer.HabitScoreResult(null, List.of(), List.of());
@@ -43,7 +41,7 @@ public class GrowthCardAnalysisSupport {
                         resolveErrorLevel(row.getPointId())))
                 .toList();
 
-        return habitCardScorer.score(new HabitScoreInput(errorHits, chineseExpressions));
+        return habitCardScorer.score(new HabitScoreInput(errorHits));
     }
 
     private String resolveErrorLevel(String pointId) {

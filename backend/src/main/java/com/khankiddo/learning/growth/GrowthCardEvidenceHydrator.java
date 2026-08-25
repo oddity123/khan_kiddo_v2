@@ -101,7 +101,7 @@ public class GrowthCardEvidenceHydrator {
         boolean needHabit = cards.stream().anyMatch(card ->
                 StringUtils.hasText(card.getSourceRef()) && card.getSourceRef().startsWith("habit:"));
         Map<String, ActionCardDto> habitByKey = needHabit
-                ? indexHabits(analysisId, analysis, expressions)
+                ? indexHabits(analysisId)
                 : Map.of();
 
         for (GrowthCard card : cards) {
@@ -119,15 +119,12 @@ public class GrowthCardEvidenceHydrator {
         }
     }
 
-    private Map<String, ActionCardDto> indexHabits(
-            String analysisId,
-            ConversationAnalysis analysis,
-            List<ChineseExpressionDto> expressions) {
+    private Map<String, ActionCardDto> indexHabits(String analysisId) {
         List<ConversationAnalysisItem> rows = itemMapper.findByAnalysisId(analysisId);
         if (CollectionUtils.isEmpty(rows)) {
             rows = List.of();
         }
-        HabitCardScorer.HabitScoreResult scoreResult = analysisSupport.score(rows, expressions);
+        HabitCardScorer.HabitScoreResult scoreResult = analysisSupport.score(rows);
         Map<String, ActionCardDto> byKey = new HashMap<>();
         if (scoreResult.topHabit() != null) {
             putHabit(byKey, scoreResult.topHabit());

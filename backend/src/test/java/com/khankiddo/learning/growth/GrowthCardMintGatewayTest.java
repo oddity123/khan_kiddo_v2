@@ -89,7 +89,7 @@ class GrowthCardMintGatewayTest {
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
         verify(assistant, never()).generate(anyString(), anyString());
-        verify(analysisSupport, never()).score(any(), any());
+        verify(analysisSupport, never()).score(any());
         verify(store, never()).persistNewOrGet(
                 anyLong(), eq("habit"), anyString(), anyString(), anyString(), anyString(), isNull());
         verify(store).persistNewOrGet(
@@ -114,8 +114,7 @@ class GrowthCardMintGatewayTest {
     void mintHabitByKey_shouldGenerateAndPersistForTop2() {
         when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
         ActionCardDto top2 = ActionCardDto.builder().rank(2).habitKey("FAM_ARTICLE").titleZh("冠词").build();
-        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
-        when(analysisSupport.score(any(), any()))
+        when(analysisSupport.score(any()))
                 .thenReturn(new HabitCardScorer.HabitScoreResult(null, List.of(top2), List.of()));
         when(store.findByUserSource(USER_ID, ANALYSIS_ID, "habit", "habit:FAM_ARTICLE"))
                 .thenReturn(Optional.empty());
@@ -142,8 +141,7 @@ class GrowthCardMintGatewayTest {
     void mintHabitByKey_shouldReturnExistingWithoutLlm() {
         when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
         ActionCardDto top2 = ActionCardDto.builder().rank(2).habitKey("FAM_ARTICLE").build();
-        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
-        when(analysisSupport.score(any(), any()))
+        when(analysisSupport.score(any()))
                 .thenReturn(new HabitCardScorer.HabitScoreResult(null, List.of(top2), List.of()));
         GrowthCard existing = GrowthCard.builder().cardId("exists").build();
         when(store.findByUserSource(USER_ID, ANALYSIS_ID, "habit", "habit:FAM_ARTICLE"))
@@ -158,8 +156,7 @@ class GrowthCardMintGatewayTest {
     @Test
     void mintHabitByKey_shouldRejectUnknownHabit() {
         when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
-        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
-        when(analysisSupport.score(any(), any()))
+        when(analysisSupport.score(any()))
                 .thenReturn(new HabitCardScorer.HabitScoreResult(null, List.of(), List.of()));
 
         assertThrows(BadRequestException.class,

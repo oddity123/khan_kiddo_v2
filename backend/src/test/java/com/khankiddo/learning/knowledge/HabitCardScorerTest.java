@@ -1,6 +1,5 @@
 package com.khankiddo.learning.knowledge;
 
-import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -11,75 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class HabitCardScorerTest {
-
-    @Test
-    void chineseCanBeatSparseStyleGrammar() {
-        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
-        HabitCardScorer scorer = new HabitCardScorer(dict);
-
-        List<HabitScoreInput.ErrorHit> hits = List.of(
-                hit("ARTICLE_A_AN", "STYLE", "a apple", "an apple", "I eat a apple."),
-                hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
-        );
-        // 3 条中文内容表达（无 focusPhrase）
-        List<ChineseExpressionDto> chinese = List.of(
-                contentGap("我觉得立法很重要", "I think legislation is important."),
-                contentGap("这个客商很关键", "This client is very important."),
-                contentGap("大家在敲碗", "Everyone is tapping the bowl.")
-        );
-
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
-
-        assertEquals("CHINESE_CODE_SWITCH", result.topHabit().getPointId());
-        assertTrue(result.topHabit().getHeadlineZh().contains("中文") || result.topHabit().getHeadlineZh().contains("切"));
-    }
-
-    @Test
-    void chineseInjectUsesBasicSeverityNotDictionaryStyle() {
-        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
-        HabitCardScorer scorer = new HabitCardScorer(dict);
-
-        // FAM_ARTICLE score = 2 * (BASIC=2 * impactWeight=1.0 * fixability=0.9) = 3.6
-        List<HabitScoreInput.ErrorHit> hits = List.of(
-                hit("ARTICLE_A_AN", "BASIC", "a apple", "an apple", "I eat a apple."),
-                hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
-        );
-        // 2 条中文内容表达：BASIC 应为 2*(2*1.25*1.0)=5.0 > 3.6；若误用字典 STYLE=1 则为 2*(1*1.25*1.0)=2.5 < 3.6
-        List<ChineseExpressionDto> chinese = List.of(
-                contentGap("我觉得立法很重要", "I think legislation is important."),
-                contentGap("这个客商很关键", "This client is very important.")
-        );
-
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
-
-        assertEquals("CHINESE_CODE_SWITCH", result.topHabit().getPointId());
-        assertEquals(5.0, result.topHabit().getScore(), 1e-9);
-        assertEquals("CHINESE", result.topHabit().getHabitKey());
-    }
-
-    @Test
-    void vocabHelpDoesNotEnterTopOrFamilyDistribution() {
-        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
-        HabitCardScorer scorer = new HabitCardScorer(dict);
-
-        List<HabitScoreInput.ErrorHit> hits = List.of(
-                hit("ARTICLE_A_AN", "STYLE", "a apple", "an apple", "I eat a apple."),
-                hit("ARTICLE_A_AN", "BASIC", "a hour", "an hour", "Wait a hour.")
-        );
-        // 多条词汇求助（有 focusPhrase）不得抬高中文通道或抢 Top
-        List<ChineseExpressionDto> chinese = List.of(
-                vocabHelp("立法", "legislation"),
-                vocabHelp("客商", "client"),
-                vocabHelp("敲碗", "tap the bowl")
-        );
-
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, chinese));
-
-        assertTrue(result.actionCards().stream().noneMatch(c -> "CHINESE".equals(c.getHabitKey())));
-        assertTrue(result.familyDistribution().stream()
-                .noneMatch(f -> f.getChannel() == PointChannel.CHINESE || "FAM_CHINESE".equals(f.getFamilyId())));
-        assertEquals("FAM_ARTICLE", result.topHabit().getHabitKey());
-    }
 
     @Test
     void rarePrepositionNeverEntersTop() {
@@ -94,7 +24,7 @@ class HabitCardScorerTest {
         hits.add(hit("FEEL_ED_ADJ", "NATURAL", "excited feeling", "excited", "I am excited feeling."));
         hits.add(hit("FEEL_ED_ADJ", "NATURAL", "bored feeling", "bored", "I felt bored feeling."));
 
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits));
 
         assertTrue(result.actionCards().stream().noneMatch(c -> "PREP_FIXED".equals(c.getPointId())));
         assertTrue(result.actionCards().stream().anyMatch(c -> "FAM_WORD_FORM".equals(c.getHabitKey())));
@@ -111,7 +41,7 @@ class HabitCardScorerTest {
             hits.add(hit("LEXICAL_GAP", "NATURAL", "thing", "specific term", "I need that thing."));
         }
 
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits));
 
         long lexicalCardCount = result.actionCards().stream()
                 .filter(c -> c.getChannel() == PointChannel.LEXICAL)
@@ -130,7 +60,7 @@ class HabitCardScorerTest {
                 hit("FEEL_ED_ADJ", "NATURAL", "excited feeling", "excited", "I am excited feeling.")
         );
 
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits));
 
         assertTrue(result.actionCards().isEmpty());
         assertNull(result.topHabit());
@@ -149,7 +79,7 @@ class HabitCardScorerTest {
         hits.add(hit("GERUND_AS_SUBJECT", "BASIC", "interrupt → interrupting", "interrupting", "interrupt is not fluent"));
         hits.add(hit("FEEL_ED_ADJ", "NATURAL", "exciting → excited", "excited", "I'm so exciting."));
 
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits));
 
         assertEquals("FAM_WORD_FORM", result.topHabit().getHabitKey());
         assertEquals("GERUND_AS_SUBJECT", result.topHabit().getPointId());
@@ -166,7 +96,6 @@ class HabitCardScorerTest {
 
     @Test
     void familyCardUsesFamilyHeadlineEvenWhenTipLeafDominatesScore() {
-        // tip == raw == GERUND（细叶子本身分最高）时，大标题仍用家族名，不把 tip 抬成整场结论
         PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
         HabitCardScorer scorer = new HabitCardScorer(dict);
 
@@ -177,7 +106,7 @@ class HabitCardScorerTest {
                 hit("FEEL_ED_ADJ", "NATURAL", "boring → bored", "bored", "I am so boring.")
         );
 
-        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits, null));
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(hits));
 
         assertEquals("FAM_WORD_FORM", result.topHabit().getHabitKey());
         assertEquals("GERUND_AS_SUBJECT", result.topHabit().getPointId());
@@ -187,29 +116,23 @@ class HabitCardScorerTest {
         assertTrue(result.topHabit().getWhyZh().contains("动词做主语"));
     }
 
+    @Test
+    void emptyHitsProducesEmptyResult() {
+        PointDictionary dict = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        HabitCardScorer scorer = new HabitCardScorer(dict);
+
+        HabitCardScorer.HabitScoreResult result = scorer.score(new HabitScoreInput(List.of()));
+
+        assertNull(result.topHabit());
+        assertTrue(result.actionCards().isEmpty());
+        assertTrue(result.familyDistribution().isEmpty());
+    }
+
     private static int sequence = 0;
 
     private static HabitScoreInput.ErrorHit hit(
             String pointId, String errorLevel, String errorPoint, String suggestion, String originalSentence) {
         return new HabitScoreInput.ErrorHit(
                 pointId, "s" + (sequence++), originalSentence, errorPoint, suggestion, errorLevel);
-    }
-
-    private static ChineseExpressionDto vocabHelp(String focusPhrase, String suggestion) {
-        return ChineseExpressionDto.builder()
-                .originalIndex(sequence++)
-                .originalSentence(focusPhrase + "怎么说")
-                .focusPhrase(focusPhrase)
-                .suggestion(suggestion)
-                .build();
-    }
-
-    private static ChineseExpressionDto contentGap(String originalSentence, String suggestion) {
-        return ChineseExpressionDto.builder()
-                .originalIndex(sequence++)
-                .originalSentence(originalSentence)
-                .focusPhrase("")
-                .suggestion(suggestion)
-                .build();
     }
 }

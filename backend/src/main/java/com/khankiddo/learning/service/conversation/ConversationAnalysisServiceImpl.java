@@ -384,10 +384,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         summaryRoot, items, resolveTotalSentences(summaryRoot, items.size()));
 
         HabitCardScorer.HabitScoreResult habitScoreResult =
-                buildHabitScoreResult(
-                        rows,
-                        enrichedSummary.getChineseExpressions(),
-                        enrichedSummary.getActionCardDiagnoses());
+                buildHabitScoreResult(rows, enrichedSummary.getActionCardDiagnoses());
 
         Optional<GrowthCardDto> habitCard = growthCardReviewService.findHabitCardForAnalysis(analysisId);
         String habitGrowthMintStatus = growthCardReviewService.resolveHabitMintStatus(habitCard.isPresent());
@@ -414,16 +411,14 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     }
 
     /**
-     * 由持久化的错误行（含 {@code pointId}）+ 中文表达组装打分器输入。
+     * 由持久化的错误行（含 {@code pointId}）组装打分器输入。中文表达不参与习惯竞争。
      */
-    HabitCardScorer.HabitScoreResult buildHabitScoreResult(
-            List<ConversationAnalysisItem> rows, List<ChineseExpressionDto> chineseExpressions) {
-        return buildHabitScoreResult(rows, chineseExpressions, List.of());
+    HabitCardScorer.HabitScoreResult buildHabitScoreResult(List<ConversationAnalysisItem> rows) {
+        return buildHabitScoreResult(rows, List.of());
     }
 
     HabitCardScorer.HabitScoreResult buildHabitScoreResult(
             List<ConversationAnalysisItem> rows,
-            List<ChineseExpressionDto> chineseExpressions,
             List<ActionCardDiagnosisDto> diagnoses) {
         boolean hasPointId = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
         if (!hasPointId) {
@@ -441,7 +436,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .toList();
 
         HabitCardScorer.HabitScoreResult result =
-                habitCardScorer.score(new HabitScoreInput(errorHits, chineseExpressions));
+                habitCardScorer.score(new HabitScoreInput(errorHits));
         return mergeActionCardDiagnoses(result, diagnoses);
     }
 
