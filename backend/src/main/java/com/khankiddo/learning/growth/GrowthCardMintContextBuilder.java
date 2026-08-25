@@ -25,9 +25,7 @@ public class GrowthCardMintContextBuilder {
 
         String prompt = promptLoader.getGrowthCardMintTemplate();
         prompt = promptLoader.fillTemplate(prompt, "rankLabel", nullToEmpty(rankLabel));
-        prompt = promptLoader.fillTemplate(prompt, "headline", nullToEmpty(habit.getHeadlineZh()));
         prompt = promptLoader.fillTemplate(prompt, "title", nullToEmpty(habit.getTitleZh()));
-        prompt = promptLoader.fillTemplate(prompt, "why", nullToEmpty(habit.getWhyZh()));
         prompt = promptLoader.fillTemplate(prompt, "evidence", evidence);
         prompt = promptLoader.fillTemplate(prompt, "practiceTarget", practiceTarget);
         return prompt;

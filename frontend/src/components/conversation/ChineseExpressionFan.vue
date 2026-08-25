@@ -415,7 +415,7 @@ async function deleteCurrent() {
   }
 }
 
-async function resetToFirst(resetFn?: DeckExpose['reset']) {
+async function resetToFirst() {
   if (resetting.value || deleting.value) {
     return
   }
@@ -428,9 +428,11 @@ async function resetToFirst(resetFn?: DeckExpose['reset']) {
   feedbackDir.value = null
   feedbackCardId.value = null
   swiping.value = false
+  clearLiftHold()
   try {
-    const reset = resetFn ?? deckRef.value?.reset.bind(deckRef.value)
-    await reset?.({animate: true, delay: 70})
+    // 勿用库 animate reset（依赖 restore；单卡 canRestore 恒 false，完成态常接不上）
+    deckSessionKey.value += 1
+    await nextTick()
   } finally {
     resetting.value = false
     refreshUi()
@@ -674,7 +676,7 @@ onBeforeUnmount(() => {
             </template>
           </template>
 
-          <template #empty="{ reset }">
+          <template #empty>
             <div class="cn-done" role="status">
               <p class="cn-done-title">复习完成</p>
               <p class="cn-done-desc">{{ reviewMode ? '今日成长卡已练完' : '已复习完' }}</p>
@@ -682,7 +684,7 @@ onBeforeUnmount(() => {
                   v-if="!reviewMode"
                   type="button"
                   class="cn-done-btn"
-                  @click="resetToFirst(reset)"
+                  @click="resetToFirst()"
               >
                 再复习一遍
               </button>

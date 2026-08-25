@@ -1,7 +1,5 @@
 任务：根据下列「{rankLabel} 说话习惯」与证据，生成 1 张 habit 知识卡（只输出 front/back）。
-headline: {headline}
 title: {title}
-why: {why}
 evidence（可能含重复原句，请先去重再制卡）:
 {evidence}
 practiceTarget: {practiceTarget}
