@@ -34,6 +34,7 @@ import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
 import PracticePromptDialog from '@/components/conversation/PracticePromptDialog.vue'
+import MessageSquareShareIcon from '@/components/icons/MessageSquareShareIcon.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import GrowthCardEvidenceDialog from '@/components/growth/GrowthCardEvidenceDialog.vue'
 import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
@@ -510,23 +511,6 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
           show-icon
           :closable="false"
       />
-      <section
-          v-if="!isAdminView"
-          class="practice-entry kk-glass kk-glass--panel"
-          aria-label="带着薄弱点再练一轮"
-      >
-        <div class="practice-entry-copy">
-          <h2 class="practice-entry-title">带着薄弱点再练一轮</h2>
-          <p class="practice-entry-desc">把本场优先改的习惯带进下一轮口语练习</p>
-        </div>
-        <el-button
-            type="primary"
-            :disabled="!canGeneratePracticePrompt"
-            @click="openPracticePrompt"
-        >
-          {{ canGeneratePracticePrompt ? '生成复练提示词' : '本场无需专项复练' }}
-        </el-button>
-      </section>
       <div class="detail-grid">
         <main class="detail-main">
           <section
@@ -536,6 +520,18 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
           >
             <header class="habit-ladder-head">
               <h2 class="habit-ladder-title">本场优先改</h2>
+              <el-button
+                  v-if="!isAdminView"
+                  class="practice-prompt-btn"
+                  type="primary"
+                  :disabled="!canGeneratePracticePrompt"
+                  @click="openPracticePrompt"
+              >
+                <el-icon class="practice-prompt-btn__icon">
+                  <MessageSquareShareIcon/>
+                </el-icon>
+                {{ canGeneratePracticePrompt ? '生成复练提示词' : '本场无需专项复练' }}
+              </el-button>
             </header>
 
             <ActionCardsPanel
@@ -812,45 +808,6 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
   margin-bottom: 1rem;
 }
 
-.practice-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.9rem 1.1rem;
-  margin-bottom: 1.25rem;
-  border-top: 2px solid var(--kk-color-accent);
-}
-
-.practice-entry-copy {
-  min-width: 0;
-}
-
-.practice-entry-title {
-  margin: 0;
-  font-family: var(--kk-font-display);
-  font-size: clamp(1.05rem, 2vw, 1.25rem);
-  font-weight: 800;
-  color: var(--kk-color-primary);
-}
-
-.practice-entry-desc {
-  margin: 0.2rem 0 0;
-  font-size: 0.84rem;
-  color: var(--kk-color-text-muted);
-}
-
-@media (max-width: 640px) {
-  .practice-entry {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .practice-entry .el-button {
-    width: 100%;
-  }
-}
-
 .detail-page {
   font-family: var(--kk-font-body);
   color: var(--kk-color-text);
@@ -939,6 +896,10 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
 }
 
 .habit-ladder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
   margin-bottom: 0.85rem;
 }
 
@@ -949,6 +910,27 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
   font-weight: 800;
   line-height: 1.25;
   color: var(--kk-color-primary);
+}
+
+.practice-prompt-btn {
+  flex-shrink: 0;
+  border-radius: var(--kk-radius-md);
+  font-weight: 700;
+}
+
+.practice-prompt-btn__icon {
+  margin-right: 0.35rem;
+  font-size: 1rem;
+}
+
+@media (max-width: 640px) {
+  .habit-ladder-head {
+    flex-wrap: wrap;
+  }
+
+  .practice-prompt-btn {
+    width: 100%;
+  }
 }
 
 .habit-ladder :deep(.ac-panel) {

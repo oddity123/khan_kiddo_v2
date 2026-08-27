@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {CopyDocument, RefreshRight} from '@element-plus/icons-vue'
+import {CircleCheck, CopyDocument, Lock, RefreshRight} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 
@@ -172,35 +172,55 @@ watch(open, async (visible) => {
   >
     <div class="pp-body" v-loading="loading">
       <section v-if="goals.length" class="pp-block" aria-label="本场薄弱点">
-        <h3 class="pp-heading">本场薄弱点</h3>
-        <p class="pp-hint">按排名固定带上，不可取消</p>
+        <div class="pp-heading-row pp-heading-row--start">
+          <h3 class="pp-heading">本场薄弱点</h3>
+          <el-icon
+              class="pp-heading-icon"
+              title="按排名固定带上，不可取消"
+              aria-label="按排名固定带上，不可取消"
+          >
+            <Lock/>
+          </el-icon>
+        </div>
         <ol class="pp-goal-list">
           <li v-for="goal in goals" :key="goal.rank" class="pp-goal">
-            <span class="pp-goal-rank">Top {{ goal.rank }}</span>
-            <div class="pp-goal-body">
-              <strong>{{ goal.title }}</strong>
-              <span v-if="goal.diagnosis" class="pp-goal-meta">{{ goal.diagnosis }}</span>
+            <div class="pp-goal-head">
+              <span class="pp-goal-rank">Top {{ goal.rank }}</span>
+              <strong class="pp-goal-title">{{ goal.title }}</strong>
             </div>
+            <p v-if="goal.diagnosis" class="pp-goal-meta">{{ goal.diagnosis }}</p>
           </li>
         </ol>
       </section>
 
       <section v-if="vocabCandidates.length" class="pp-block" aria-label="附加词汇">
         <div class="pp-heading-row">
-          <h3 class="pp-heading">附加词汇</h3>
+          <div class="pp-heading-row--start">
+            <h3 class="pp-heading">附加词汇</h3>
+            <el-icon
+                class="pp-heading-icon"
+                title="默认不选，最多勾选 3 项作为加练"
+                aria-label="默认不选，最多勾选 3 项作为加练"
+            >
+              <CircleCheck/>
+            </el-icon>
+          </div>
           <span class="pp-count">已选 {{ selectedCount }}/{{ MAX_PRACTICE_VOCAB }}</span>
         </div>
-        <p class="pp-hint">默认不选，最多勾选 3 项作为加练</p>
         <ul class="pp-vocab-list">
-          <li v-for="item in vocabCandidates" :key="item.key">
+          <li v-for="item in vocabCandidates" :key="item.key" class="pp-vocab-item">
             <el-checkbox
                 :model-value="selectedSet.has(item.key)"
                 :disabled="!selectedSet.has(item.key) && selectedCount >= MAX_PRACTICE_VOCAB"
                 @change="(checked: boolean) => toggleVocab(item.key, checked)"
             >
-              <span class="pp-vocab-front">{{ item.front }}</span>
-              <span class="pp-vocab-arrow">→</span>
-              <span class="pp-vocab-back">{{ item.back }}</span>
+              <span class="pp-vocab-label">
+                <span class="pp-vocab-front">{{ item.front }}</span>
+                <span class="pp-vocab-pair">
+                  <span class="pp-vocab-arrow" aria-hidden="true">→</span>
+                  <span class="pp-vocab-back">{{ item.back }}</span>
+                </span>
+              </span>
             </el-checkbox>
           </li>
         </ul>
@@ -215,14 +235,17 @@ watch(open, async (visible) => {
           :closable="false"
       />
 
-      <label class="pp-prompt-label" for="practice-prompt-text">复练提示词</label>
-      <el-input
-          id="practice-prompt-text"
-          v-model="promptText"
-          type="textarea"
-          :autosize="{ minRows: 10, maxRows: 22 }"
-          placeholder="生成后可在此编辑，再复制去 ChatGPT"
-      />
+      <label class="pp-prompt-label" for="practice-prompt-text">提示词预览</label>
+      <div class="pp-prompt-wrap">
+        <el-input
+            id="practice-prompt-text"
+            v-model="promptText"
+            type="textarea"
+            :rows="8"
+            resize="none"
+            placeholder="生成后可在此编辑，再复制去 ChatGPT"
+        />
+      </div>
     </div>
 
     <template #footer>
@@ -264,13 +287,23 @@ watch(open, async (visible) => {
   border-radius: var(--kk-radius-md);
   background: var(--kk-glass-inner-bg);
   border: 1px solid color-mix(in srgb, var(--kk-color-primary) 10%, var(--kk-glass-inner-border));
+  min-width: 0;
+  overflow: hidden;
 }
 
 .pp-heading-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.pp-heading-row--start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.45rem;
 }
 
 .pp-heading {
@@ -281,17 +314,17 @@ watch(open, async (visible) => {
   color: var(--kk-color-primary);
 }
 
-.pp-hint,
-.pp-count,
-.pp-goal-meta {
-  margin: 0.25rem 0 0;
-  font-size: 0.78rem;
+.pp-heading-icon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
   color: var(--kk-color-text-muted);
 }
 
 .pp-count {
   margin: 0;
+  font-size: 0.78rem;
   font-weight: 700;
+  color: var(--kk-color-text-muted);
   white-space: nowrap;
 }
 
@@ -307,13 +340,20 @@ watch(open, async (visible) => {
 
 .pp-goal {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pp-goal-head {
+  display: flex;
+  align-items: center;
   gap: 0.55rem;
+  min-width: 0;
 }
 
 .pp-goal-rank {
   flex-shrink: 0;
-  margin-top: 0.1rem;
   padding: 0.12rem 0.45rem;
   border-radius: var(--kk-radius-pill);
   background: var(--kk-color-primary);
@@ -322,31 +362,89 @@ watch(open, async (visible) => {
   font-weight: 700;
 }
 
-.pp-goal-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+.pp-goal-title {
+  font-size: 0.88rem;
+  color: var(--kk-color-text);
   min-width: 0;
 }
 
-.pp-goal-body strong {
-  font-size: 0.88rem;
-  color: var(--kk-color-text);
+.pp-goal-meta {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--kk-color-text-muted);
+}
+
+.pp-vocab-item {
+  min-width: 0;
+}
+
+.pp-vocab-item :deep(.el-checkbox) {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  height: auto;
+  margin-right: 0;
+  white-space: normal;
+}
+
+.pp-vocab-item :deep(.el-checkbox__input) {
+  flex-shrink: 0;
+  margin-top: 0.18rem;
+}
+
+.pp-vocab-item :deep(.el-checkbox__label) {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.45;
+  padding-left: 0.45rem;
+}
+
+.pp-vocab-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.35rem;
+  min-width: 0;
 }
 
 .pp-vocab-front {
   font-weight: 700;
   color: var(--kk-color-primary);
+  overflow-wrap: anywhere;
+}
+
+.pp-vocab-pair {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pp-vocab-arrow {
-  margin: 0 0.3rem;
+  flex-shrink: 0;
   color: var(--kk-color-text-subtle);
 }
 
 .pp-vocab-back {
   font-family: var(--kk-font-mono);
   font-size: 0.84rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 640px) {
+  .pp-vocab-label {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.2rem;
+  }
+
+  .pp-vocab-pair {
+    display: flex;
+  }
 }
 
 .pp-error {
@@ -359,10 +457,33 @@ watch(open, async (visible) => {
   color: var(--kk-color-primary);
 }
 
+.pp-prompt-wrap {
+  position: relative;
+}
+
+.pp-prompt-wrap::after {
+  content: '';
+  position: absolute;
+  inset-inline: 1px;
+  bottom: 1px;
+  height: 2.8rem;
+  pointer-events: none;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--kk-color-surface-solid) 0%, transparent),
+    var(--kk-color-surface-solid)
+  );
+}
+
 .pp-body :deep(.el-textarea__inner) {
   font-family: var(--kk-font-mono);
   font-size: 0.82rem;
   line-height: 1.55;
+  height: 12rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  resize: none;
 }
 
 .pp-footer {

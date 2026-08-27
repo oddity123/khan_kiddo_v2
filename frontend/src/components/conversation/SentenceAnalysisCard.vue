@@ -174,9 +174,6 @@ function chipLabel(err: AnalysisError): string {
             </el-icon>
             {{ chipLabel(err) }}
           </span>
-          <p v-if="err.type && err.type !== chipLabel(err)" class="error-point-leaf">
-            {{ displayTypeLabel(err.type) }}
-          </p>
           <p class="error-point-text">{{ errorPointText(err) }}</p>
         </div>
       </div>
@@ -461,14 +458,6 @@ function chipLabel(err: AnalysisError): string {
 
 .error-point-tag-icon {
   font-size: 0.75rem;
-}
-
-.error-point-leaf {
-  margin: 0.35rem 0 0;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--kk-color-text-secondary);
 }
 
 .error-point-text {
