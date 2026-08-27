@@ -26,6 +26,10 @@ AI 相关（非显而易见）：
 - 登录/注册、留言反馈、查看历史等**无需 AI Key** 即可跑通（仅需 MySQL）。
 - **对话分析（`/api/conversation/analyze/stream`、`/api/ai/*`）需要 `DOUBAO_API_KEY`**（Stage1 分离硬绑定豆包 Flash）；
   `QWEN_API_KEY` 仅为 Stage2/3 可选模型。未配置 Key 时 `/api/conversation/llm-models` 返回空、分析会失败。
+- **ERRANT 操作批注（可选）**：`ERRANT_ENABLED=true` + `ERRANT_BASE_URL` 时，Stage2 sanitize 后软依赖调用
+  `POST /v1/annotate`，落库 `conversation_analysis.edit_annotations`，前端句子卡按 R/M/U 高亮。默认关闭；
+  服务不可用时分析仍成功，仅无高亮。已有库需执行 DDL 注释中的
+  `ALTER TABLE ... ADD COLUMN edit_annotations ...`。
 
 其它：
 - `backend/pom.xml` 含一个 macOS-only 依赖 `netty-resolver-dns-native-macos`（classifier `osx-aarch_64`），在 Linux 上仅是未使用的产物，不影响构建/运行。
