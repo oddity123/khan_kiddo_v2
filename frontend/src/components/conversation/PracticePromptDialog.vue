@@ -235,17 +235,14 @@ watch(open, async (visible) => {
           :closable="false"
       />
 
-      <label class="pp-prompt-label" for="practice-prompt-text">提示词预览</label>
-      <div class="pp-prompt-wrap">
-        <el-input
-            id="practice-prompt-text"
-            v-model="promptText"
-            type="textarea"
-            :rows="8"
-            resize="none"
-            placeholder="生成后可在此编辑，再复制去 ChatGPT"
-        />
-      </div>
+      <label class="pp-prompt-label" for="practice-prompt-text">复练提示词</label>
+      <el-input
+          id="practice-prompt-text"
+          v-model="promptText"
+          type="textarea"
+          :autosize="{ minRows: 10, maxRows: 22 }"
+          placeholder="生成后可在此编辑，再复制去 ChatGPT"
+      />
     </div>
 
     <template #footer>
@@ -457,33 +454,10 @@ watch(open, async (visible) => {
   color: var(--kk-color-primary);
 }
 
-.pp-prompt-wrap {
-  position: relative;
-}
-
-.pp-prompt-wrap::after {
-  content: '';
-  position: absolute;
-  inset-inline: 1px;
-  bottom: 1px;
-  height: 2.8rem;
-  pointer-events: none;
-  border-radius: 0 0 3px 3px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--kk-color-surface-solid) 0%, transparent),
-    var(--kk-color-surface-solid)
-  );
-}
-
 .pp-body :deep(.el-textarea__inner) {
   font-family: var(--kk-font-mono);
   font-size: 0.82rem;
   line-height: 1.55;
-  height: 12rem;
-  max-height: 12rem;
-  overflow-y: auto;
-  resize: none;
 }
 
 .pp-footer {
