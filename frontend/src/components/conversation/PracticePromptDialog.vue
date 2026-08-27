@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {CopyDocument, RefreshRight} from '@element-plus/icons-vue'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 
 import {generatePracticePrompt} from '@/api/conversationAnalysis'
 import type {PracticePromptGoal, PracticeVocabulary} from '@/types/conversation'
@@ -29,10 +29,37 @@ const lastServerPrompt = ref('')
 const selectedKeys = ref<string[]>([])
 const lastRequestedKeys = ref<string[]>([])
 const copied = ref(false)
+const promptAtBottom = ref(false)
+const promptShellRef = ref<HTMLElement | null>(null)
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
 
 function onResize() {
   viewportWidth.value = window.innerWidth
+}
+
+function resolvePromptTextarea(): HTMLTextAreaElement | null {
+  return promptShellRef.value?.querySelector('textarea') ?? null
+}
+
+function syncPromptScrollFade() {
+  const el = resolvePromptTextarea()
+  if (!el) {
+    promptAtBottom.value = true
+    return
+  }
+  const remaining = el.scrollHeight - el.scrollTop - el.clientHeight
+  promptAtBottom.value = remaining <= 4
+}
+
+function bindPromptTextareaScroll() {
+  const el = resolvePromptTextarea()
+  if (!el || el.dataset.ppFadeBound === '1') {
+    syncPromptScrollFade()
+    return
+  }
+  el.dataset.ppFadeBound = '1'
+  el.addEventListener('scroll', syncPromptScrollFade, {passive: true})
+  syncPromptScrollFade()
 }
 
 onMounted(() => {
@@ -41,6 +68,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
+  const el = resolvePromptTextarea()
+  if (el) {
+    el.removeEventListener('scroll', syncPromptScrollFade)
+  }
   if (copyResetTimer) {
     clearTimeout(copyResetTimer)
   }
@@ -92,6 +123,13 @@ async function requestPrompt() {
     promptText.value = data.prompt ?? ''
     lastServerPrompt.value = promptText.value
     lastRequestedKeys.value = requestedKeys
+    await nextTick()
+    bindPromptTextareaScroll()
+    const el = resolvePromptTextarea()
+    if (el) {
+      el.scrollTop = 0
+    }
+    syncPromptScrollFade()
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '生成复练提示词失败')
   } finally {
@@ -156,6 +194,8 @@ watch(open, async (visible) => {
   }
   resetState()
   await requestPrompt()
+  await nextTick()
+  bindPromptTextareaScroll()
 })
 </script>
 
@@ -216,13 +256,21 @@ watch(open, async (visible) => {
       />
 
       <label class="pp-prompt-label" for="practice-prompt-text">复练提示词</label>
-      <el-input
-          id="practice-prompt-text"
-          v-model="promptText"
-          type="textarea"
-          :autosize="{ minRows: 10, maxRows: 22 }"
-          placeholder="生成后可在此编辑，再复制去 ChatGPT"
-      />
+      <div
+          ref="promptShellRef"
+          class="pp-prompt-shell"
+          :class="{ 'pp-prompt-shell--at-bottom': promptAtBottom }"
+      >
+        <el-input
+            id="practice-prompt-text"
+            v-model="promptText"
+            type="textarea"
+            resize="none"
+            placeholder="生成后可在此编辑，再复制去 ChatGPT"
+            @input="syncPromptScrollFade"
+        />
+        <div class="pp-prompt-fade" aria-hidden="true"/>
+      </div>
     </div>
 
     <template #footer>
@@ -359,10 +407,56 @@ watch(open, async (visible) => {
   color: var(--kk-color-primary);
 }
 
-.pp-body :deep(.el-textarea__inner) {
+.pp-prompt-shell {
+  position: relative;
+  height: 12.5rem;
+  border-radius: var(--kk-radius-md);
+  overflow: hidden;
+}
+
+.pp-prompt-shell :deep(.el-textarea) {
+  height: 100%;
+}
+
+.pp-prompt-shell :deep(.el-textarea__inner) {
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: 100% !important;
+  padding-bottom: 1.6rem;
   font-family: var(--kk-font-mono);
   font-size: 0.82rem;
   line-height: 1.55;
+  resize: none;
+  overflow-y: auto;
+}
+
+.pp-prompt-fade {
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  bottom: 1px;
+  height: 2.8rem;
+  pointer-events: none;
+  border-radius: 0 0 calc(var(--kk-radius-md) - 1px) calc(var(--kk-radius-md) - 1px);
+  background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--kk-color-surface-solid) 0%, transparent) 0%,
+      color-mix(in srgb, var(--kk-color-surface-solid) 55%, transparent) 45%,
+      color-mix(in srgb, var(--kk-color-surface-solid) 88%, transparent) 78%,
+      var(--kk-color-surface-solid) 100%
+  );
+  opacity: 1;
+  transition: opacity 0.18s ease;
+}
+
+.pp-prompt-shell--at-bottom .pp-prompt-fade {
+  opacity: 0;
+}
+
+@media (max-width: 640px) {
+  .pp-prompt-shell {
+    height: 11rem;
+  }
 }
 
 .pp-footer {
