@@ -8,6 +8,8 @@ import type {
   ConversationAnalysisResult,
   ConversationAnalysisSaveRequest,
   LlmModelOption,
+  PracticePromptRequest,
+  PracticePromptResponse,
 } from '@/types/conversation'
 import {PROGRESS_STATUS} from '@/types/conversation'
 
@@ -176,4 +178,8 @@ export function getConversationAnalysisDetail(analysisId: string) {
 
 export function deleteConversationAnalysis(analysisId: string) {
   return http.delete(`/api/conversation/analyses/${analysisId}`)
+}
+
+export function generatePracticePrompt(payload: PracticePromptRequest) {
+  return http.post<PracticePromptResponse>('/api/conversation/practice-prompt', payload)
 }

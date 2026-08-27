@@ -33,6 +33,7 @@ import ActionCardsPanel from '@/components/conversation/ActionCardsPanel.vue'
 import ChineseExpressionFan from '@/components/conversation/ChineseExpressionFan.vue'
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import PerformanceDimensionBars from '@/components/conversation/PerformanceDimensionBars.vue'
+import PracticePromptDialog from '@/components/conversation/PracticePromptDialog.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import GrowthCardEvidenceDialog from '@/components/growth/GrowthCardEvidenceDialog.vue'
 import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
@@ -45,6 +46,11 @@ import type {
 import type {GrowthCard, GrowthCardEvidence} from '@/types/growthCard'
 import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
 import {getErrorMessage} from '@/utils/error'
+import {
+  mapActionCardsToGoals,
+  vocabFromChineseExpressions,
+  vocabFromGrowthCards,
+} from '@/utils/practicePrompt'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,6 +127,28 @@ async function refreshDetailSilent() {
 // actionCards 含 Top1–3；与面板统一展示
 const actionCards = computed(() => detail.value?.actionCards ?? [])
 const hasHabitFocus = computed(() => actionCards.value.length > 0)
+const practiceGoals = computed(() => mapActionCardsToGoals(actionCards.value))
+const practiceVocabCandidates = computed(() => {
+  if (isEphemeral.value) {
+    return vocabFromChineseExpressions(detail.value?.educationalSummary?.chineseExpressions ?? [])
+  }
+  return vocabFromGrowthCards(growthCards.value)
+})
+const canGeneratePracticePrompt = computed(
+    () => practiceGoals.value.length > 0 || practiceVocabCandidates.value.length > 0,
+)
+const practiceDialogOpen = ref(false)
+
+async function openPracticePrompt() {
+  if (isAdminView.value || !canGeneratePracticePrompt.value) {
+    return
+  }
+  if (!isEphemeral.value) {
+    await refreshDetailSilent()
+    await nextTick()
+  }
+  practiceDialogOpen.value = true
+}
 
 async function onHabitCardGenerated() {
   asideTab.value = 'cards'
@@ -482,6 +510,23 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
           show-icon
           :closable="false"
       />
+      <section
+          v-if="!isAdminView"
+          class="practice-entry kk-glass kk-glass--panel"
+          aria-label="带着薄弱点再练一轮"
+      >
+        <div class="practice-entry-copy">
+          <h2 class="practice-entry-title">带着薄弱点再练一轮</h2>
+          <p class="practice-entry-desc">把本场优先改的习惯带进下一轮口语练习</p>
+        </div>
+        <el-button
+            type="primary"
+            :disabled="!canGeneratePracticePrompt"
+            @click="openPracticePrompt"
+        >
+          {{ canGeneratePracticePrompt ? '生成复练提示词' : '本场无需专项复练' }}
+        </el-button>
+      </section>
       <div class="detail-grid">
         <main class="detail-main">
           <section
@@ -752,6 +797,11 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
           :title="growthEvidenceTitle"
           :items="growthEvidenceItems"
       />
+      <PracticePromptDialog
+          v-model="practiceDialogOpen"
+          :goals="practiceGoals"
+          :vocab-candidates="practiceVocabCandidates"
+      />
 
     </template>
   </div>
@@ -760,6 +810,45 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
 <style scoped>
 .detail-error-alert {
   margin-bottom: 1rem;
+}
+
+.practice-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  border-top: 2px solid var(--kk-color-accent);
+}
+
+.practice-entry-copy {
+  min-width: 0;
+}
+
+.practice-entry-title {
+  margin: 0;
+  font-family: var(--kk-font-display);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  font-weight: 800;
+  color: var(--kk-color-primary);
+}
+
+.practice-entry-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.84rem;
+  color: var(--kk-color-text-muted);
+}
+
+@media (max-width: 640px) {
+  .practice-entry {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .practice-entry .el-button {
+    width: 100%;
+  }
 }
 
 .detail-page {

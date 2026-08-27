@@ -235,6 +235,31 @@ export interface PracticePrompt {
     coachingZh?: string
 }
 
+/** 定向复练提示词：提交已选 Top 项与词汇，由后端套模板组装 */
+export interface PracticePromptRequest {
+    goals: PracticePromptGoal[]
+    vocabulary: PracticeVocabulary[]
+}
+
+export interface PracticePromptGoal {
+    rank: number
+    title: string
+    diagnosis?: string
+    coaching?: string
+    originalSentence?: string
+    targetSentence?: string
+}
+
+export interface PracticeVocabulary {
+    front: string
+    back: string
+    originalSentence?: string
+}
+
+export interface PracticePromptResponse {
+    prompt: string
+}
+
 /** 跨通道习惯行动卡（Top 1-3），与后端 ActionCardDto 一致 */
 export interface ActionCard {
     /** 1-based 排名，1 即本场最该改的习惯 */
