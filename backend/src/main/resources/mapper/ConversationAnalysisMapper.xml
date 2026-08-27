@@ -15,6 +15,7 @@
         <result column="llm_model_name" property="llmModelName"/>
         <result column="llm_provider" property="llmProvider"/>
         <result column="point_dictionary_version" property="pointDictionaryVersion"/>
+        <result column="edit_annotations" property="editAnnotations"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -22,10 +23,11 @@
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO conversation_analysis (user_id, analysis_id, conversation_content, status, error_message,
                                            processing_time_ms, educational_summary, llm_model_id, llm_model_name,
-                                           llm_provider, point_dictionary_version, created_at, updated_at)
+                                           llm_provider, point_dictionary_version, edit_annotations, created_at,
+                                           updated_at)
         VALUES (#{userId}, #{analysisId}, #{conversationContent}, #{status}, #{errorMessage}, #{processingTimeMs},
                 #{educationalSummary}, #{llmModelId}, #{llmModelName}, #{llmProvider}, #{pointDictionaryVersion},
-                #{createdAt}, #{updatedAt})
+                #{editAnnotations}, #{createdAt}, #{updatedAt})
     </insert>
 
     <select id="findByAnalysisId" resultMap="ConversationAnalysisResultMap">
@@ -35,6 +37,7 @@
                llm_model_name,
                llm_provider,
                point_dictionary_version,
+               edit_annotations,
                created_at,
                updated_at
         FROM conversation_analysis
@@ -48,6 +51,7 @@
                llm_model_name,
                llm_provider,
                point_dictionary_version,
+               edit_annotations,
                created_at,
                updated_at
         FROM conversation_analysis
@@ -62,6 +66,7 @@
                llm_model_name,
                llm_provider,
                point_dictionary_version,
+               edit_annotations,
                created_at,
                updated_at
         FROM conversation_analysis
@@ -90,7 +95,8 @@
 
     <select id="findByConditions" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
-        educational_summary, llm_model_id, llm_model_name, llm_provider, point_dictionary_version, created_at, updated_at
+        educational_summary, llm_model_id, llm_model_name, llm_provider, point_dictionary_version,
+        edit_annotations, created_at, updated_at
         FROM conversation_analysis
         <where>
             user_id = #{userId}
@@ -138,7 +144,8 @@
     <select id="findAllWithUsername" resultMap="ConversationAnalysisWithUsernameMap">
         SELECT ca.id, ca.user_id, ca.analysis_id, ca.conversation_content, ca.status, ca.error_message,
                ca.processing_time_ms, ca.educational_summary, ca.llm_model_id, ca.llm_model_name,
-               ca.llm_provider, ca.point_dictionary_version, ca.created_at, ca.updated_at, u.username
+               ca.llm_provider, ca.point_dictionary_version, ca.edit_annotations, ca.created_at, ca.updated_at,
+               u.username
         FROM conversation_analysis ca
         INNER JOIN users u ON ca.user_id = u.id
         <where>

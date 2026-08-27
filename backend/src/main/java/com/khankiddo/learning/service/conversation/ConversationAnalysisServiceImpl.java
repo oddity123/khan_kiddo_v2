@@ -21,6 +21,7 @@ import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.ConversationAnalysisWithUsername;
 import com.khankiddo.learning.dto.growth.GrowthCardDto;
+import com.khankiddo.learning.errant.ErrantEditAnnotationsCodec;
 import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
 import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
@@ -57,6 +58,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     private final PointDictionary pointDictionary;
     private final HabitCardScorer habitCardScorer;
     private final GrowthCardReviewService growthCardReviewService;
+    private final ErrantEditAnnotationsCodec errantEditAnnotationsCodec;
     private final PlatformTransactionManager transactionManager;
 
     @Override
@@ -205,6 +207,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 .llmProvider(ConversationAnalysisPersistSupport.truncate(
                         result.getLlmProvider(), ConversationAnalysisPersistSupport.LLM_PROVIDER_MAX))
                 .pointDictionaryVersion(pointDictionary.version())
+                .editAnnotations(errantEditAnnotationsCodec.serializeFromAnalysisResults(result.getAnalysisResults()))
                 .createdAt(analyzedAt)
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -377,6 +380,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         List<ErrorTypeDistributionDto> distribution = List.of();
 
         List<AnalysisItemDto> items = new ArrayList<>(grouped.values());
+        errantEditAnnotationsCodec.mergeIntoItems(items, analysis.getEditAnnotations());
         EducationalSummaryDto summaryRoot = summaryParser.fromJson(analysis.getEducationalSummary());
         EducationalSummaryDto enrichedSummary = summaryParser.hasPersistedScores(summaryRoot)
                 ? summaryRoot

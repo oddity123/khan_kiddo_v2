@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS conversation_analysis
     llm_model_name       VARCHAR(160),
     llm_provider         VARCHAR(60),
     point_dictionary_version VARCHAR(64),
+    edit_annotations     TEXT,
     created_at           TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
     updated_at           TIMESTAMP   DEFAULT CURRENT_TIMESTAMP
 );

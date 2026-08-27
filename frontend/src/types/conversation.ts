@@ -118,6 +118,22 @@ export interface AnalysisItem {
   originalSentence: string
   suggestion?: string
   errors?: AnalysisError[]
+  /** ERRANT 空白分词，与 edits 下标对齐 */
+  originalTokens?: string[]
+  correctedTokens?: string[]
+  /** R/M/U 操作编辑；无批注时不渲染高亮 */
+  edits?: SentenceEdit[]
+}
+
+/** ERRANT 操作编辑（仅操作前缀，不含错误细类） */
+export interface SentenceEdit {
+  op: 'R' | 'M' | 'U'
+  oStart: number
+  oEnd: number
+  oStr?: string
+  cStart: number
+  cEnd: number
+  cStr?: string
 }
 
 export interface AnalysisError {

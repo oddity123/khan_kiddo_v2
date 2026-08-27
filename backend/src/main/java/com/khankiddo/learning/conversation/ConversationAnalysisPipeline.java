@@ -10,6 +10,7 @@ import com.khankiddo.learning.knowledge.HabitScoreInput;
 import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.errant.ErrantEditAnnotationService;
 import com.khankiddo.learning.llm.ChineseExpressionReviewClient;
 import com.khankiddo.learning.llm.EducationalSummaryClient;
 import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
@@ -52,6 +53,7 @@ public class ConversationAnalysisPipeline {
     private final ChineseExpressionReviewClient chineseExpressionReviewClient;
     private final PointDictionary pointDictionary;
     private final HabitCardScorer habitCardScorer;
+    private final ErrantEditAnnotationService errantEditAnnotationService;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -80,6 +82,8 @@ public class ConversationAnalysisPipeline {
                     routed.englishSentences(), selectedModel, analysisId, onProgress);
             grammar = grammarAnalysisSanitizer.sanitize(grammar);
             List<AnalysisItemDto> items = toDisplayItems(grammar);
+            // Stage2 完成后软依赖 ERRANT：仅补 R/M/U 操作编辑，不影响习惯打分
+            errantEditAnnotationService.enrich(items);
             HabitCardScorer.HabitScoreResult habitScoreResult = buildHabitScoreResult(grammar);
 
             int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());

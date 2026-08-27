@@ -29,7 +29,7 @@ class HabitCardDetailAssemblyTest {
         PointDictionary dictionary = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
         HabitCardScorer habitCardScorer = new HabitCardScorer(dictionary);
         service = new ConversationAnalysisServiceImpl(
-                null, null, null, null, null, null, dictionary, habitCardScorer, null, null);
+                null, null, null, null, null, null, dictionary, habitCardScorer, null, null, null);
     }
 
     @Test
