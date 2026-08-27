@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis`
     `llm_model_name`       VARCHAR(160)         DEFAULT NULL COMMENT '厂商侧真实模型 ID（ModelConfig#modelName）',
     `llm_provider`         VARCHAR(60)          DEFAULT NULL COMMENT '模型供应商（ModelConfig#provider）',
     `point_dictionary_version` VARCHAR(64)      DEFAULT NULL COMMENT '分析时知识点字典版本',
+    `edit_annotations`         MEDIUMTEXT               DEFAULT NULL COMMENT '句级 ERRANT 操作批注 JSON（tokens + R/M/U edits）',
     `created_at`           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX `idx_user_id` (`user_id`),
@@ -65,6 +66,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
 
 -- 已存在数据库需手动执行：
 -- ALTER TABLE conversation_analysis ADD COLUMN point_dictionary_version VARCHAR(64) NULL COMMENT '分析时知识点字典版本' AFTER llm_provider;
+-- ALTER TABLE conversation_analysis ADD COLUMN edit_annotations MEDIUMTEXT NULL COMMENT '句级 ERRANT 操作批注 JSON（tokens + R/M/U edits）' AFTER point_dictionary_version;
 -- ALTER TABLE conversation_analysis_item DROP COLUMN problem_types;
 -- ALTER TABLE conversation_analysis_item ADD INDEX idx_point_id (point_id);
 

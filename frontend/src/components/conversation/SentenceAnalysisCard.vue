@@ -18,6 +18,7 @@ import {
 
 import type {AnalysisError, AnalysisItem} from '@/types/conversation'
 import {displayTypeLabel, errorPointText, sortErrors} from '@/utils/analysisDisplay'
+import EditAnnotatedText from '@/components/conversation/EditAnnotatedText.vue'
 
 const props = defineProps<{
   item: AnalysisItem
@@ -111,7 +112,12 @@ function chipLabel(err: AnalysisError): string {
         </span>
         <span class="pane-tag">原句</span>
       </header>
-      <p class="pane-quote">{{ item.originalSentence }}</p>
+      <EditAnnotatedText
+          side="original"
+          :text="item.originalSentence"
+          :tokens="item.originalTokens"
+          :edits="item.edits"
+      />
       <span v-if="!errorCount" class="ok-badge">
         <el-icon class="ok-badge-icon" aria-hidden="true"><CircleCheck/></el-icon>
         表达到位
@@ -125,7 +131,12 @@ function chipLabel(err: AnalysisError): string {
         </span>
         <span class="pane-tag pane-tag--ai">优化表达</span>
       </header>
-      <p class="pane-improved">{{ item.suggestion }}</p>
+      <EditAnnotatedText
+          side="corrected"
+          :text="item.suggestion"
+          :tokens="item.correctedTokens"
+          :edits="item.edits"
+      />
     </section>
 
     <div v-if="errorCount" class="chip-row">
@@ -291,6 +302,16 @@ function chipLabel(err: AnalysisError): string {
   font-family: var(--kk-font-mono);
   font-size: 0.9rem;
   line-height: 1.65;
+  color: var(--kk-color-link);
+  font-weight: 500;
+}
+
+.sentence-pane--before :deep(.edit-text) {
+  color: var(--kk-color-text-muted);
+  font-style: italic;
+}
+
+.sentence-pane--after :deep(.edit-text) {
   color: var(--kk-color-link);
   font-weight: 500;
 }

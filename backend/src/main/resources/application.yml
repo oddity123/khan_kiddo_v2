@@ -84,6 +84,12 @@ app:
     guest-free-analyze-limit: 3
     guest-cookie-name: kk_guest_id
     guest-cookie-max-age-days: 365
+  # ERRANT 操作批注（Stage2 后软依赖；默认关闭）
+  errant:
+    enabled: ${ERRANT_ENABLED:false}
+    base-url: ${ERRANT_BASE_URL:http://127.0.0.1:8000}
+    connect-timeout: ${ERRANT_CONNECT_TIMEOUT:2s}
+    read-timeout: ${ERRANT_READ_TIMEOUT:10s}
   # 嵌入与对话分析模型目录解耦：有 QWEN_API_KEY + QDRANT_HOST 即启用 RAG
   rag:
     embedding-base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
