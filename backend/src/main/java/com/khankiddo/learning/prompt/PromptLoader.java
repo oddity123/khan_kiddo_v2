@@ -55,6 +55,10 @@ public class PromptLoader {
         return readPrompt("growth-card-mint-prompt-template.txt");
     }
 
+    public String getPracticePromptTemplate() {
+        return readPrompt("practice-prompt-template.txt");
+    }
+
     public String fillTemplate(String template, String placeholder, String value) {
         return template.replace("{" + placeholder + "}", value);
     }

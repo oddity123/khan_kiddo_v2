@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/conversation/llm-models").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/conversation/guest-quota").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/conversation/analyze/stream").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/conversation/practice-prompt").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated())

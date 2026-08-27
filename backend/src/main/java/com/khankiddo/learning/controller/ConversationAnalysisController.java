@@ -5,6 +5,7 @@ import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisService;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisStreamService;
+import com.khankiddo.learning.service.conversation.PracticePromptService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -24,6 +25,7 @@ public class ConversationAnalysisController {
     private final ConversationAnalysisStreamService conversationAnalysisStreamService;
     private final LlmModelCatalog llmModelCatalog;
     private final GuestAnalysisQuotaService guestAnalysisQuotaService;
+    private final PracticePromptService practicePromptService;
 
     @GetMapping("/llm-models")
     public List<LlmModelOptionDto> listLlmModels() {
@@ -46,6 +48,11 @@ public class ConversationAnalysisController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
         return conversationAnalysisStreamService.analyzeStream(request, httpRequest, httpResponse);
+    }
+
+    @PostMapping("/practice-prompt")
+    public PracticePromptResponse practicePrompt(@Valid @RequestBody PracticePromptRequest request) {
+        return practicePromptService.assemble(request);
     }
 
     @PostMapping("/analyses")
