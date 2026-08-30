@@ -5,6 +5,8 @@ import type {SentenceEdit} from '@/types/conversation'
 import {
   buildCorrectedSegments,
   buildOriginalSegments,
+  editOffsetsValidForSide,
+  normalizeSentenceEdits,
   type TextSegment,
 } from '@/utils/editAnnotation'
 
@@ -16,23 +18,16 @@ const props = defineProps<{
 }>()
 
 const segments = computed<TextSegment[] | null>(() => {
-  const edits = props.edits
+  const edits = normalizeSentenceEdits(props.edits)
   const tokens = props.tokens
-  if (!edits?.length || !tokens?.length) {
+  if (!edits.length || !tokens?.length) {
+    return null
+  }
+  if (!editOffsetsValidForSide(props.side, edits, tokens)) {
     return null
   }
   if (props.side === 'original') {
-    for (const e of edits) {
-      if (e.oStart < 0 || e.oEnd < e.oStart || e.oEnd > tokens.length) {
-        return null
-      }
-    }
     return buildOriginalSegments(tokens, edits)
-  }
-  for (const e of edits) {
-    if (e.cStart < 0 || e.cEnd < e.cStart || e.cEnd > tokens.length) {
-      return null
-    }
   }
   return buildCorrectedSegments(tokens, edits)
 })
@@ -49,28 +44,12 @@ function opTitle(op?: SentenceEdit['op']): string | undefined {
   }
   return undefined
 }
-
-function needsSpaceBefore(list: TextSegment[], index: number): boolean {
-  if (index <= 0) {
-    return false
-  }
-  const prev = list[index - 1]
-  const cur = list[index]
-  if (!prev || !cur) {
-    return false
-  }
-  if (prev.kind === 'gap' || cur.kind === 'gap') {
-    return false
-  }
-  return true
-}
 </script>
 
 <template>
   <p v-if="!segments" class="edit-text">{{ text }}</p>
   <p v-else class="edit-text" aria-label="带操作标记的句子">
     <template v-for="(seg, i) in segments" :key="i">
-      <span v-if="needsSpaceBefore(segments, i)"> </span>
       <span
           v-if="seg.kind === 'gap'"
           class="tok tok--gap"

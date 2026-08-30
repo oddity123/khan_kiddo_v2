@@ -1,5 +1,6 @@
 package com.khankiddo.learning.errant;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.dto.conversation.AnalysisItemDto;
 import com.khankiddo.learning.dto.conversation.SentenceEditDto;
@@ -74,5 +75,41 @@ class ErrantSupportTest {
         assertEquals(List.of("This", "are", "a", "test."), reloaded.getOriginalTokens());
         assertEquals(1, reloaded.getEdits().size());
         assertEquals("R", reloaded.getEdits().getFirst().getOp());
+        assertEquals(1, reloaded.getEdits().getFirst().getOStart());
+    }
+
+    @Test
+    void jacksonWritesCamelCaseOffsetFieldsNotLowercaseOstart() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        SentenceEditDto edit = SentenceEditDto.builder()
+                .op("M").oStart(2).oEnd(2).oStr("").cStart(2).cEnd(4).cStr("we are").build();
+
+        String json = mapper.writeValueAsString(edit);
+        JsonNode node = mapper.readTree(json);
+
+        assertTrue(node.has("oStart"), () -> "expected oStart in " + json);
+        assertFalse(node.has("ostart"), () -> "legacy ostart must not be serialized: " + json);
+        assertTrue(node.has("oEnd"));
+        assertTrue(node.has("cStart"));
+        assertTrue(node.has("cEnd"));
+        assertEquals(2, node.get("oStart").asInt());
+        assertEquals(4, node.get("cEnd").asInt());
+    }
+
+    @Test
+    void jacksonReadsLegacyLowercaseOstartFromStoredJson() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        String legacy = """
+                {"op":"M","ostart":2,"oend":2,"ostr":"","cstart":2,"cend":4,"cstr":"we are"}
+                """;
+
+        SentenceEditDto edit = mapper.readValue(legacy, SentenceEditDto.class);
+
+        assertEquals("M", edit.getOp());
+        assertEquals(2, edit.getOStart());
+        assertEquals(2, edit.getOEnd());
+        assertEquals(2, edit.getCStart());
+        assertEquals(4, edit.getCEnd());
+        assertEquals("we are", edit.getCStr());
     }
 }
