@@ -7,7 +7,6 @@
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(ellipse 70% 55% at 85% 0%, rgba(184, 148, 31, 0.08) 0%, transparent 50%),
     radial-gradient(ellipse 60% 50% at 5% 100%, rgba(11, 26, 125, 0.07) 0%, transparent 45%),
     linear-gradient(168deg, var(--kk-color-bg-base) 0%, var(--kk-color-bg-mid) 45%, var(--kk-color-bg-deep) 100%);
 }
@@ -234,5 +233,51 @@
 @media (prefers-reduced-motion: reduce) {
   .kk-btn-blue {
     transition: none;
+  }
+}
+
+/**
+ * 对话框统一样式：右上角关闭按钮做成精致的圆形微交互圈
+ */
+.el-dialog__headerbtn {
+  top: 0.85rem !important;
+  right: 0.95rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: var(--kk-radius-pill) !important;
+  background: var(--kk-glass-inner-bg) !important;
+  border: 1px solid var(--kk-glass-inner-border) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--kk-color-text-muted) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  transition: all 0.2s ease !important;
+}
+
+.el-dialog__headerbtn .el-dialog__close {
+  font-size: 1.05rem !important;
+  color: var(--kk-color-text-muted) !important;
+  transition: transform 0.2s ease, color 0.2s ease !important;
+}
+
+.el-dialog__headerbtn:hover {
+  background: var(--kk-glass-hover-bg) !important;
+  border-color: var(--kk-color-primary) !important;
+  box-shadow: 0 2px 8px rgba(11, 26, 125, 0.12) !important;
+}
+
+.el-dialog__headerbtn:hover .el-dialog__close {
+  color: var(--kk-color-primary) !important;
+  transform: rotate(90deg) scale(1.08) !important;
+}
+
+@media (max-width: 640px) {
+  .el-dialog__headerbtn {
+    top: 0.65rem !important;
+    right: 0.75rem !important;
+    width: 1.85rem !important;
+    height: 1.85rem !important;
   }
 }

@@ -681,13 +681,7 @@ onUnmounted(() => {
 }
 
 .hero-glow {
-  position: absolute;
-  top: -20%;
-  right: 0;
-  width: 48%;
-  height: 90%;
-  background: radial-gradient(circle, rgba(184, 148, 31, 0.1) 0%, transparent 70%);
-  pointer-events: none;
+  display: none;
 }
 
 .hero-grid {

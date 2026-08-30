@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {CircleCheck, CopyDocument, Lock, RefreshRight} from '@element-plus/icons-vue'
-import {ElMessage, ElMessageBox} from 'element-plus'
+import {ElMessage} from 'element-plus'
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 
 import {generatePracticePrompt} from '@/api/conversationAnalysis'
@@ -23,11 +23,10 @@ const props = withDefaults(
 
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 const loading = ref(false)
+const copying = ref(false)
 const errorMessage = ref('')
 const promptText = ref('')
-const lastServerPrompt = ref('')
 const selectedKeys = ref<string[]>([])
-const lastRequestedKeys = ref<string[]>([])
 const copied = ref(false)
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -50,14 +49,6 @@ const fullscreen = computed(() => viewportWidth.value <= 640)
 const dialogWidth = computed(() => (fullscreen.value ? '100%' : 'min(720px, 96vw)'))
 const selectedCount = computed(() => selectedKeys.value.length)
 const selectedSet = computed(() => new Set(selectedKeys.value))
-const selectionDirty = computed(() => {
-  if (selectedKeys.value.length !== lastRequestedKeys.value.length) {
-    return true
-  }
-  return selectedKeys.value.some((key, index) => key !== lastRequestedKeys.value[index])
-})
-const promptEdited = computed(() => promptText.value !== lastServerPrompt.value)
-const canUpdate = computed(() => selectionDirty.value && !loading.value)
 
 function selectedVocabulary(): PracticeVocabulary[] {
   const byKey = new Map(props.vocabCandidates.map((item) => [item.key, item]))
@@ -73,9 +64,7 @@ function selectedVocabulary(): PracticeVocabulary[] {
 
 function resetState() {
   selectedKeys.value = []
-  lastRequestedKeys.value = []
   promptText.value = ''
-  lastServerPrompt.value = ''
   errorMessage.value = ''
   copied.value = false
 }
@@ -83,15 +72,12 @@ function resetState() {
 async function requestPrompt() {
   loading.value = true
   errorMessage.value = ''
-  const requestedKeys = [...selectedKeys.value]
   try {
     const {data} = await generatePracticePrompt({
       goals: props.goals,
       vocabulary: selectedVocabulary(),
     })
     promptText.value = data.prompt ?? ''
-    lastServerPrompt.value = promptText.value
-    lastRequestedKeys.value = requestedKeys
   } catch (error) {
     errorMessage.value = getErrorMessage(error, '生成复练提示词失败')
   } finally {
@@ -105,48 +91,42 @@ function toggleVocab(key: string, checked: boolean) {
       return
     }
     selectedKeys.value = [...selectedKeys.value, key]
-    return
+  } else {
+    selectedKeys.value = selectedKeys.value.filter((item) => item !== key)
   }
-  selectedKeys.value = selectedKeys.value.filter((item) => item !== key)
-}
-
-async function onUpdateSelection() {
-  if (promptEdited.value) {
-    try {
-      await ElMessageBox.confirm(
-          '按所选卡片更新会覆盖文本框中的手动修改，确定继续？',
-          '覆盖确认',
-          {
-            type: 'warning',
-            confirmButtonText: '覆盖并更新',
-            cancelButtonText: '取消',
-          },
-      )
-    } catch {
-      return
-    }
-  }
-  await requestPrompt()
+  requestPrompt()
 }
 
 async function copyPrompt() {
-  const text = promptText.value
-  if (!text) {
-    ElMessage.warning('还没有可复制的提示词')
-    return
-  }
+  copying.value = true
+  errorMessage.value = ''
   try {
+    const {data} = await generatePracticePrompt({
+      goals: props.goals,
+      vocabulary: selectedVocabulary(),
+    })
+    const text = data.prompt ?? ''
+    promptText.value = text
+
+    if (!text) {
+      ElMessage.warning('生成的提示词为空')
+      return
+    }
+
     await navigator.clipboard.writeText(text)
     copied.value = true
-    ElMessage.success('提示词已复制')
+    ElMessage.success('提示词已复制到剪贴板')
     if (copyResetTimer) {
       clearTimeout(copyResetTimer)
     }
     copyResetTimer = setTimeout(() => {
       copied.value = false
     }, 2000)
-  } catch {
-    ElMessage.error('复制失败，请稍后重试')
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '生成复练提示词失败')
+    ElMessage.error(errorMessage.value)
+  } finally {
+    copying.value = false
   }
 }
 
@@ -168,7 +148,7 @@ watch(open, async (visible) => {
       append-to-body
       align-center
       :fullscreen="fullscreen"
-      :close-on-click-modal="!loading"
+      :close-on-click-modal="!loading && !copying"
   >
     <div class="pp-body" v-loading="loading">
       <section v-if="goals.length" class="pp-block" aria-label="本场薄弱点">
@@ -235,39 +215,42 @@ watch(open, async (visible) => {
           :closable="false"
       />
 
-      <label class="pp-prompt-label" for="practice-prompt-text">复练提示词</label>
-      <el-input
-          id="practice-prompt-text"
-          v-model="promptText"
-          type="textarea"
-          :autosize="{ minRows: 10, maxRows: 22 }"
-          placeholder="生成后可在此编辑，再复制去 ChatGPT"
-      />
-    </div>
+      <div class="pp-prompt-section">
+        <label class="pp-prompt-label" for="practice-prompt-text">提示词预览</label>
+        <el-input
+            id="practice-prompt-text"
+            v-model="promptText"
+            type="textarea"
+            :autosize="true"
+            resize="none"
+            placeholder="生成后可在此预览，点击复制即可带入 ChatGPT"
+        />
+      </div>
 
-    <template #footer>
-      <div class="pp-footer">
+      <!-- 悬浮在弹窗底部、固定于可视区域上方的操作栏 -->
+      <div class="pp-floating-footer">
         <el-button
             v-if="errorMessage"
+            class="pp-btn-glass"
+            size="large"
             :icon="RefreshRight"
-            :disabled="loading"
+            :disabled="loading || copying"
             @click="requestPrompt"
         >
           重新生成
         </el-button>
-        <el-button :disabled="!canUpdate" @click="onUpdateSelection">
-          按所选卡片更新
-        </el-button>
         <el-button
+            class="pp-btn-copy"
             type="primary"
+            size="large"
             :icon="CopyDocument"
-            :disabled="!promptText || loading"
+            :loading="copying || loading"
             @click="copyPrompt"
         >
           {{ copied ? '已复制' : '复制提示词' }}
         </el-button>
       </div>
-    </template>
+    </div>
   </el-dialog>
 </template>
 
@@ -276,7 +259,7 @@ watch(open, async (visible) => {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
-  min-height: 12rem;
+  min-height: 8rem;
 }
 
 .pp-block {
@@ -448,6 +431,12 @@ watch(open, async (visible) => {
   margin: 0;
 }
 
+.pp-prompt-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .pp-prompt-label {
   font-size: 0.82rem;
   font-weight: 700;
@@ -458,33 +447,110 @@ watch(open, async (visible) => {
   font-family: var(--kk-font-mono);
   font-size: 0.82rem;
   line-height: 1.55;
+  border-radius: var(--kk-radius-md);
+  padding: 0.75rem 0.85rem;
+  background: var(--kk-glass-inner-bg);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 10%, var(--kk-glass-inner-border));
+  color: var(--kk-color-text);
+  overflow: hidden;
+  resize: none;
+  box-shadow: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.pp-footer {
+.pp-body :deep(.el-textarea__inner:focus) {
+  background: var(--kk-color-surface-solid);
+  border-color: var(--kk-color-primary);
+  outline: none;
+}
+
+/* 浮动在弹窗底部的操作栏，固定位置不随内容滚动，底部留出空间 */
+.pp-floating-footer {
+  position: absolute;
+  left: 1.15rem;
+  right: 1.15rem;
+  bottom: 1.15rem;
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.65rem;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.pp-floating-footer .el-button {
+  pointer-events: auto;
+}
+
+.pp-btn-glass {
+  border-radius: var(--kk-radius-pill);
+  background: var(--kk-glass-bg);
+  border: 1px solid var(--kk-glass-border);
+  color: var(--kk-color-primary);
+  font-weight: 600;
+  box-shadow: var(--kk-shadow-card);
+  backdrop-filter: blur(var(--kk-glass-blur));
+  -webkit-backdrop-filter: blur(var(--kk-glass-blur));
+  transition: all 0.2s ease;
+  height: 2.75rem;
+  padding: 0 1.25rem;
+  font-size: 0.92rem;
+}
+
+.pp-btn-glass:hover:not(:disabled) {
+  background: var(--kk-glass-hover-bg);
+  border-color: var(--kk-color-primary);
+}
+
+.pp-btn-copy {
+  border-radius: var(--kk-radius-pill);
+  font-weight: 700;
+  box-shadow: var(--kk-shadow-btn);
+  transition: all 0.2s ease;
+  height: 2.75rem;
+  padding: 0 1.5rem;
+  font-size: 0.95rem;
+}
+
+.pp-btn-copy:hover:not(:disabled) {
+  box-shadow: var(--kk-shadow-btn-hover);
 }
 
 @media (max-width: 640px) {
-  .pp-footer {
+  .pp-floating-footer {
+    left: 0.85rem;
+    right: 0.85rem;
+    bottom: max(0.95rem, env(safe-area-inset-bottom, 0px));
     justify-content: stretch;
   }
 
-  .pp-footer .el-button {
-    flex: 1 1 auto;
+  .pp-floating-footer .el-button {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-left: 0;
+    height: 2.85rem;
+    font-size: 0.95rem;
   }
 }
 </style>
 
 <style>
 .practice-prompt-dialog.el-dialog {
+  position: relative;
   border-radius: var(--kk-radius-lg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  background: var(--kk-glass-panel-bg);
+  border: 1px solid var(--kk-glass-panel-border);
+  box-shadow: var(--kk-glass-panel-shadow);
+  backdrop-filter: blur(var(--kk-glass-blur));
+  -webkit-backdrop-filter: blur(var(--kk-glass-blur));
 }
 
 .practice-prompt-dialog .el-dialog__header {
+  flex-shrink: 0;
   padding: 1rem 1.15rem 0.65rem;
   margin-right: 0;
 }
@@ -497,27 +563,37 @@ watch(open, async (visible) => {
 }
 
 .practice-prompt-dialog .el-dialog__body {
-  padding: 0.35rem 1.15rem 1rem;
-  max-height: min(72vh, 40rem);
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.35rem 1.15rem 4.5rem;
+  max-height: min(76vh, 42rem);
   overflow-y: auto;
-}
-
-.practice-prompt-dialog .el-dialog__footer {
-  padding: 0.7rem 1.15rem 1rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 640px) {
   .practice-prompt-dialog.el-dialog {
     border-radius: 0;
+    margin: 0;
+    height: 100%;
+    max-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .practice-prompt-dialog .el-dialog__header {
+    flex-shrink: 0;
     padding: 0.85rem 1rem 0.5rem;
   }
 
   .practice-prompt-dialog .el-dialog__body {
-    padding: 0.25rem 0.85rem 0.85rem;
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.25rem 0.85rem max(4.75rem, calc(3.8rem + env(safe-area-inset-bottom, 0px)));
   }
 }
 </style>
