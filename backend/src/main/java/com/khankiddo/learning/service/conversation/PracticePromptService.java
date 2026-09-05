@@ -117,17 +117,19 @@ public class PracticePromptService {
             return "";
         }
         StringBuilder block = new StringBuilder();
-        block.append("【本场薄弱点】按编号优先级触发，完成后再自然带出下一项。");
+        block.append("## Weak points\n");
+        block.append("Go in numbered order. Finish one before the next.");
         for (PracticePromptRequest.Goal goal : goals) {
-            block.append("\n\n").append(goal.getRank()).append(". ").append(goal.getTitle());
-            appendLabeledLine(block, "诊断", goal.getDiagnosis());
-            appendLabeledLine(block, "教练提示", goal.getCoaching());
+            block.append("\n\n### ").append(goal.getRank()).append(". ").append(goal.getTitle());
+            appendMarkdownItem(block, "Last time", goal.getDiagnosis());
+            appendMarkdownItem(block, "Cue", goal.getCoaching());
             if (StringUtils.hasText(goal.getOriginalSentence())
                     && StringUtils.hasText(goal.getTargetSentence())) {
-                block.append("\n本场证据：")
+                block.append("\n- Evidence: `")
                         .append(goal.getOriginalSentence())
-                        .append(" → ")
-                        .append(goal.getTargetSentence());
+                        .append("` → `")
+                        .append(goal.getTargetSentence())
+                        .append('`');
             }
         }
         return block.toString();
@@ -138,24 +140,27 @@ public class PracticePromptService {
             return "";
         }
         StringBuilder block = new StringBuilder();
-        block.append("【附加词汇】这是加练内容，不要与薄弱点平级；在情景中制造使用机会，但不要提前说出答案。");
+        block.append("## Extra vocabulary\n");
+        block.append("Add-ons only. Recap after weak points.");
         for (PracticePromptRequest.Vocabulary item : vocabulary) {
-            block.append("\n- ")
+            block.append("\n- **")
                     .append(item.getFront())
-                    .append(" → ")
+                    .append("** → ")
                     .append(item.getBack());
             if (StringUtils.hasText(item.getOriginalSentence())) {
-                block.append("\n  原句：").append(item.getOriginalSentence());
+                block.append("\n  - Last said: `")
+                        .append(item.getOriginalSentence())
+                        .append('`');
             }
         }
         return block.toString();
     }
 
-    private static void appendLabeledLine(StringBuilder block, String label, String value) {
+    private static void appendMarkdownItem(StringBuilder block, String label, String value) {
         if (!StringUtils.hasText(value)) {
             return;
         }
-        block.append('\n').append(label).append('：').append(value);
+        block.append("\n- ").append(label).append(": ").append(value);
     }
 
     private static String trimToNull(String value) {

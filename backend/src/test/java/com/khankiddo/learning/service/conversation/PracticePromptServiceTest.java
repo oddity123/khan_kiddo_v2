@@ -32,13 +32,13 @@ class PracticePromptServiceTest {
 
         String prompt = service.assemble(request).getPrompt();
 
-        assertThat(prompt).contains("你是我的英语口语陪练");
-        assertThat(prompt.indexOf("1. 过去时")).isLessThan(prompt.indexOf("2. 冠词"));
-        assertThat(prompt.indexOf("2. 冠词")).isLessThan(prompt.indexOf("3. 第三人称单数"));
-        assertThat(prompt).contains("诊断：用了现在时");
-        assertThat(prompt).contains("教练提示：先定时间");
-        assertThat(prompt).contains("Yesterday I go. → Yesterday I went.");
-        assertThat(prompt).doesNotContain("【附加词汇】");
+        assertThat(prompt).contains("Spoken English Warm-up Coach");
+        assertThat(prompt.indexOf("### 1. 过去时")).isLessThan(prompt.indexOf("### 2. 冠词"));
+        assertThat(prompt.indexOf("### 2. 冠词")).isLessThan(prompt.indexOf("### 3. 第三人称单数"));
+        assertThat(prompt).contains("- Last time: 用了现在时");
+        assertThat(prompt).contains("- Cue: 先定时间");
+        assertThat(prompt).contains("- Evidence: `Yesterday I go.` → `Yesterday I went.`");
+        assertThat(prompt).doesNotContain("## Extra vocabulary");
         assertThat(prompt).doesNotContain("pointId");
         assertThat(prompt).doesNotContain("habitKey");
         assertThat(prompt).doesNotContain("null");
@@ -49,14 +49,14 @@ class PracticePromptServiceTest {
         String two = service.assemble(PracticePromptRequest.builder()
                 .goals(List.of(goal(2, "冠词"), goal(1, "过去时")))
                 .build()).getPrompt();
-        String twoGoals = two.substring(two.indexOf("【本场薄弱点】"), two.indexOf("训练规则"));
-        assertThat(twoGoals).contains("1. 过去时").contains("2. 冠词").doesNotContain("3.");
+        String twoGoals = two.substring(two.indexOf("## Weak points"));
+        assertThat(twoGoals).contains("### 1. 过去时").contains("### 2. 冠词").doesNotContain("### 3.");
 
         String one = service.assemble(PracticePromptRequest.builder()
                 .goals(List.of(goal(1, "过去时")))
                 .build()).getPrompt();
-        String oneGoals = one.substring(one.indexOf("【本场薄弱点】"), one.indexOf("训练规则"));
-        assertThat(oneGoals).contains("1. 过去时").doesNotContain("2.");
+        String oneGoals = one.substring(one.indexOf("## Weak points"));
+        assertThat(oneGoals).contains("### 1. 过去时").doesNotContain("### 2.");
     }
 
     @Test
@@ -74,11 +74,11 @@ class PracticePromptServiceTest {
                 .goals(List.of(goal))
                 .build()).getPrompt();
 
-        assertThat(prompt).contains("1. 过去时");
-        assertThat(prompt).doesNotContain("诊断：");
-        assertThat(prompt).doesNotContain("教练提示：");
-        assertThat(prompt).doesNotContain("本场证据：");
-        assertThat(prompt).doesNotContain("诊断：null");
+        assertThat(prompt).contains("### 1. 过去时");
+        assertThat(prompt).doesNotContain("- Last time:");
+        assertThat(prompt).doesNotContain("- Cue:");
+        assertThat(prompt).doesNotContain("- Evidence:");
+        assertThat(prompt).doesNotContain("Last time: null");
     }
 
     @Test
@@ -89,11 +89,11 @@ class PracticePromptServiceTest {
 
         String prompt = service.assemble(request).getPrompt();
 
-        assertThat(prompt).contains("【附加词汇】");
-        assertThat(prompt).contains("售后服务 → after-sales service");
-        assertThat(prompt).contains("原句：How can I say 售后服务?");
-        assertThat(prompt).doesNotContain("【本场薄弱点】");
-        assertThat(prompt).contains("若只有附加词汇、没有薄弱点");
+        assertThat(prompt).contains("## Extra vocabulary");
+        assertThat(prompt).contains("**售后服务** → after-sales service");
+        assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
+        assertThat(prompt).doesNotContain("## Weak points");
+        assertThat(prompt).contains("If there are no weak points, recap vocabulary only.");
     }
 
     @Test
@@ -103,8 +103,8 @@ class PracticePromptServiceTest {
                 .vocabulary(List.of())
                 .build()).getPrompt();
 
-        assertThat(prompt).contains("【本场薄弱点】");
-        assertThat(prompt).doesNotContain("【附加词汇】");
+        assertThat(prompt).contains("## Weak points");
+        assertThat(prompt).doesNotContain("## Extra vocabulary");
     }
 
     @Test
@@ -119,12 +119,12 @@ class PracticePromptServiceTest {
 
         String prompt = service.assemble(request).getPrompt();
 
-        assertThat(prompt).contains("1. 过去时");
-        assertThat(prompt).contains("售后服务 → after-sales service");
-        assertThat(prompt).contains("宣传 → promote");
-        assertThat(prompt).contains("原句：How can I say 售后服务?");
+        assertThat(prompt).contains("### 1. 过去时");
+        assertThat(prompt).contains("**售后服务** → after-sales service");
+        assertThat(prompt).contains("**宣传** → promote");
+        assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("ignored duplicate");
-        assertThat(countOccurrences(prompt, "售后服务 → after-sales service")).isEqualTo(1);
+        assertThat(countOccurrences(prompt, "**售后服务** → after-sales service")).isEqualTo(1);
     }
 
     @Test
@@ -198,9 +198,9 @@ class PracticePromptServiceTest {
                 .build());
 
         assertThat(response.getPrompt())
-                .contains("每轮只回复 1–3 句")
-                .contains("结束练习")
-                .contains("8 个");
+                .contains("pre-conversation recap")
+                .contains("Phase 1")
+                .contains("at most one");
     }
 
     private static PracticePromptRequest.Goal goal(int rank, String title) {

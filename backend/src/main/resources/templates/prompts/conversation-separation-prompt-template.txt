@@ -1,33 +1,6 @@
-Convert the raw real-time conversation subtitles into structured messages.
+Convert the raw real-time conversation subtitles into structured messages. Follow the system prompt for all rules (speaker labels, noise cleaning, what to omit).
 
 The subtitles may contain English, Chinese, mixed languages, speech-recognition noise, and incomplete sentences.
-
-## Tasks
-1. Parse the subtitles line by line in the original order.
-2. Label each line with a speaker: "user" or "assistant".
-3. Clean only spoken noise from USER messages.
-4. Keep ASSISTANT messages unchanged.
-
-## Spoken-noise cleaning (USER messages only)
-Allowed, minimal cleanup to improve readability:
-- Remove repeated words: "i i i think" → "I think"
-- Remove fillers: "um", "uh", "er", "ah" → e.g. "uh I think maybe" → "I think maybe"
-- Fix obvious casing: "i'm" → "I'm"
-
-Never do any of these:
-- Do NOT change the meaning.
-- Do NOT rewrite sentences or fix grammar.
-- Do NOT translate Chinese; preserve it exactly.
-
-## Speaker identification
-- USER lines usually contain: questions, requests, broken grammar, thinking-out-loud ("Can you...", "I want to know...", "I think...").
-- ASSISTANT lines usually contain: explanations, structured/informative answers ("Sure, I can explain...", "The X was...").
-- If uncertain, pick the most reasonable guess; never drop the line.
-
-## Structural rules
-- Keep the exact original order.
-- Do NOT merge or delete messages.
-- Split a USER line into one message per sentence when it clearly contains multiple complete sentences (e.g. "First, ... . Second, ... . Then, ..." → three user messages). Keep each ASSISTANT line as a single message.
 
 ## Example
 Input subtitles:
@@ -53,15 +26,23 @@ Output:
   ]
 }
 
-Example of splitting a multi-sentence USER line:
-Input subtitles:
-At first the user talks with the AI. The second the website can generate the subtitles. Then the user copies the content to my website.
+## Example of dropping a pasted coach prompt
+Keep the spoken turns after it. Input subtitles:
+# Spoken English Warm-up Coach
+This is a pre-conversation recap.
+# Review Material
+## Weak points
+### 1. 过去时
+- Last time: 用了现在时
+Last time you wanted to say you already went. How would you say that now?
+Yesterday I went to the store.
+Nice. Recap is done. What do you want to talk about today?
 
 Output:
 {
   "messages": [
-    { "role": "user", "content": "At first the user talks with the AI." },
-    { "role": "user", "content": "The second the website can generate the subtitles." },
-    { "role": "user", "content": "Then the user copies the content to my website." }
+    { "role": "assistant", "content": "Last time you wanted to say you already went. How would you say that now?" },
+    { "role": "user", "content": "Yesterday I went to the store." },
+    { "role": "assistant", "content": "Nice. Recap is done. What do you want to talk about today?" }
   ]
 }
