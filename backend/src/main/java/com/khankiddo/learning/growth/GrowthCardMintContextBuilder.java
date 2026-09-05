@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * 组装「本场说话习惯 → 生成一张 habit 知识卡」的用户消息。
- * 模板见 {@code templates/prompts/growth-card-mint-prompt-template.txt}。
+ * 模板见 {@code templates/prompts/growth-card-mint/user.txt}。
  */
 @Component
 @RequiredArgsConstructor
