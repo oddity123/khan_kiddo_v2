@@ -37,12 +37,12 @@ app:
         max-tokens: ${AI_MAX_TOKENS:10240}
         enabled: true
       # 通义千问（DashScope 兼容模式）
-      - id: qwen3.6-plus
-        display-name: qwen3.6-plus
+      - id: deepseek-v4-flash-0731
+        display-name: deepseek-v4-flash-0731
         provider: qwen
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
-        model-name: qwen3.6-plus
+        model-name: deepseek-v4-flash-0731
         temperature: 0.2
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
