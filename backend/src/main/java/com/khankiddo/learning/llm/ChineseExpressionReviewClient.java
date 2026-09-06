@@ -31,6 +31,7 @@ public class ChineseExpressionReviewClient {
     private final LlmChatModelFactory chatModelFactory;
     private final PromptLoader promptLoader;
     private final ObjectMapper objectMapper;
+    private final ChineseExpressionReviewOutputPolicy outputPolicy;
 
     public List<ChineseExpressionDto> review(
             List<UtteranceRouter.RoutedChineseSentence> chineseSentences,
@@ -42,9 +43,11 @@ public class ChineseExpressionReviewClient {
         try {
             String userPrompt = buildUserPrompt(chineseSentences);
             ChatModel chatModel = chatModelFactory.chatForChineseExpressionReview(model);
+            String systemPrompt = outputPolicy.composeSystemPrompt(
+                    promptLoader.getSystemPromptChineseExpressionReview(), model);
             ChatRequest request = ChatRequest.builder()
                     .messages(
-                            SystemMessage.from(promptLoader.getSystemPromptChineseExpressionReview()),
+                            SystemMessage.from(systemPrompt),
                             UserMessage.from(userPrompt))
                     .build();
             ChatResponse response = chatModel.chat(request);

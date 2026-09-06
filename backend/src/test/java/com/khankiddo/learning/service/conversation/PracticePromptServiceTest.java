@@ -36,7 +36,8 @@ class PracticePromptServiceTest {
         assertThat(prompt.indexOf("### 1. 过去时")).isLessThan(prompt.indexOf("### 2. 冠词"));
         assertThat(prompt.indexOf("### 2. 冠词")).isLessThan(prompt.indexOf("### 3. 第三人称单数"));
         assertThat(prompt).contains("- Last time: 用了现在时");
-        assertThat(prompt).contains("- Cue: 先定时间");
+        assertThat(prompt).doesNotContain("- Cue:");
+        assertThat(prompt).doesNotContain("先定时间");
         assertThat(prompt).contains("- Evidence: `Yesterday I go.` → `Yesterday I went.`");
         assertThat(prompt).doesNotContain("## Extra vocabulary");
         assertThat(prompt).doesNotContain("pointId");
@@ -90,10 +91,12 @@ class PracticePromptServiceTest {
         String prompt = service.assemble(request).getPrompt();
 
         assertThat(prompt).contains("## Extra vocabulary");
+        assertThat(prompt).contains("Required after Weak points");
         assertThat(prompt).contains("**售后服务** → after-sales service");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("## Weak points");
         assertThat(prompt).contains("If there are no weak points, recap vocabulary only.");
+        assertThat(prompt).doesNotContain("Add-ons only");
     }
 
     @Test
@@ -200,7 +203,21 @@ class PracticePromptServiceTest {
         assertThat(response.getPrompt())
                 .contains("pre-conversation recap")
                 .contains("Phase 1")
-                .contains("at most one");
+                .contains("at most one")
+                .contains("Do **not** skip vocabulary when it is present");
+    }
+
+    @Test
+    void omitsCoachingFromAssembledPrompt() {
+        String prompt = service.assemble(PracticePromptRequest.builder()
+                .goals(List.of(goal(1, "过去时", "用了现在时", "用纠正句重说一句",
+                        "Yesterday I go.", "Yesterday I went.")))
+                .build()).getPrompt();
+
+        assertThat(prompt).contains("### 1. 过去时");
+        assertThat(prompt).contains("- Last time: 用了现在时");
+        assertThat(prompt).doesNotContain("- Cue:");
+        assertThat(prompt).doesNotContain("用纠正句重说一句");
     }
 
     private static PracticePromptRequest.Goal goal(int rank, String title) {

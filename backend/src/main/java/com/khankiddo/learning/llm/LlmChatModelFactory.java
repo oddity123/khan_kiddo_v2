@@ -28,6 +28,7 @@ public class LlmChatModelFactory {
     private final AiLlmProperties aiLlmProperties;
     private final SchemaLoader schemaLoader;
     private final List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies;
+    private final ChineseExpressionReviewOutputPolicy chineseExpressionReviewOutputPolicy;
     private final HttpClientBuilder httpClientBuilder;
     private final Duration defaultChatTimeout;
     private final Duration defaultStreamingTimeout;
@@ -41,6 +42,7 @@ public class LlmChatModelFactory {
             ConversationAnalysisProperties conversationAnalysisProperties,
             SchemaLoader schemaLoader,
             List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies,
+            ChineseExpressionReviewOutputPolicy chineseExpressionReviewOutputPolicy,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer defaultMaxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean defaultLogRequests,
@@ -49,6 +51,7 @@ public class LlmChatModelFactory {
         this.aiLlmProperties = aiLlmProperties;
         this.schemaLoader = schemaLoader;
         this.grammarStructuredOutputPolicies = grammarStructuredOutputPolicies;
+        this.chineseExpressionReviewOutputPolicy = chineseExpressionReviewOutputPolicy;
         this.httpClientBuilder = httpClientBuilder;
         this.defaultChatTimeout = conversationAnalysisProperties.getChatTimeout();
         this.defaultStreamingTimeout = conversationAnalysisProperties.getHttpReadTimeout();
@@ -75,18 +78,11 @@ public class LlmChatModelFactory {
     }
 
     /**
-     * 中文表达 Review：结构化 JSON 输出，单次非流式调用。
+     * 中文表达 Review：按模型选择 json_schema 或 json_object（DeepSeek 仅后者）。
      */
     public ChatModel chatForChineseExpressionReview(ResolvedLlmModel model) {
-        ResponseFormat responseFormat = StructuredJsonResponseFormat.fromClasspathSchema(
-                StructuredJsonResponseFormat.CHINESE_EXPRESSION_REVIEW_SCHEMA_NAME,
-                schemaLoader.getChineseExpressionReviewSchema());
-        GrammarStreamingModelSpec spec = GrammarStreamingModelSpec.builder()
-                .responseFormat(responseFormat)
-                .strictJsonSchema(true)
-                .omitMaxTokens(false)
-                .build();
-        String cacheKey = cacheKey(model) + "|chinese-review|chat";
+        GrammarStreamingModelSpec spec = chineseExpressionReviewOutputPolicy.buildSpec(model);
+        String cacheKey = cacheKey(model) + "|chinese-review" + spec.getCacheSuffix() + "|chat";
         return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
     }
 

@@ -1,10 +1,8 @@
 package com.khankiddo.learning.llm;
 
-import com.khankiddo.learning.config.LlmModelProperties;
 import com.khankiddo.learning.util.SchemaLoader;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 /**
  * 千问 / DashScope：不走 API JSON Mode，把 Schema 写入 system prompt；省略 max_tokens，避免输出被截断。
@@ -13,9 +11,7 @@ import org.springframework.util.StringUtils;
 @Order(100)
 public class QwenGrammarStructuredOutputPolicy implements GrammarStructuredOutputPolicy {
 
-    private static final String QWEN_PROVIDER = "qwen";
     private static final String QWEN_PROMPT_SCHEMA_SUFFIX = "|qwen-prompt-schema";
-    private static final String DASHSCOPE_HOST = "dashscope.aliyuncs.com";
 
     private final SchemaLoader schemaLoader;
 
@@ -25,14 +21,7 @@ public class QwenGrammarStructuredOutputPolicy implements GrammarStructuredOutpu
 
     @Override
     public boolean supports(ResolvedLlmModel model) {
-        if (model == null) {
-            return false;
-        }
-        if (StringUtils.hasText(model.getProvider())
-                && QWEN_PROVIDER.equalsIgnoreCase(model.getProvider().trim())) {
-            return true;
-        }
-        return isQwenModelConfig(model.getConfig());
+        return LlmProviderSupport.isDashScopeCompatible(model);
     }
 
     @Override
@@ -57,21 +46,5 @@ public class QwenGrammarStructuredOutputPolicy implements GrammarStructuredOutpu
                 - 仅包含有问题的句子；无问题句子不要出现在 items 中
 
                 """ + schema;
-    }
-
-    private boolean isQwenModelConfig(LlmModelProperties.ModelConfig config) {
-        if (config == null) {
-            return false;
-        }
-        if (StringUtils.hasText(config.getProvider())
-                && QWEN_PROVIDER.equalsIgnoreCase(config.getProvider().trim())) {
-            return true;
-        }
-        if (StringUtils.hasText(config.getBaseUrl())
-                && config.getBaseUrl().toLowerCase().contains(DASHSCOPE_HOST)) {
-            return true;
-        }
-        return StringUtils.hasText(config.getModelName())
-                && config.getModelName().toLowerCase().startsWith(QWEN_PROVIDER);
     }
 }

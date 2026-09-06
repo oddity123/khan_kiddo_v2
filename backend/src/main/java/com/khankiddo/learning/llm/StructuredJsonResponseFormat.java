@@ -26,4 +26,11 @@ public final class StructuredJsonResponseFormat {
                         .build())
                 .build();
     }
+
+    /** JSON Object 模式：保证合法 JSON，不携带 json_schema（DeepSeek / 百炼仅支持此模式的模型）。 */
+    public static ResponseFormat jsonObject() {
+        return ResponseFormat.builder()
+                .type(ResponseFormatType.JSON)
+                .build();
+    }
 }

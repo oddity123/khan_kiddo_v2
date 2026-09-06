@@ -118,11 +118,12 @@ public class PracticePromptService {
         }
         StringBuilder block = new StringBuilder();
         block.append("## Weak points\n");
-        block.append("Go in numbered order. Finish one before the next.");
+        block.append("Required. Go in numbered order. Finish every item before Extra vocabulary.");
         for (PracticePromptRequest.Goal goal : goals) {
             block.append("\n\n### ").append(goal.getRank()).append(". ").append(goal.getTitle());
-            appendMarkdownItem(block, "Last time", goal.getDiagnosis());
-            appendMarkdownItem(block, "Cue", goal.getCoaching());
+            if (StringUtils.hasText(goal.getDiagnosis())) {
+                block.append("\n- Last time: ").append(goal.getDiagnosis());
+            }
             if (StringUtils.hasText(goal.getOriginalSentence())
                     && StringUtils.hasText(goal.getTargetSentence())) {
                 block.append("\n- Evidence: `")
@@ -141,7 +142,7 @@ public class PracticePromptService {
         }
         StringBuilder block = new StringBuilder();
         block.append("## Extra vocabulary\n");
-        block.append("Add-ons only. Recap after weak points.");
+        block.append("Required after Weak points. Recap every item before Phase 2.");
         for (PracticePromptRequest.Vocabulary item : vocabulary) {
             block.append("\n- **")
                     .append(item.getFront())
@@ -154,13 +155,6 @@ public class PracticePromptService {
             }
         }
         return block.toString();
-    }
-
-    private static void appendMarkdownItem(StringBuilder block, String label, String value) {
-        if (!StringUtils.hasText(value)) {
-            return;
-        }
-        block.append("\n- ").append(label).append(": ").append(value);
     }
 
     private static String trimToNull(String value) {

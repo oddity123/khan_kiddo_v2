@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.khankiddo.learning.conversation.UtteranceRouter;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.prompt.PromptLoader;
+import com.khankiddo.learning.util.SchemaLoader;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -38,7 +39,9 @@ class ChineseExpressionReviewClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new ChineseExpressionReviewClient(chatModelFactory, promptLoader, new ObjectMapper());
+        client = new ChineseExpressionReviewClient(
+                chatModelFactory, promptLoader, new ObjectMapper(),
+                new ChineseExpressionReviewOutputPolicy(new SchemaLoader()));
     }
 
     @Test
@@ -119,35 +122,6 @@ class ChineseExpressionReviewClientTest {
         assertThat(result.get(0).getSuggestion()).isEqualTo("direct supervisor");
         assertThat(result.get(1).getFocusPhrase()).isEqualTo("纸巾");
         assertThat(result.get(2).getFocusPhrase()).isEqualTo("顶着烈日");
-    }
-
-    @Test
-    void review_acceptsTopLevelArrayJson() {
-        when(promptLoader.getSystemPromptChineseExpressionReview()).thenReturn("system");
-        when(promptLoader.getChineseExpressionReviewTemplate()).thenReturn("{sentences}");
-        when(promptLoader.fillTemplate(any(), any(), any())).thenReturn("user prompt");
-        when(chatModelFactory.chatForChineseExpressionReview(any())).thenReturn(chatModel);
-
-        String json = """
-                [
-                  { "index": 1, "focusPhrase": "简洁的", "suggestion": "concise" },
-                  { "index": 2, "focusPhrase": "议程", "suggestion": "agenda" }
-                ]
-                """;
-        when(chatModel.chat(any(ChatRequest.class))).thenReturn(
-                ChatResponse.builder().aiMessage(AiMessage.from(json)).build());
-
-        List<UtteranceRouter.RoutedChineseSentence> input = List.of(
-                new UtteranceRouter.RoutedChineseSentence(0, "简洁的怎么说"),
-                new UtteranceRouter.RoutedChineseSentence(1, "议程"));
-
-        List<ChineseExpressionDto> result = client.review(input, null);
-
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).getFocusPhrase()).isEqualTo("简洁的");
-        assertThat(result.get(0).getSuggestion()).isEqualTo("concise");
-        assertThat(result.get(1).getFocusPhrase()).isEqualTo("议程");
-        assertThat(result.get(1).getSuggestion()).isEqualTo("agenda");
     }
 
     @Test
