@@ -292,6 +292,25 @@ health_check() {
   fail "健康检查失败: $HEALTH_URL"
 }
 
+# 部署成功后追加当前 commit id 到 deploy.env（历史保留，source 时取最后一次）
+record_deploy_commit() {
+  local conf="$ROOT/deploy.env"
+  local commit_id
+  if ! commit_id="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)"; then
+    warn "无法获取 git commit id，跳过写入 deploy.env"
+    return 0
+  fi
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[dry-run] append DEPLOY_COMMIT_ID=$commit_id → $conf"
+    return 0
+  fi
+  {
+    printf '\n# deploy %s\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+    printf 'DEPLOY_COMMIT_ID=%s\n' "$commit_id"
+  } >> "$conf"
+  ok "已追加 commit id 到 deploy.env: $commit_id"
+}
+
 # ---------- main ----------
 
 check_deps
@@ -314,6 +333,7 @@ ok "本地 jar: ${LOCAL_JAR#"$ROOT/"}"
 upload_artifacts "$LOCAL_JAR"
 restart_remote
 health_check
+record_deploy_commit
 
 log "部署完成"
 ok "后端: $REMOTE_JAR_DIR/$REMOTE_JAR_NAME"
