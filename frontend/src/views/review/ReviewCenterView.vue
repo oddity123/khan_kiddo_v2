@@ -526,7 +526,7 @@ onMounted(() => {
   min-height: 2.45rem;
   padding: 0.55rem 0.78rem 0.55rem 0.9rem;
   border: 1px solid rgba(11, 26, 125, 0.12);
-  border-radius: var(--kk-radius-sm);
+  border-radius: var(--kk-radius-md);
   background: rgba(255, 255, 255, 0.72);
   color: var(--kk-color-primary);
   font-family: inherit;

@@ -2,7 +2,7 @@
 import {ChatDotRound, Clock, Collection, DataAnalysis, House, Message, SwitchButton, Tickets, User, VideoPlay,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {storeToRefs} from 'pinia'
-import {ref} from 'vue'
+import {onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import {useAuthStore} from '@/stores/auth'
@@ -12,8 +12,8 @@ const router = useRouter()
 const auth = useAuthStore()
 const { isAuthenticated, displayName } = storeToRefs(auth)
 
-const mobileOpen = ref(false)
 const analysisDropdownOpen = ref(false)
+const moreOpen = ref(false)
 
 function isActive(path: string) {
   return route.path === path
@@ -31,13 +31,16 @@ function isAnalysisActive() {
   return route.path.startsWith('/conversation/')
 }
 
+function isMoreActive() {
+  return isActive('/feedback') || isActive('/login') || isActive('/register')
+}
+
 function onPending(feature: string) {
   ElMessage.info(`${feature}功能迁移中，敬请期待`)
-  mobileOpen.value = false
+  moreOpen.value = false
 }
 
 function onAnalysisCommand(command: string) {
-  mobileOpen.value = false
   if (command === 'analyze') {
     router.push('/conversation/analyze')
   } else if (command === 'history') {
@@ -49,36 +52,57 @@ function onAnalysisDropdownVisible(visible: boolean) {
   analysisDropdownOpen.value = visible
 }
 
+function closeMore() {
+  moreOpen.value = false
+}
+
+function toggleMore() {
+  moreOpen.value = !moreOpen.value
+}
+
 async function onLogout() {
   await auth.logout()
-  mobileOpen.value = false
+  moreOpen.value = false
   ElMessage.success('已退出登录')
   if (route.path !== '/') {
     await router.push('/')
   }
 }
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    moreOpen.value = false
+  }
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    moreOpen.value = false
+  },
+)
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKeydown)
+})
 </script>
 
 <template>
-  <header class="navbar-host">
+  <!-- Desktop: floating top glass nav -->
+  <header class="navbar-host navbar-host--desktop">
     <div class="kk-page-shell">
-      <nav class="navbar-glass kk-glass kk-glass--nav" :class="{ 'navbar-glass--open': mobileOpen }">
-        <router-link to="/" class="navbar-brand" @click="mobileOpen = false">
+      <nav class="navbar-glass kk-glass kk-glass--nav" aria-label="主导航">
+        <router-link to="/" class="navbar-brand">
           <img src="/icon.svg" alt="" class="navbar-brand-icon" />
           <span class="navbar-brand-text">Khan Kiddo AI英语学习助手</span>
         </router-link>
 
-        <button
-          type="button"
-          class="navbar-toggle"
-          aria-label="切换导航"
-          @click="mobileOpen = !mobileOpen"
-        >
-          <span /><span /><span />
-        </button>
-
-        <div class="navbar-nav" :class="{ open: mobileOpen }">
-          <router-link to="/" class="nav-link" :class="{ active: isActive('/') }" @click="mobileOpen = false">
+        <div class="navbar-nav">
+          <router-link to="/" class="nav-link" :class="{ active: isActive('/') }">
             <el-icon><House /></el-icon>
             首页
           </router-link>
@@ -115,20 +139,18 @@ async function onLogout() {
           </el-dropdown>
 
           <router-link
-              to="/review"
-              class="nav-link"
-              :class="{ active: isReviewActive() }"
-              @click="mobileOpen = false"
+            to="/review"
+            class="nav-link"
+            :class="{ active: isReviewActive() }"
           >
             <el-icon><DataAnalysis /></el-icon>
             复盘中心
           </router-link>
 
           <router-link
-              to="/review/cards"
-              class="nav-link"
-              :class="{ active: isReviewCardsActive() }"
-              @click="mobileOpen = false"
+            to="/review/cards"
+            class="nav-link"
+            :class="{ active: isReviewCardsActive() }"
           >
             <el-icon><Tickets /></el-icon>
             成长卡
@@ -140,10 +162,9 @@ async function onLogout() {
           </a>
 
           <router-link
-              to="/feedback"
-              class="nav-link"
-              :class="{ active: isActive('/feedback') }"
-              @click="mobileOpen = false"
+            to="/feedback"
+            class="nav-link"
+            :class="{ active: isActive('/feedback') }"
           >
             <el-icon><Message /></el-icon>
             给我留言
@@ -164,7 +185,6 @@ async function onLogout() {
               v-else
               to="/login"
               class="nav-link nav-link--login"
-              @click="mobileOpen = false"
             >
               <el-icon><User /></el-icon>
               登录
@@ -174,6 +194,111 @@ async function onLogout() {
       </nav>
     </div>
   </header>
+
+  <!-- Mobile: standard bottom tab bar -->
+  <nav class="tabbar" aria-label="底部导航">
+    <div
+      v-if="moreOpen"
+      class="tabbar-backdrop"
+      aria-hidden="true"
+      @click="closeMore"
+    />
+
+    <div v-if="moreOpen" class="tabbar-sheet kk-glass" role="dialog" aria-label="更多">
+      <router-link
+        to="/conversation/analyses"
+        class="tabbar-sheet-item"
+        :class="{ active: isActive('/conversation/analyses') }"
+        @click="closeMore"
+      >
+        <el-icon><Clock /></el-icon>
+        分析历史
+      </router-link>
+      <a class="tabbar-sheet-item" href="#" @click.prevent="onPending('句子笔记本')">
+        <el-icon><Collection /></el-icon>
+        笔记本
+      </a>
+      <router-link
+        to="/feedback"
+        class="tabbar-sheet-item"
+        :class="{ active: isActive('/feedback') }"
+        @click="closeMore"
+      >
+        <el-icon><Message /></el-icon>
+        给我留言
+      </router-link>
+      <div class="tabbar-sheet-divider" />
+      <template v-if="isAuthenticated">
+        <span class="tabbar-sheet-item tabbar-sheet-item--muted">
+          <el-icon><User /></el-icon>
+          {{ displayName }}
+        </span>
+        <button type="button" class="tabbar-sheet-item" @click="onLogout">
+          <el-icon><SwitchButton /></el-icon>
+          退出登录
+        </button>
+      </template>
+      <router-link
+        v-else
+        to="/login"
+        class="tabbar-sheet-item"
+        @click="closeMore"
+      >
+        <el-icon><User /></el-icon>
+        登录
+      </router-link>
+    </div>
+
+    <div class="tabbar-bar kk-glass kk-glass--nav">
+      <router-link
+        to="/"
+        class="tab-item"
+        :class="{ active: isActive('/') }"
+      >
+        <el-icon :size="22"><House /></el-icon>
+        <span>首页</span>
+      </router-link>
+
+      <router-link
+        to="/conversation/analyze"
+        class="tab-item"
+        :class="{ active: isAnalysisActive() }"
+      >
+        <el-icon :size="22"><ChatDotRound /></el-icon>
+        <span>分析</span>
+      </router-link>
+
+      <router-link
+        to="/review"
+        class="tab-item"
+        :class="{ active: isReviewActive() }"
+      >
+        <el-icon :size="22"><DataAnalysis /></el-icon>
+        <span>复盘</span>
+      </router-link>
+
+      <router-link
+        to="/review/cards"
+        class="tab-item"
+        :class="{ active: isReviewCardsActive() }"
+      >
+        <el-icon :size="22"><Tickets /></el-icon>
+        <span>成长卡</span>
+      </router-link>
+
+      <button
+        type="button"
+        class="tab-item"
+        :class="{ active: moreOpen || isMoreActive() }"
+        aria-haspopup="dialog"
+        :aria-expanded="moreOpen"
+        @click="toggleMore"
+      >
+        <el-icon :size="22"><User /></el-icon>
+        <span>我的</span>
+      </button>
+    </div>
+  </nav>
 </template>
 
 <style scoped>
@@ -228,26 +353,6 @@ async function onLogout() {
   width: 35.04px;
   height: 35.04px;
   object-fit: contain;
-}
-
-.navbar-toggle {
-  display: none;
-  margin-left: auto;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: var(--kk-glass-subtle-bg-strong);
-  border-radius: 10px;
-  padding: 6px;
-  cursor: pointer;
-}
-
-.navbar-toggle span {
-  display: block;
-  height: 2px;
-  margin: 5px 0;
-  background: var(--kk-color-text-secondary);
-  border-radius: 1px;
 }
 
 .navbar-nav {
@@ -349,48 +454,157 @@ async function onLogout() {
   opacity: 0.7;
 }
 
+/* —— Mobile bottom tab bar —— */
+.tabbar {
+  display: none;
+}
+
 @media (max-width: 992px) {
-  .navbar-brand-text {
-    font-size: 0.88rem;
-  }
-
-  .navbar-glass {
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-  }
-
-  .navbar-glass--open {
-    padding-bottom: 0.75rem;
-  }
-
-  .navbar-toggle {
-    display: block;
-  }
-
-  .navbar-nav {
+  .navbar-host--desktop {
     display: none;
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    padding-top: 0.35rem;
   }
 
-  .navbar-nav.open {
+  .tabbar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    padding: 0 0.75rem calc(0.65rem + env(safe-area-inset-bottom, 0px));
+    pointer-events: none;
+  }
+
+  .tabbar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 101;
+    background: rgba(20, 24, 36, 0.22);
+    pointer-events: auto;
+  }
+
+  .tabbar-sheet {
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: calc(100% + 0.45rem);
+    z-index: 102;
     display: flex;
-  }
-
-  .navbar-auth {
-    margin-left: 0;
     flex-direction: column;
-    align-items: stretch;
-    border-top: 1px solid var(--kk-glass-divider);
-    padding-top: 0.5rem;
-    margin-top: 0.25rem;
+    gap: 0.2rem;
+    padding: 0.45rem;
+    border-radius: var(--kk-glass-dropdown-radius);
+    pointer-events: auto;
+    box-shadow:
+      var(--kk-glass-nav-shadow),
+      inset 0 1px 1px var(--kk-glass-nav-highlight-top);
   }
 
-  .nav-link {
+  .tabbar-sheet-item {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0.72rem 0.8rem;
+    border: none;
+    border-radius: var(--kk-glass-dropdown-item-radius);
+    background: transparent;
+    color: var(--kk-color-text-secondary);
+    font-family: var(--kk-font-body);
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    text-align: left;
     width: 100%;
+  }
+
+  .tabbar-sheet-item:hover,
+  .tabbar-sheet-item.active {
+    color: var(--kk-color-primary);
+    background: var(--kk-glass-hover-bg);
+    box-shadow: inset 0 0 0 1px var(--kk-glass-hover-border);
+  }
+
+  .tabbar-sheet-item--muted {
+    color: var(--kk-color-text-subtle);
+    cursor: default;
+  }
+
+  .tabbar-sheet-item--muted:hover {
+    background: transparent;
+    box-shadow: none;
+    color: var(--kk-color-text-subtle);
+  }
+
+  .tabbar-sheet-divider {
+    height: 1px;
+    margin: 0.25rem 0.5rem;
+    background: var(--kk-glass-divider);
+  }
+
+  .tabbar-bar {
+    position: relative;
+    z-index: 103;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 0.1rem;
+    min-height: 3.5rem;
+    margin: 0;
+    padding: 0.3rem 0.4rem;
+    border-radius: var(--kk-glass-nav-radius);
+    pointer-events: auto;
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.12rem;
+    min-width: 0;
+    padding: 0.28rem 0.2rem;
+    border: none;
+    border-radius: calc(var(--kk-glass-nav-radius) - 4px);
+    background: transparent;
+    color: var(--kk-color-text-muted);
+    font-family: var(--kk-font-body);
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.15;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      color var(--kk-duration-normal) ease,
+      background var(--kk-duration-normal) ease;
+  }
+
+  .tab-item .el-icon {
+    font-size: 1.25rem;
+  }
+
+  .tab-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tab-item.active {
+    color: #fff;
+    background: linear-gradient(
+      135deg,
+      var(--kk-color-primary) 0%,
+      var(--kk-color-primary-soft) 100%
+    );
+    box-shadow:
+      0 4px 12px rgba(11, 26, 125, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  .tab-item.active .el-icon {
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12));
   }
 }
 </style>

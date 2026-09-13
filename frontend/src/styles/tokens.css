@@ -103,6 +103,7 @@
   --kk-page-width: 80%;
   --kk-page-width-mobile: 94%;
   --kk-navbar-offset: 76px;
+  --kk-tabbar-height: 0px;
   --kk-footer-offset: 5.5rem;
 
   /* Motion */
@@ -118,4 +119,15 @@
   --el-color-primary-light-8: #b7bfd9;
   --el-color-primary-light-9: #d0d5e8;
   --el-color-primary-dark-2: #091566;
+  --el-border-radius-base: var(--kk-radius-md);
+  --el-border-radius-small: var(--kk-radius-sm);
+  --el-border-radius-round: var(--kk-radius-lg);
+}
+
+@media (max-width: 992px) {
+  :root {
+    /* 移动端顶部无导航；底部悬浮玻璃 Tab 栏占位 */
+    --kk-navbar-offset: 0.75rem;
+    --kk-tabbar-height: calc(3.5rem + 0.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }

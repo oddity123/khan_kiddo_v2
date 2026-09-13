@@ -65,7 +65,7 @@ function onCardDeleted(cardId: string) {
         <p class="page-eyebrow">Card Review</p>
         <h1 class="page-title">成长卡复习</h1>
         <p class="page-desc">
-          默认练习今日到期卡片；也可随机抽 5 张巩固。翻面后选择评分档位。
+          默认练习今日到期卡片；也可随机抽 5 张巩固。可直接评分，或先翻面看答案。
         </p>
       </div>
       <div class="head-actions">
@@ -95,7 +95,7 @@ function onCardDeleted(cardId: string) {
     <section class="review-stage kk-glass kk-glass--panel">
       <div class="stage-meta">
         <span class="stage-kicker">{{ modeLabel }}</span>
-        <span class="stage-hint">先点卡片看答案，再选择评分</span>
+        <span class="stage-hint">可直接评分，或先点卡片翻面</span>
       </div>
       <GrowthFlashcardDeck
           page
@@ -172,7 +172,7 @@ function onCardDeleted(cardId: string) {
   gap: 0.35rem;
   min-height: 2.45rem;
   padding: 0.45rem 0.85rem;
-  border-radius: var(--kk-radius-sm);
+  border-radius: var(--kk-radius-md);
   border: 1px solid rgba(11, 26, 125, 0.12);
   background: rgba(255, 255, 255, 0.78);
   color: var(--kk-color-primary);

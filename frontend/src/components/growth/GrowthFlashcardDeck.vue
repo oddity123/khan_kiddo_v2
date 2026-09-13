@@ -66,9 +66,25 @@ function openEvidence(card: GrowthCard, event?: Event) {
   evidenceOpen.value = true
 }
 
+function isCardIdSubset(next: GrowthCard[], prev: GrowthCard[]): boolean {
+  const prevIds = new Set(prev.map((card) => card.cardId))
+  return next.every((card) => prevIds.has(card.cardId))
+}
+
 watch(
     () => props.cards,
-    (cards) => {
+    (cards, prevCards) => {
+      // 父组件删除同步：只从 queue 剔除，勿用完整 props 覆盖（否则会把已评分移出的卡拉回队首）
+      if (
+          prevCards &&
+          cards.length < prevCards.length &&
+          isCardIdSubset(cards, prevCards)
+      ) {
+        const keep = new Set(cards.map((card) => card.cardId))
+        queue.value = queue.value.filter((card) => keep.has(card.cardId))
+        isFlipped.value = false
+        return
+      }
       queue.value = [...cards]
       if (cards.length > 0) {
         initialCount.value = cards.length
@@ -93,7 +109,9 @@ function asCard(item: Record<string, unknown>): GrowthCard {
 
 function cardOrdinal(item: GrowthCard): number {
   const idx = queue.value.findIndex((card) => card.cardId === item.cardId)
-  return idx >= 0 ? idx + 1 : 1
+  const position = idx >= 0 ? idx : 0
+  const completed = Math.max(0, initialCount.value - queue.value.length)
+  return completed + position + 1
 }
 
 function typeLabel(type: GrowthCard['type']): string {
@@ -129,11 +147,7 @@ function wait(ms: number) {
 
 async function submitGrade(grade: GrowthGrade) {
   const current = queue.value[0]
-  if (!current || grading.value) {
-    return
-  }
-  if (!isFlipped.value) {
-    ElMessage.info('请先点击卡片翻面')
+  if (!current || grading.value || deleting.value) {
     return
   }
 
@@ -178,6 +192,7 @@ async function deleteCurrent() {
   try {
     await deleteGrowthCard(current.cardId)
     queue.value = queue.value.filter((card) => card.cardId !== current.cardId)
+    initialCount.value = Math.max(0, initialCount.value - 1)
     isFlipped.value = false
     emit('deleted', current.cardId)
     ElMessage.success('已删除成长卡')
@@ -224,7 +239,7 @@ async function deleteCurrent() {
               <article class="growth-face growth-face--front">
                 <header class="growth-head">
                   <span class="growth-badge">{{ typeLabel(item.type) }}</span>
-                  <span class="growth-index">{{ cardOrdinal(item) }}/{{ count }}</span>
+                  <span class="growth-index">{{ cardOrdinal(item) }}/{{ initialCount }}</span>
                 </header>
                 <section class="growth-pane">
                   <p class="growth-main">{{ item.front }}</p>
@@ -245,7 +260,7 @@ async function deleteCurrent() {
               <article class="growth-face growth-face--back">
                 <header class="growth-head">
                   <span class="growth-badge growth-badge--back">答案</span>
-                  <span class="growth-index">{{ cardOrdinal(item) }}/{{ count }}</span>
+                  <span class="growth-index">{{ cardOrdinal(item) }}/{{ initialCount }}</span>
                 </header>
                 <section class="growth-pane">
                   <p class="growth-main growth-main--back">{{ item.back }}</p>
@@ -278,7 +293,7 @@ async function deleteCurrent() {
 
     <div v-if="count > 0" class="growth-actions">
       <div class="growth-actions-top">
-        <p class="growth-actions-hint">点击卡片翻面后评分</p>
+        <p class="growth-actions-hint">可直接评分，或先点卡片翻面看答案</p>
         <button
             v-if="deletable"
             type="button"
@@ -295,7 +310,7 @@ async function deleteCurrent() {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--again"
-            :disabled="grading || deleting || !isFlipped"
+            :disabled="grading || deleting"
             @click="submitGrade('again')"
         >
           <span class="growth-grade-label">Again</span>
@@ -304,7 +319,7 @@ async function deleteCurrent() {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--hard"
-            :disabled="grading || deleting || !isFlipped"
+            :disabled="grading || deleting"
             @click="submitGrade('hard')"
         >
           <span class="growth-grade-label">Hard</span>
@@ -313,7 +328,7 @@ async function deleteCurrent() {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--good"
-            :disabled="grading || deleting || !isFlipped"
+            :disabled="grading || deleting"
             @click="submitGrade('good')"
         >
           <span class="growth-grade-label">Good</span>
@@ -322,7 +337,7 @@ async function deleteCurrent() {
         <button
             type="button"
             class="growth-grade-btn growth-grade-btn--easy"
-            :disabled="grading || deleting || !isFlipped"
+            :disabled="grading || deleting"
             @click="submitGrade('easy')"
         >
           <span class="growth-grade-label">Easy</span>
@@ -626,7 +641,7 @@ async function deleteCurrent() {
   gap: 0.12rem;
   min-height: 2.85rem;
   padding: 0.42rem 0.3rem;
-  border-radius: var(--kk-radius-sm);
+  border-radius: var(--kk-radius-md);
   border: 1px solid var(--kk-color-border);
   background: var(--kk-color-surface-solid);
   color: var(--kk-color-text-secondary);

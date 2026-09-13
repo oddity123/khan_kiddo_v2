@@ -236,15 +236,28 @@ defineExpose({openChat, closeChat, toggleChat})
   letter-spacing: 0.02em;
 }
 
+@media (max-width: 992px) {
+  .rag-float {
+    bottom: calc(var(--kk-tabbar-height) + 1rem);
+  }
+
+  .rag-panel {
+    height: min(34rem, calc(100dvh - var(--kk-tabbar-height) - 6.5rem));
+  }
+}
+
 @media (max-width: 720px) {
   .rag-float {
     right: max(0.75rem, env(safe-area-inset-right, 0px));
-    bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+    bottom: max(
+      calc(var(--kk-tabbar-height) + 0.75rem),
+      calc(0.75rem + env(safe-area-inset-bottom, 0px))
+    );
   }
 
   .rag-panel {
     width: min(100vw - 1rem, 26.5rem);
-    height: min(72dvh, calc(100dvh - 5.5rem));
+    height: min(72dvh, calc(100dvh - var(--kk-tabbar-height) - 5.5rem));
     border-radius: var(--kk-radius-lg);
   }
 

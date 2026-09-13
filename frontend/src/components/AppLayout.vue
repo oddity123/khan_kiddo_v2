@@ -55,7 +55,7 @@ const isImmersive = computed(() => Boolean(route.meta.immersive))
 
 .page-footer {
   flex-shrink: 0;
-  padding: 1rem 0 1.5rem;
+  padding: 1rem 0 calc(1.5rem + var(--kk-tabbar-height));
   position: relative;
   z-index: 1;
 }
@@ -68,11 +68,16 @@ const isImmersive = computed(() => Boolean(route.meta.immersive))
 .layout--immersive .page-main {
   flex: 1 1 0;
   overflow: hidden;
+  padding-bottom: var(--kk-tabbar-height);
 }
 
 .layout--immersive .page-main-shell {
   flex: 1 1 0;
   overflow: hidden;
   padding-bottom: 0;
+}
+
+.layout--immersive .page-footer {
+  display: none;
 }
 </style>
