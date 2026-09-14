@@ -115,7 +115,10 @@ function cardOrdinal(item: GrowthCard): number {
 }
 
 function typeLabel(type: GrowthCard['type']): string {
-  return type === 'habit' ? '习惯' : '词汇'
+  if (type === 'habit') return '习惯'
+  if (type === 'vocab') return '词汇'
+  if (type === 'expression') return '表达'
+  return type
 }
 
 function syncFlipState() {

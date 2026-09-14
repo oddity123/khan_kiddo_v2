@@ -1,4 +1,4 @@
-export type GrowthCardType = 'habit' | 'vocab'
+export type GrowthCardType = 'habit' | 'vocab' | 'expression'
 export type GrowthCardStatus = 'unfamiliar' | 'fuzzy' | 'mastered'
 /** Anki 式四档；fuzzy 为 hard 的兼容别名 */
 export type GrowthGrade = 'again' | 'hard' | 'good' | 'easy' | 'fuzzy'

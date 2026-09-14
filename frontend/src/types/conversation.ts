@@ -65,7 +65,7 @@ export interface ChineseExpressionItem {
     /** 词汇求助时抽出的中文目标词；有则作为知识卡片正面 */
     focusPhrase?: string
     suggestion?: string
-    /** 可选角标（成长卡：习惯 / 词汇） */
+    /** 可选角标（成长卡：习惯 / 词汇 / 表达） */
     kindLabel?: string
     /** 稳定键（成长卡 cardId 等），供闪卡列表复用 */
     cardKey?: string
@@ -213,7 +213,7 @@ export interface ConversationAnalysisDetail {
     familyDistribution?: FamilyDistributionItem[]
     /** 习惯成长卡状态：ready=已有习惯卡，none=尚未制卡 */
     habitGrowthMintStatus?: 'ready' | 'none'
-    /** 本场已生成的全部成长卡（habit + vocab） */
+    /** 本场已生成的全部成长卡（habit + vocab + expression） */
     growthCards?: GrowthCard[]
 }
 
