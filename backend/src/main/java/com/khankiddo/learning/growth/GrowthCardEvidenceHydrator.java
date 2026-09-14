@@ -100,12 +100,21 @@ public class GrowthCardEvidenceHydrator {
 
         boolean needHabit = cards.stream().anyMatch(card ->
                 StringUtils.hasText(card.getSourceRef()) && card.getSourceRef().startsWith("habit:"));
+        boolean needExpr = cards.stream().anyMatch(card ->
+                StringUtils.hasText(card.getSourceRef()) && card.getSourceRef().startsWith("expr:"));
+        List<ConversationAnalysisItem> analysisItems = (needHabit || needExpr)
+                ? loadItems(analysisId)
+                : List.of();
         Map<String, ActionCardDto> habitByKey = needHabit
-                ? indexHabits(analysisId)
+                ? indexHabits(analysisItems)
+                : Map.of();
+        Map<String, ConversationAnalysisItem> itemBySentenceId = needExpr
+                ? indexItemsBySentenceId(analysisItems)
                 : Map.of();
 
         for (GrowthCard card : cards) {
-            List<GrowthCardEvidence> rows = buildRows(card, analysisId, expressions, habitByKey);
+            List<GrowthCardEvidence> rows = buildRows(
+                    card, analysisId, expressions, habitByKey, itemBySentenceId);
             if (CollectionUtils.isEmpty(rows)) {
                 continue;
             }
@@ -119,11 +128,15 @@ public class GrowthCardEvidenceHydrator {
         }
     }
 
-    private Map<String, ActionCardDto> indexHabits(String analysisId) {
+    private List<ConversationAnalysisItem> loadItems(String analysisId) {
         List<ConversationAnalysisItem> rows = itemMapper.findByAnalysisId(analysisId);
         if (CollectionUtils.isEmpty(rows)) {
-            rows = List.of();
+            return List.of();
         }
+        return rows;
+    }
+
+    private Map<String, ActionCardDto> indexHabits(List<ConversationAnalysisItem> rows) {
         HabitCardScorer.HabitScoreResult scoreResult = analysisSupport.score(rows);
         Map<String, ActionCardDto> byKey = new HashMap<>();
         if (scoreResult.topHabit() != null) {
@@ -147,11 +160,27 @@ public class GrowthCardEvidenceHydrator {
         }
     }
 
+    private static Map<String, ConversationAnalysisItem> indexItemsBySentenceId(
+            List<ConversationAnalysisItem> items) {
+        Map<String, ConversationAnalysisItem> byId = new HashMap<>();
+        if (CollectionUtils.isEmpty(items)) {
+            return byId;
+        }
+        for (ConversationAnalysisItem item : items) {
+            if (item == null || item.getSentenceId() == null) {
+                continue;
+            }
+            byId.putIfAbsent(String.valueOf(item.getSentenceId()), item);
+        }
+        return byId;
+    }
+
     private static List<GrowthCardEvidence> buildRows(
             GrowthCard card,
             String analysisId,
             List<ChineseExpressionDto> expressions,
-            Map<String, ActionCardDto> habitByKey) {
+            Map<String, ActionCardDto> habitByKey,
+            Map<String, ConversationAnalysisItem> itemBySentenceId) {
         String sourceRef = card.getSourceRef().trim();
         long userId = card.getUserId() != null ? card.getUserId() : 0L;
         String cardId = card.getCardId();
@@ -167,6 +196,12 @@ public class GrowthCardEvidenceHydrator {
             String habitKey = sourceRef.substring("habit:".length()).trim();
             ActionCardDto habit = habitByKey.get(habitKey);
             return GrowthCardEvidenceSupport.fromHabitExamples(userId, cardId, analysisId, habit);
+        }
+
+        if (sourceRef.startsWith("expr:") && !sourceRef.startsWith("expr:h:")) {
+            String sentenceId = sourceRef.substring("expr:".length()).trim();
+            ConversationAnalysisItem item = itemBySentenceId.get(sentenceId);
+            return GrowthCardEvidenceSupport.fromAnalysisItem(userId, cardId, analysisId, item);
         }
 
         return List.of();

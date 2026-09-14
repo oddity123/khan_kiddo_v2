@@ -38,6 +38,8 @@ public class GrowthCardMintGateway {
     private final GrowthCardMintAssistant assistant;
     private final GrowthCardStore store;
     private final PromptLoader promptLoader;
+    private final NaturalExpressionCandidateFilter naturalExpressionFilter;
+    private final FocusPhraseCutStrategy focusPhraseCutStrategy;
 
     public void mintAfterAnalysis(Long userId, String analysisId) {
         Optional<ConversationAnalysis> analysisOpt =
@@ -47,10 +49,16 @@ public class GrowthCardMintGateway {
             return;
         }
 
-        // 习惯卡不再自动铸 Top1，由用户在行动卡上手动「制卡」；此处仅自动沉淀词汇卡
+        // 习惯卡不再自动铸 Top1，由用户在行动卡上手动「制卡」；此处自动沉淀 vocab + expression
         ConversationAnalysis analysis = analysisOpt.get();
         for (ChineseExpressionDto expression : scoreResultChinese(analysis)) {
             persistVocabCard(userId, analysisId, expression);
+        }
+        List<ConversationAnalysisItem> items = itemMapper.findByAnalysisId(analysisId);
+        if (!CollectionUtils.isEmpty(items)) {
+            for (ConversationAnalysisItem item : items) {
+                persistExpressionCard(userId, analysisId, item);
+            }
         }
     }
 
@@ -183,5 +191,47 @@ public class GrowthCardMintGateway {
                 null);
         store.saveEvidence(GrowthCardEvidenceSupport.fromChineseExpression(
                 userId, card.getCardId(), analysisId, expression));
+    }
+
+    private void persistExpressionCard(Long userId, String analysisId, ConversationAnalysisItem item) {
+        if (ObjectUtils.isEmpty(item) || !naturalExpressionFilter.test(item)) {
+            return;
+        }
+        Optional<FocusPhrasePair> cut = focusPhraseCutStrategy.cut(new FocusPhraseCutRequest(
+                item.getOriginalSentence(),
+                item.getErrorPoint(),
+                item.getSuggestion(),
+                item.getPointId()));
+        if (cut.isEmpty()) {
+            return;
+        }
+        FocusPhrasePair pair = cut.get();
+        if (!StringUtils.hasText(pair.focusWrong()) || !StringUtils.hasText(pair.focusNatural())) {
+            return;
+        }
+        String sourceRef = expressionSourceRef(item);
+        GrowthCard card = store.persistNewOrGet(
+                userId,
+                "expression",
+                pair.focusWrong().trim(),
+                pair.focusNatural().trim(),
+                analysisId,
+                sourceRef,
+                null);
+        store.saveEvidence(GrowthCardEvidenceSupport.fromAnalysisItem(
+                userId, card.getCardId(), analysisId, item));
+    }
+
+    static String expressionSourceRef(ConversationAnalysisItem item) {
+        if (item.getSentenceId() != null) {
+            return "expr:" + item.getSentenceId();
+        }
+        String seed = StringUtils.hasText(item.getOriginalSentence())
+                ? item.getOriginalSentence().trim()
+                : item.getPointId();
+        return "expr:h:" + Integer.toHexString(Objects.hash(
+                seed,
+                item.getPointId(),
+                item.getErrorPoint()));
     }
 }
