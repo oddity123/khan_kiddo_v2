@@ -2,6 +2,7 @@ package com.khankiddo.learning.growth;
 
 import com.khankiddo.learning.dto.conversation.ActionCardDto;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
+import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.GrowthCardEvidence;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -13,7 +14,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * 将行动卡 / 中文表达证据去重后建成待落库行（按 track_key 卡内唯一）。
+ * 将行动卡 / 中文表达 / Stage2 分析句证据去重后建成待落库行（按 track_key 卡内唯一）。
  */
 public final class GrowthCardEvidenceSupport {
 
@@ -76,6 +77,30 @@ public final class GrowthCardEvidenceSupport {
                 .trackKey(trackKey(sentenceId, original))
                 .originalSentence(original)
                 .suggestion(trimToNull(expression.getSuggestion()))
+                .sortOrder(0)
+                .build());
+    }
+
+    public static List<GrowthCardEvidence> fromAnalysisItem(
+            long userId,
+            String cardId,
+            String analysisId,
+            ConversationAnalysisItem item) {
+        if (item == null || !StringUtils.hasText(item.getOriginalSentence())) {
+            return List.of();
+        }
+        String original = item.getOriginalSentence().trim();
+        String sentenceId = item.getSentenceId() != null
+                ? String.valueOf(item.getSentenceId())
+                : null;
+        return List.of(GrowthCardEvidence.builder()
+                .cardId(cardId)
+                .userId(userId)
+                .sourceAnalysisId(analysisId)
+                .sentenceId(sentenceId)
+                .trackKey(trackKey(sentenceId, original))
+                .originalSentence(original)
+                .suggestion(trimToNull(item.getSuggestion()))
                 .sortOrder(0)
                 .build());
     }

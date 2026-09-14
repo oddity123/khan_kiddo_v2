@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS `growth_card`
     `id`                  BIGINT AUTO_INCREMENT PRIMARY KEY,
     `card_id`             VARCHAR(64)  NOT NULL,
     `user_id`             BIGINT       NOT NULL,
-    `type`                VARCHAR(16)  NOT NULL COMMENT 'habit|vocab',
+    `type`                VARCHAR(16)  NOT NULL COMMENT 'habit|vocab|expression',
     `status`              VARCHAR(16)  NOT NULL COMMENT 'unfamiliar|fuzzy|mastered',
     `next_due_at`         DATE                  DEFAULT NULL,
     `front`               TEXT         NOT NULL,

@@ -290,7 +290,10 @@ const chineseExpressionCount = computed(() => {
 })
 
 function growthCardTypeLabel(type: string): string {
-  return type === 'habit' ? '习惯' : type === 'vocab' ? '词汇' : type
+  if (type === 'habit') return '习惯'
+  if (type === 'vocab') return '词汇'
+  if (type === 'expression') return '表达'
+  return type
 }
 
 /** 侧栏牌序：新制卡置顶；默认按创建时间新→旧 */
@@ -344,7 +347,7 @@ const growthFanItems = computed((): ChineseExpressionItem[] => {
         cardKey: card.cardId,
         originalIndex: index,
         originalSentence: card.front,
-        focusPhrase: card.type === 'vocab' ? card.front : undefined,
+        focusPhrase: card.type === 'vocab' || card.type === 'expression' ? card.front : undefined,
         suggestion: card.back,
         kindLabel: growthCardTypeLabel(card.type),
         evidenceCount: card.evidence?.length ?? 0,

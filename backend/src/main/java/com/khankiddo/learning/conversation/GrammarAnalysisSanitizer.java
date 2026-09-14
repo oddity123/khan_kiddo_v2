@@ -39,7 +39,6 @@ public class GrammarAnalysisSanitizer {
     private static final int MIN_PROBE_LENGTH = 2;
 
     private static final Pattern ELLIPSIS = Pattern.compile("\\.{2,}|…+");
-    private static final char[] ARROWS = {'\u2192', '\u21d2'};
 
     private final ConversationAnalysisProperties properties;
     private final PointDictionary pointDictionary;
@@ -93,7 +92,7 @@ public class GrammarAnalysisSanitizer {
         if (!StringUtils.hasText(normalizedOriginal)) {
             return true;
         }
-        ParsedPoint parsed = parsePoint(error.getPoint());
+        ErrorPointSpanSupport.Span parsed = ErrorPointSpanSupport.parse(error.getPoint());
         if (parsed == null) {
             return true;
         }
@@ -115,33 +114,6 @@ public class GrammarAnalysisSanitizer {
             }
         }
         return true;
-    }
-
-    /**
-     * 解析「原文片段 → 正确写法（中文原因）」：以箭头切分，正确写法截到中文/英文左括号前。
-     */
-    private static ParsedPoint parsePoint(String point) {
-        int arrowIdx = -1;
-        for (char arrow : ARROWS) {
-            int idx = point.indexOf(arrow);
-            if (idx >= 0 && (arrowIdx < 0 || idx < arrowIdx)) {
-                arrowIdx = idx;
-            }
-        }
-        if (arrowIdx < 0) {
-            return null;
-        }
-        String wrong = point.substring(0, arrowIdx).trim();
-        String rest = point.substring(arrowIdx + 1).trim();
-        int cut = rest.length();
-        for (char paren : new char[]{'\uff08', '('}) {
-            int idx = rest.indexOf(paren);
-            if (idx >= 0 && idx < cut) {
-                cut = idx;
-            }
-        }
-        String correct = rest.substring(0, cut).trim();
-        return new ParsedPoint(wrong, correct);
     }
 
     /** 取省略号（... / …）之前的引导片段，便于对含省略的长片段做校验。 */
@@ -173,8 +145,5 @@ public class GrammarAnalysisSanitizer {
             }
         }
         return sb.toString();
-    }
-
-    private record ParsedPoint(String wrong, String correct) {
     }
 }

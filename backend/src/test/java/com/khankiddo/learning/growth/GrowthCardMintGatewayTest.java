@@ -9,6 +9,7 @@ import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
+import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.GrowthCard;
 import com.khankiddo.learning.prompt.PromptLoader;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +55,10 @@ class GrowthCardMintGatewayTest {
     private GrowthCardStore store;
     @Mock
     private PromptLoader promptLoader;
+    @Mock
+    private NaturalExpressionCandidateFilter naturalExpressionFilter;
+    @Mock
+    private FocusPhraseCutStrategy focusPhraseCutStrategy;
 
     private GrowthCardMintGateway gateway;
 
@@ -61,7 +66,8 @@ class GrowthCardMintGatewayTest {
     void setUp() {
         gateway = new GrowthCardMintGateway(
                 analysisMapper, itemMapper, summaryParser, analysisSupport,
-                contextBuilder, assistant, store, promptLoader);
+                contextBuilder, assistant, store, promptLoader,
+                naturalExpressionFilter, focusPhraseCutStrategy);
         when(analysisMapper.findByAnalysisIdAndUserId(ANALYSIS_ID, USER_ID))
                 .thenReturn(Optional.of(ConversationAnalysis.builder()
                         .analysisId(ANALYSIS_ID)
@@ -80,6 +86,7 @@ class GrowthCardMintGatewayTest {
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()
                 .chineseExpressions(List.of(expression))
                 .build());
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
         GrowthCard vocabCard = GrowthCard.builder().cardId("vocab-1").front("很有成就感").build();
         when(store.persistNewOrGet(
                 USER_ID, "vocab", "很有成就感", "I feel a strong sense of accomplishment.",
@@ -99,8 +106,57 @@ class GrowthCardMintGatewayTest {
     }
 
     @Test
+    void mintAfterAnalysis_shouldPersistExpressionForNaturalItem() {
+        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
+        ConversationAnalysisItem item = ConversationAnalysisItem.builder()
+                .sentenceId(11L)
+                .pointId("FEEL_ED_ADJ")
+                .originalSentence("I'm so exciting.")
+                .errorPoint("exciting → excited（感到…用 -ed）")
+                .suggestion("I'm so excited.")
+                .build();
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of(item));
+        when(naturalExpressionFilter.test(item)).thenReturn(true);
+        when(focusPhraseCutStrategy.cut(any())).thenReturn(Optional.of(
+                new FocusPhrasePair("exciting", "excited")));
+        GrowthCard exprCard = GrowthCard.builder().cardId("expr-1").front("exciting").build();
+        when(store.persistNewOrGet(
+                USER_ID, "expression", "exciting", "excited",
+                ANALYSIS_ID, "expr:11", null))
+                .thenReturn(exprCard);
+
+        gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
+
+        verify(store).persistNewOrGet(
+                USER_ID, "expression", "exciting", "excited",
+                ANALYSIS_ID, "expr:11", null);
+        verify(store).saveEvidence(any());
+        verify(assistant, never()).generate(anyString(), anyString());
+    }
+
+    @Test
+    void mintAfterAnalysis_shouldSkipNonNaturalItems() {
+        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
+        ConversationAnalysisItem item = ConversationAnalysisItem.builder()
+                .sentenceId(2L)
+                .pointId("SENTENCE_LOOSE_AND")
+                .originalSentence("I went and I ate.")
+                .suggestion("I went, then I ate.")
+                .build();
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of(item));
+        when(naturalExpressionFilter.test(item)).thenReturn(false);
+
+        gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
+
+        verify(focusPhraseCutStrategy, never()).cut(any());
+        verify(store, never()).persistNewOrGet(
+                anyLong(), eq("expression"), anyString(), anyString(), anyString(), anyString(), isNull());
+    }
+
+    @Test
     void mintAfterAnalysis_shouldNotAutoMintTopHabit() {
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of());
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 

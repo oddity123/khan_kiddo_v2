@@ -30,4 +30,8 @@ public final class PointScoringSupport {
     public static boolean isFatal(PointDefinition point) {
         return "FATAL".equals(errorLevel(point));
     }
+
+    public static boolean isNatural(PointDefinition point) {
+        return "NATURAL".equals(errorLevel(point));
+    }
 }
