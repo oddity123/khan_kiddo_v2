@@ -99,9 +99,9 @@ public class GrowthCardEvidenceHydrator {
                 : List.of();
 
         boolean needHabit = cards.stream().anyMatch(card ->
-                StringUtils.hasText(card.getSourceRef()) && card.getSourceRef().startsWith("habit:"));
+                GrowthCardSourceRefs.isHabit(card.getSourceRef()));
         boolean needExpr = cards.stream().anyMatch(card ->
-                StringUtils.hasText(card.getSourceRef()) && card.getSourceRef().startsWith("expr:"));
+                GrowthCardSourceRefs.isExpr(card.getSourceRef()));
         List<ConversationAnalysisItem> analysisItems = (needHabit || needExpr)
                 ? loadItems(analysisId)
                 : List.of();
@@ -154,7 +154,7 @@ public class GrowthCardEvidenceHydrator {
         if (ObjectUtils.isEmpty(habit)) {
             return;
         }
-        String key = StringUtils.hasText(habit.getHabitKey()) ? habit.getHabitKey() : habit.getPointId();
+        String key = GrowthCardSourceRefs.resolveHabitKey(habit);
         if (StringUtils.hasText(key)) {
             byKey.putIfAbsent(key, habit);
         }
@@ -185,21 +185,21 @@ public class GrowthCardEvidenceHydrator {
         long userId = card.getUserId() != null ? card.getUserId() : 0L;
         String cardId = card.getCardId();
 
-        if (sourceRef.startsWith("vocab:")) {
-            String indexText = sourceRef.substring("vocab:".length()).trim();
+        if (GrowthCardSourceRefs.isVocab(sourceRef)) {
+            String indexText = GrowthCardSourceRefs.vocabIndexText(sourceRef);
             Integer index = parseIndex(indexText);
             ChineseExpressionDto matched = findExpression(expressions, index, indexText);
             return GrowthCardEvidenceSupport.fromChineseExpression(userId, cardId, analysisId, matched);
         }
 
-        if (sourceRef.startsWith("habit:")) {
-            String habitKey = sourceRef.substring("habit:".length()).trim();
+        if (GrowthCardSourceRefs.isHabit(sourceRef)) {
+            String habitKey = GrowthCardSourceRefs.habitKeyOf(sourceRef);
             ActionCardDto habit = habitByKey.get(habitKey);
             return GrowthCardEvidenceSupport.fromHabitExamples(userId, cardId, analysisId, habit);
         }
 
-        if (sourceRef.startsWith("expr:") && !sourceRef.startsWith("expr:h:")) {
-            String sentenceId = sourceRef.substring("expr:".length()).trim();
+        if (GrowthCardSourceRefs.isExprSentence(sourceRef)) {
+            String sentenceId = GrowthCardSourceRefs.sentenceIdOf(sourceRef);
             ConversationAnalysisItem item = itemBySentenceId.get(sentenceId);
             return GrowthCardEvidenceSupport.fromAnalysisItem(userId, cardId, analysisId, item);
         }

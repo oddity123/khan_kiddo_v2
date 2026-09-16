@@ -84,6 +84,9 @@ app:
     guest-free-analyze-limit: 3
     guest-cookie-name: kk_guest_id
     guest-cookie-max-age-days: 365
+  # 焦点短语切分：名单内 pointId 灰度走 LLM（空 = 全启发式）
+  focus-phrase-cut:
+    llm-point-ids: []
   # ERRANT 操作批注（Stage2 后软依赖；默认关闭）
   errant:
     enabled: ${ERRANT_ENABLED:false}

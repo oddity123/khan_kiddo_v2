@@ -34,13 +34,13 @@ public class NaturalExpressionCandidateFilter {
         if (span == null) {
             return false;
         }
-        return HeuristicFocusPhraseCutter.hasSubstantiveDiff(span.wrong(), span.correct());
+        return FocusPhraseTextSupport.hasSubstantiveDiff(span.wrong(), span.correct());
     }
 
     private static boolean hasSubstantiveSuggestion(String original, String suggestion) {
         if (!StringUtils.hasText(suggestion)) {
             return false;
         }
-        return HeuristicFocusPhraseCutter.hasSubstantiveDiff(original, suggestion);
+        return FocusPhraseTextSupport.hasSubstantiveDiff(original, suggestion);
     }
 }

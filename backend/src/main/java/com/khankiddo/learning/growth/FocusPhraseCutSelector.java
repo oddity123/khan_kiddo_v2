@@ -1,28 +1,33 @@
 package com.khankiddo.learning.growth;
 
+import com.khankiddo.learning.config.FocusPhraseCutProperties;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
 /**
- * 切分策略选择器：MVP 一律启发式；预留按 {@code pointId} 灰度走 LLM 的出口（尚未接真调用）。
+ * 切分策略选择器：MVP 一律启发式；可按 {@code app.focus-phrase-cut.llm-point-ids} 灰度走 LLM。
  */
 @Primary
 @Component
 public class FocusPhraseCutSelector implements FocusPhraseCutStrategy {
 
-    /** 后续灰度名单；空 = 全走启发式。 */
-    private static final Set<String> LLM_POINT_IDS = Set.of();
-
     private final HeuristicFocusPhraseCutter heuristic;
     private final LlmFocusPhraseCutter llm;
+    private final Set<String> llmPointIds;
 
-    public FocusPhraseCutSelector(HeuristicFocusPhraseCutter heuristic, LlmFocusPhraseCutter llm) {
+    public FocusPhraseCutSelector(
+            HeuristicFocusPhraseCutter heuristic,
+            LlmFocusPhraseCutter llm,
+            FocusPhraseCutProperties properties) {
         this.heuristic = heuristic;
         this.llm = llm;
+        this.llmPointIds = normalizePointIds(properties != null ? properties.getLlmPointIds() : null);
     }
 
     @Override
@@ -40,7 +45,20 @@ public class FocusPhraseCutSelector implements FocusPhraseCutStrategy {
         return heuristic.cut(request);
     }
 
-    private static boolean shouldUseLlm(String pointId) {
-        return StringUtils.hasText(pointId) && LLM_POINT_IDS.contains(pointId.trim());
+    private boolean shouldUseLlm(String pointId) {
+        return StringUtils.hasText(pointId) && llmPointIds.contains(pointId.trim());
+    }
+
+    private static Set<String> normalizePointIds(java.util.List<String> raw) {
+        if (CollectionUtils.isEmpty(raw)) {
+            return Set.of();
+        }
+        Set<String> ids = new HashSet<>();
+        for (String id : raw) {
+            if (StringUtils.hasText(id)) {
+                ids.add(id.trim());
+            }
+        }
+        return Set.copyOf(ids);
     }
 }

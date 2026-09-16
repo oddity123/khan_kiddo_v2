@@ -83,7 +83,7 @@ public class GrowthCardMintGateway {
             throw new BadRequestException("未找到对应的说话习惯");
         }
 
-        String sourceRef = habitSourceRef(habit);
+        String sourceRef = GrowthCardSourceRefs.habit(habit);
         Optional<GrowthCard> existing = store.findByUserSource(userId, analysisId, "habit", sourceRef);
         if (existing.isPresent()) {
             GrowthCard card = existing.get();
@@ -134,15 +134,7 @@ public class GrowthCardMintGateway {
     }
 
     private static boolean matchesHabitKey(ActionCardDto card, String habitKey) {
-        return Objects.equals(habitKey, resolveHabitKey(card));
-    }
-
-    private static String resolveHabitKey(ActionCardDto habit) {
-        return StringUtils.hasText(habit.getHabitKey()) ? habit.getHabitKey() : habit.getPointId();
-    }
-
-    private static String habitSourceRef(ActionCardDto habit) {
-        return "habit:" + resolveHabitKey(habit);
+        return Objects.equals(habitKey, GrowthCardSourceRefs.resolveHabitKey(card));
     }
 
     private GrowthCard mintHabitCard(Long userId, String analysisId, ActionCardDto habit) {
@@ -153,7 +145,7 @@ public class GrowthCardMintGateway {
                 || !StringUtils.hasText(draft.getFront())
                 || !StringUtils.hasText(draft.getBack())) {
             log.warn("成长卡 habit 生成结果无效 analysisId={} habitKey={}",
-                    analysisId, resolveHabitKey(habit));
+                    analysisId, GrowthCardSourceRefs.resolveHabitKey(habit));
             return null;
         }
         GrowthCard card = store.persistNewOrGet(
@@ -162,7 +154,7 @@ public class GrowthCardMintGateway {
                 draft.getFront().trim(),
                 draft.getBack().trim(),
                 analysisId,
-                habitSourceRef(habit),
+                GrowthCardSourceRefs.habit(habit),
                 null);
         List<GrowthCardEvidence> evidence = GrowthCardEvidenceSupport.fromHabitExamples(
                 userId, card.getCardId(), analysisId, habit);
@@ -187,7 +179,7 @@ public class GrowthCardMintGateway {
                 front,
                 back,
                 analysisId,
-                "vocab:" + expression.getOriginalIndex(),
+                GrowthCardSourceRefs.vocab(expression.getOriginalIndex()),
                 null);
         store.saveEvidence(GrowthCardEvidenceSupport.fromChineseExpression(
                 userId, card.getCardId(), analysisId, expression));
@@ -209,7 +201,7 @@ public class GrowthCardMintGateway {
         if (!StringUtils.hasText(pair.focusWrong()) || !StringUtils.hasText(pair.focusNatural())) {
             return;
         }
-        String sourceRef = expressionSourceRef(item);
+        String sourceRef = GrowthCardSourceRefs.expression(item);
         GrowthCard card = store.persistNewOrGet(
                 userId,
                 "expression",
@@ -220,18 +212,5 @@ public class GrowthCardMintGateway {
                 null);
         store.saveEvidence(GrowthCardEvidenceSupport.fromAnalysisItem(
                 userId, card.getCardId(), analysisId, item));
-    }
-
-    static String expressionSourceRef(ConversationAnalysisItem item) {
-        if (item.getSentenceId() != null) {
-            return "expr:" + item.getSentenceId();
-        }
-        String seed = StringUtils.hasText(item.getOriginalSentence())
-                ? item.getOriginalSentence().trim()
-                : item.getPointId();
-        return "expr:h:" + Integer.toHexString(Objects.hash(
-                seed,
-                item.getPointId(),
-                item.getErrorPoint()));
     }
 }

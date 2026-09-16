@@ -1,5 +1,6 @@
 package com.khankiddo.learning.errant;
 
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public final class ErrantTokenSupport {
     }
 
     public static String join(List<String> tokens) {
-        if (tokens == null || tokens.isEmpty()) {
+        if (CollectionUtils.isEmpty(tokens)) {
             return "";
         }
         return String.join(" ", tokens);
