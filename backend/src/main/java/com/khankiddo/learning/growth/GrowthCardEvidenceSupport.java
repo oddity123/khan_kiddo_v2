@@ -4,6 +4,7 @@ import com.khankiddo.learning.dto.conversation.ActionCardDto;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.GrowthCardEvidence;
+import com.khankiddo.learning.util.TextSupport;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -50,7 +51,7 @@ public final class GrowthCardEvidenceSupport {
                     .sentenceId(sentenceId)
                     .trackKey(trackKey)
                     .originalSentence(original)
-                    .suggestion(trimToNull(example.getSuggestion()))
+                    .suggestion(TextSupport.trimToNull(example.getSuggestion()))
                     .sortOrder(order++)
                     .build());
         }
@@ -76,7 +77,7 @@ public final class GrowthCardEvidenceSupport {
                 .sentenceId(sentenceId)
                 .trackKey(trackKey(sentenceId, original))
                 .originalSentence(original)
-                .suggestion(trimToNull(expression.getSuggestion()))
+                .suggestion(TextSupport.trimToNull(expression.getSuggestion()))
                 .sortOrder(0)
                 .build());
     }
@@ -100,7 +101,7 @@ public final class GrowthCardEvidenceSupport {
                 .sentenceId(sentenceId)
                 .trackKey(trackKey(sentenceId, original))
                 .originalSentence(original)
-                .suggestion(trimToNull(item.getSuggestion()))
+                .suggestion(TextSupport.trimToNull(item.getSuggestion()))
                 .sortOrder(0)
                 .build());
     }
@@ -118,12 +119,5 @@ public final class GrowthCardEvidenceSupport {
         }
         String collapsed = original.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
         return collapsed.length() > 180 ? collapsed.substring(0, 180) : collapsed;
-    }
-
-    private static String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
     }
 }

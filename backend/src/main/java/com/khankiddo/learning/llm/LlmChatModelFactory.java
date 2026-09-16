@@ -119,7 +119,7 @@ public class LlmChatModelFactory {
         LlmModelProperties.ModelConfig c = model.getConfig();
         return model.getId() + "|"
                 + c.getModelName() + "|"
-                + normalizeBaseUrl(c.getBaseUrl()) + "|"
+                + LlmEndpointSupport.normalizeDoubaoBaseUrl(c.getBaseUrl()) + "|"
                 + c.getTemperature() + "|"
                 + c.getMaxTokens();
     }
@@ -129,7 +129,7 @@ public class LlmChatModelFactory {
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(timeout);
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .httpClientBuilder(clientBuilder)
-                .baseUrl(normalizeBaseUrl(config.getBaseUrl()))
+                .baseUrl(LlmEndpointSupport.normalizeDoubaoBaseUrl(config.getBaseUrl()))
                 .apiKey(modelCatalog.resolveApiKey(config))
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature())
@@ -175,7 +175,7 @@ public class LlmChatModelFactory {
         HttpClientBuilder clientBuilder = copyHttpClientBuilder(timeout);
         OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder builder = OpenAiStreamingChatModel.builder()
                 .httpClientBuilder(clientBuilder)
-                .baseUrl(normalizeBaseUrl(config.getBaseUrl()))
+                .baseUrl(LlmEndpointSupport.normalizeDoubaoBaseUrl(config.getBaseUrl()))
                 .apiKey(modelCatalog.resolveApiKey(config))
                 .modelName(config.getModelName())
                 .temperature(config.getTemperature())
@@ -238,11 +238,4 @@ public class LlmChatModelFactory {
                 .readTimeout(timeout);
     }
 
-    private String normalizeBaseUrl(String baseUrl) {
-        if (!StringUtils.hasText(baseUrl)) {
-            return "https://ark.cn-beijing.volces.com/api/v3";
-        }
-        String trimmed = baseUrl.trim();
-        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
-    }
 }

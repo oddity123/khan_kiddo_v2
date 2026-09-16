@@ -8,6 +8,13 @@ import {deleteConversationAnalysis, listConversationAnalyses,} from '@/api/conve
 import AnalysisHistoryScoreStrip from '@/components/conversation/AnalysisHistoryScoreStrip.vue'
 import type {AnalysisSummaryRow} from '@/types/conversation'
 import {getErrorMessage} from '@/utils/error'
+import {
+  analysisStatusClass,
+  analysisStatusLabel,
+  formatCharCount,
+  formatListDuration,
+  formatListTime,
+} from '@/utils/analysisListDisplay'
 
 const router = useRouter()
 
@@ -18,46 +25,6 @@ const pageSize = ref(10)
 const total = ref(0)
 const records = ref<AnalysisSummaryRow[]>([])
 
-function formatTime(value?: string) {
-  if (!value) {
-    return '—'
-  }
-  return value.replace('T', ' ').slice(0, 19)
-}
-
-function statusLabel(status: string) {
-  if (status === 'success') {
-    return '已完成'
-  }
-  if (status === 'failed') {
-    return '失败'
-  }
-  return status
-}
-
-function statusClass(status: string) {
-  if (status === 'failed') {
-    return 'status-tag--failed'
-  }
-  return 'status-tag--success'
-}
-
-function formatDuration(ms?: number) {
-  if (ms == null) {
-    return '—'
-  }
-  if (ms < 1000) {
-    return `${ms} ms`
-  }
-  return `${(ms / 1000).toFixed(1)} s`
-}
-
-function formatCharCount(count?: number) {
-  if (count == null) {
-    return '—'
-  }
-  return `${count} 字`
-}
 
 async function loadList() {
   loading.value = true
@@ -166,13 +133,13 @@ onMounted(loadList)
             <div class="record-main" @click="goDetail(row.analysisId)">
               <p class="record-preview">{{ row.preview || '（无预览）' }}</p>
               <div class="record-meta">
-                <span><el-icon><Clock/></el-icon>{{ formatTime(row.createdAt) }}</span>
+                <span><el-icon><Clock/></el-icon>{{ formatListTime(row.createdAt) }}</span>
                 <span><el-icon><Document/></el-icon>{{ formatCharCount(row.contentCharCount) }}</span>
                 <span v-if="row.llmModelName">
                   <el-icon><Cpu/></el-icon>{{ row.llmModelName }}
                 </span>
-                <span>耗时 {{ formatDuration(row.processingTimeMs) }}</span>
-                <span class="status-tag" :class="statusClass(row.status)">{{ statusLabel(row.status) }}</span>
+                <span>耗时 {{ formatListDuration(row.processingTimeMs) }}</span>
+                <span class="status-tag" :class="analysisStatusClass(row.status)">{{ analysisStatusLabel(row.status) }}</span>
               </div>
               <AnalysisHistoryScoreStrip
                   v-if="row.status === 'success'"

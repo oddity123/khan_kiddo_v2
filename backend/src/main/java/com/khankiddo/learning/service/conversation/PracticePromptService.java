@@ -4,6 +4,7 @@ import com.khankiddo.learning.dto.conversation.PracticePromptRequest;
 import com.khankiddo.learning.dto.conversation.PracticePromptResponse;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.prompt.PromptLoader;
+import com.khankiddo.learning.util.TextSupport;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
@@ -64,17 +65,17 @@ public class PracticePromptService {
             if (!ranks.add(rank)) {
                 throw new BadRequestException("rank 不能重复");
             }
-            String title = trimToNull(item.getTitle());
+            String title = TextSupport.trimToNull(item.getTitle());
             if (!StringUtils.hasText(title)) {
                 throw new BadRequestException("薄弱点标题不能为空");
             }
             cleaned.add(PracticePromptRequest.Goal.builder()
                     .rank(rank)
                     .title(title)
-                    .diagnosis(trimToNull(item.getDiagnosis()))
-                    .coaching(trimToNull(item.getCoaching()))
-                    .originalSentence(trimToNull(item.getOriginalSentence()))
-                    .targetSentence(trimToNull(item.getTargetSentence()))
+                    .diagnosis(TextSupport.trimToNull(item.getDiagnosis()))
+                    .coaching(TextSupport.trimToNull(item.getCoaching()))
+                    .originalSentence(TextSupport.trimToNull(item.getOriginalSentence()))
+                    .targetSentence(TextSupport.trimToNull(item.getTargetSentence()))
                     .build());
         }
         cleaned.sort(Comparator.comparingInt(PracticePromptRequest.Goal::getRank));
@@ -94,8 +95,8 @@ public class PracticePromptService {
             if (ObjectUtils.isEmpty(item)) {
                 continue;
             }
-            String front = trimToNull(item.getFront());
-            String back = trimToNull(item.getBack());
+            String front = TextSupport.trimToNull(item.getFront());
+            String back = TextSupport.trimToNull(item.getBack());
             if (!StringUtils.hasText(front)) {
                 throw new BadRequestException("词汇正面不能为空");
             }
@@ -106,7 +107,7 @@ public class PracticePromptService {
             unique.putIfAbsent(key, PracticePromptRequest.Vocabulary.builder()
                     .front(front)
                     .back(back)
-                    .originalSentence(trimToNull(item.getOriginalSentence()))
+                    .originalSentence(TextSupport.trimToNull(item.getOriginalSentence()))
                     .build());
         }
         return new ArrayList<>(unique.values());
@@ -155,13 +156,6 @@ public class PracticePromptService {
             }
         }
         return block.toString();
-    }
-
-    private static String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
     }
 
     private static String collapseBlankLines(String prompt) {

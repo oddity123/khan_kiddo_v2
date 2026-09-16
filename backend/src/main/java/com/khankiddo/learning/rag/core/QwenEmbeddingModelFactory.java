@@ -1,6 +1,7 @@
 package com.khankiddo.learning.rag.core;
 
 import com.khankiddo.learning.config.condition.OnGrammarErrorRagCondition;
+import com.khankiddo.learning.llm.LlmEndpointSupport;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import lombok.RequiredArgsConstructor;
@@ -27,18 +28,11 @@ public class QwenEmbeddingModelFactory {
                     "RAG 已启用但未配置 app.rag.embedding-api-key（通常为 QWEN_API_KEY）");
         }
         return OpenAiEmbeddingModel.builder()
-                .baseUrl(normalizeBaseUrl(ragProperties.getEmbeddingBaseUrl()))
+                .baseUrl(LlmEndpointSupport.normalizeDashScopeBaseUrl(ragProperties.getEmbeddingBaseUrl()))
                 .apiKey(ragProperties.getEmbeddingApiKey().trim())
                 .modelName(ragProperties.getEmbeddingModelName())
                 .maxSegmentsPerBatch(ragProperties.getEmbeddingMaxSegmentsPerBatch())
                 .build();
     }
 
-    private String normalizeBaseUrl(String baseUrl) {
-        if (!StringUtils.hasText(baseUrl)) {
-            return "https://dashscope.aliyuncs.com/compatible-mode/v1";
-        }
-        String trimmed = baseUrl.trim();
-        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
-    }
 }

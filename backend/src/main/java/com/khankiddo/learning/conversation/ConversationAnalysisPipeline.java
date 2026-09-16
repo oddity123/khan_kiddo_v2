@@ -7,6 +7,7 @@ import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
+import com.khankiddo.learning.knowledge.HabitScoreSupport;
 import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
@@ -410,24 +411,8 @@ public class ConversationAnalysisPipeline {
         if (grammar == null || CollectionUtils.isEmpty(grammar.getItems())) {
             return habitCardScorer.score(new HabitScoreInput(List.of()));
         }
-        List<HabitScoreInput.ErrorHit> hits = new ArrayList<>();
-        long sentenceId = 1;
-        for (GrammarSentenceItemDto item : grammar.getItems()) {
-            if (!CollectionUtils.isEmpty(item.getErrors())) {
-                for (GrammarErrorDto error : item.getErrors()) {
-                    PointDefinition point = pointDictionary.resolveOrFallback(error.getPointId());
-                    hits.add(new HabitScoreInput.ErrorHit(
-                            point.pointId(),
-                            String.valueOf(sentenceId),
-                            item.getOriginalSentence(),
-                            error.getPoint(),
-                            item.getSuggestion(),
-                            point.errorLevel()));
-                }
-            }
-            sentenceId++;
-        }
-        return habitCardScorer.score(new HabitScoreInput(hits));
+        return habitCardScorer.score(new HabitScoreInput(
+                HabitScoreSupport.errorHitsFromGrammar(grammar, pointDictionary)));
     }
 
     private int countErrors(GrammarAnalysisResult grammar) {

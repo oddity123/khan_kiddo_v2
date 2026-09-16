@@ -8,6 +8,7 @@ import {deleteGrowthCard, gradeGrowthCard} from '@/api/growthCard'
 import GrowthCardEvidenceDialog from '@/components/growth/GrowthCardEvidenceDialog.vue'
 import type {GrowthCard, GrowthCardEvidence, GrowthGrade} from '@/types/growthCard'
 import {getErrorMessage} from '@/utils/error'
+import {growthCardTypeLabel} from '@/utils/growthCardLabels'
 
 const props = withDefaults(
     defineProps<{
@@ -61,7 +62,7 @@ function openEvidence(card: GrowthCard, event?: Event) {
   if (!evidenceCount(card)) {
     return
   }
-  evidenceTitle.value = card.front?.trim() || typeLabel(card.type)
+  evidenceTitle.value = card.front?.trim() || growthCardTypeLabel(card.type)
   evidenceItems.value = [...(card.evidence ?? [])]
   evidenceOpen.value = true
 }
@@ -114,12 +115,6 @@ function cardOrdinal(item: GrowthCard): number {
   return completed + position + 1
 }
 
-function typeLabel(type: GrowthCard['type']): string {
-  if (type === 'habit') return '习惯'
-  if (type === 'vocab') return '词汇'
-  if (type === 'expression') return '表达'
-  return type
-}
 
 function syncFlipState() {
   window.setTimeout(() => {
@@ -241,7 +236,7 @@ async function deleteCurrent() {
             <template #front>
               <article class="growth-face growth-face--front">
                 <header class="growth-head">
-                  <span class="growth-badge">{{ typeLabel(item.type) }}</span>
+                  <span class="growth-badge">{{ growthCardTypeLabel(item.type) }}</span>
                   <span class="growth-index">{{ cardOrdinal(item) }}/{{ initialCount }}</span>
                 </header>
                 <section class="growth-pane">
