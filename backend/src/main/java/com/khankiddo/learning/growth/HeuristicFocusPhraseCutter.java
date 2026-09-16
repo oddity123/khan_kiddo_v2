@@ -7,7 +7,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -39,7 +38,7 @@ public class HeuristicFocusPhraseCutter implements FocusPhraseCutStrategy {
         if (!StringUtils.hasText(original) || !StringUtils.hasText(suggestion)) {
             return Optional.empty();
         }
-        if (!hasSubstantiveDiff(original, suggestion)) {
+        if (!FocusPhraseTextSupport.hasSubstantiveDiff(original, suggestion)) {
             return Optional.empty();
         }
         return fromTokenAlignment(original, suggestion);
@@ -55,7 +54,8 @@ public class HeuristicFocusPhraseCutter implements FocusPhraseCutStrategy {
         if (!StringUtils.hasText(wrong) || !StringUtils.hasText(correct)) {
             return Optional.empty();
         }
-        if (normalizeKey(wrong).equals(normalizeKey(correct))) {
+        if (FocusPhraseTextSupport.normalizeKey(wrong)
+                .equals(FocusPhraseTextSupport.normalizeKey(correct))) {
             return Optional.empty();
         }
         return Optional.of(new FocusPhrasePair(wrong, correct));
@@ -107,7 +107,8 @@ public class HeuristicFocusPhraseCutter implements FocusPhraseCutStrategy {
         if (!StringUtils.hasText(focusNatural)) {
             focusNatural = focusWrong;
         }
-        if (normalizeKey(focusWrong).equals(normalizeKey(focusNatural))) {
+        if (FocusPhraseTextSupport.normalizeKey(focusWrong)
+                .equals(FocusPhraseTextSupport.normalizeKey(focusNatural))) {
             return Optional.empty();
         }
         return Optional.of(new FocusPhrasePair(focusWrong, focusNatural));
@@ -119,7 +120,8 @@ public class HeuristicFocusPhraseCutter implements FocusPhraseCutStrategy {
                 || !StringUtils.hasText(pair.focusNatural())) {
             return false;
         }
-        if (normalizeKey(pair.focusWrong()).equals(normalizeKey(pair.focusNatural()))) {
+        if (FocusPhraseTextSupport.normalizeKey(pair.focusWrong())
+                .equals(FocusPhraseTextSupport.normalizeKey(pair.focusNatural()))) {
             return false;
         }
         List<String> wrongTokens = tokens(pair.focusWrong());
@@ -129,42 +131,11 @@ public class HeuristicFocusPhraseCutter implements FocusPhraseCutStrategy {
         }
         // point 优先路径：若 suggestion 存在则要求与原句有实质差异；无 suggestion 时仍可用 point
         if (StringUtils.hasText(suggestion) && StringUtils.hasText(original)
-                && !hasSubstantiveDiff(original, suggestion)
-                && !hasSubstantiveDiff(pair.focusWrong(), pair.focusNatural())) {
+                && !FocusPhraseTextSupport.hasSubstantiveDiff(original, suggestion)
+                && !FocusPhraseTextSupport.hasSubstantiveDiff(pair.focusWrong(), pair.focusNatural())) {
             return false;
         }
         return true;
-    }
-
-    static boolean hasSubstantiveDiff(String left, String right) {
-        String a = normalizeKey(left);
-        String b = normalizeKey(right);
-        if (!StringUtils.hasText(a) || !StringUtils.hasText(b)) {
-            return false;
-        }
-        return !a.equals(b);
-    }
-
-    static String normalizeKey(String raw) {
-        if (!StringUtils.hasText(raw)) {
-            return "";
-        }
-        String lower = raw.toLowerCase(Locale.ROOT);
-        StringBuilder sb = new StringBuilder(lower.length());
-        boolean pendingSpace = false;
-        for (int i = 0; i < lower.length(); i++) {
-            char c = lower.charAt(i);
-            if (Character.isLetterOrDigit(c)) {
-                if (pendingSpace && sb.length() > 0) {
-                    sb.append(' ');
-                }
-                pendingSpace = false;
-                sb.append(c);
-            } else if (sb.length() > 0) {
-                pendingSpace = true;
-            }
-        }
-        return sb.toString();
     }
 
     private static List<String> tokens(String text) {
