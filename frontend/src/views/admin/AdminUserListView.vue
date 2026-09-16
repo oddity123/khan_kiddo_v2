@@ -8,6 +8,7 @@ import {listAdminUsers} from '@/api/admin'
 import {adminUserAnalysesPath} from '@/constants/admin'
 import type {AdminUserRow} from '@/types/admin'
 import {getErrorMessage} from '@/utils/error'
+import {formatListTime} from '@/utils/analysisListDisplay'
 
 const router = useRouter()
 
@@ -20,12 +21,6 @@ const pageSize = ref(10)
 const total = ref(0)
 const records = ref<AdminUserRow[]>([])
 
-function formatTime(value?: string) {
-  if (!value) {
-    return '—'
-  }
-  return value.replace('T', ' ').slice(0, 19)
-}
 
 function roleLabel(role: string) {
   return role === 'ADMIN' ? '管理员' : '普通用户'
@@ -131,7 +126,7 @@ onMounted(loadList)
               </p>
               <div class="record-meta">
                 <span>邮箱 {{ row.email || '—' }}</span>
-                <span><el-icon><Clock/></el-icon>注册 {{ formatTime(row.createdAt) }}</span>
+                <span><el-icon><Clock/></el-icon>注册 {{ formatListTime(row.createdAt) }}</span>
                 <span><el-icon><ChatDotRound/></el-icon>对话 {{ row.analysisCount ?? 0 }} 次</span>
                 <span>{{ roleLabel(row.role) }}</span>
                 <span>{{ row.enabled === false ? '已禁用' : '正常' }}</span>

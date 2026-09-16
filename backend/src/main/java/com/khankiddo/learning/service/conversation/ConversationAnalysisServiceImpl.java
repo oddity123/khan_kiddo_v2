@@ -10,6 +10,7 @@ import com.khankiddo.learning.dto.conversation.*;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.HabitScoreInput;
+import com.khankiddo.learning.knowledge.HabitScoreSupport;
 import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
@@ -424,32 +425,13 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     HabitCardScorer.HabitScoreResult buildHabitScoreResult(
             List<ConversationAnalysisItem> rows,
             List<ActionCardDiagnosisDto> diagnoses) {
-        boolean hasPointId = rows.stream().anyMatch(row -> StringUtils.hasText(row.getPointId()));
-        if (!hasPointId) {
+        if (!HabitScoreSupport.hasAnyPointId(rows)) {
             return new HabitCardScorer.HabitScoreResult(null, List.of(), List.of());
         }
 
-        List<HabitScoreInput.ErrorHit> errorHits = rows.stream()
-                .map(row -> new HabitScoreInput.ErrorHit(
-                        row.getPointId(),
-                        row.getSentenceId() != null ? String.valueOf(row.getSentenceId()) : null,
-                        row.getOriginalSentence(),
-                        row.getErrorPoint(),
-                        row.getSuggestion(),
-                        resolveErrorLevel(row.getPointId())))
-                .toList();
-
-        HabitCardScorer.HabitScoreResult result =
-                habitCardScorer.score(new HabitScoreInput(errorHits));
+        HabitCardScorer.HabitScoreResult result = habitCardScorer.score(new HabitScoreInput(
+                HabitScoreSupport.errorHitsFromItems(rows, pointDictionary)));
         return mergeActionCardDiagnoses(result, diagnoses);
-    }
-
-    private String resolveErrorLevel(String pointId) {
-        if (!StringUtils.hasText(pointId)) {
-            return null;
-        }
-        return PointScoringSupport.errorLevel(
-                pointDictionary.resolveOrFallback(pointId));
     }
 
     private HabitCardScorer.HabitScoreResult mergeActionCardDiagnoses(

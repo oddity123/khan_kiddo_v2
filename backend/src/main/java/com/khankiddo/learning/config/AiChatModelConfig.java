@@ -1,6 +1,7 @@
 package com.khankiddo.learning.config;
 
 import com.khankiddo.learning.llm.LlmChatModelFactory;
+import com.khankiddo.learning.llm.LlmEndpointSupport;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.spring.restclient.SpringRestClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
@@ -10,7 +11,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 
@@ -40,7 +40,7 @@ public class AiChatModelConfig {
 
         OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .httpClientBuilder(clientBuilder)
-                .baseUrl(normalizeBaseUrl(baseUrl))
+                .baseUrl(LlmEndpointSupport.normalizeDoubaoBaseUrl(baseUrl))
                 .apiKey(apiKey)
                 .modelName(conversationAnalysisProperties.getSeparationModelName())
                 .temperature(conversationAnalysisProperties.getSeparationTemperature())
@@ -68,13 +68,5 @@ public class AiChatModelConfig {
         return new SpringRestClientBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .readTimeout(timeout);
-    }
-
-    private String normalizeBaseUrl(String baseUrl) {
-        if (!StringUtils.hasText(baseUrl)) {
-            return "https://ark.cn-beijing.volces.com/api/v3";
-        }
-        String trimmed = baseUrl.trim();
-        return trimmed.endsWith("/") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
     }
 }

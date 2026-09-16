@@ -46,6 +46,8 @@ import type {
 } from '@/types/conversation'
 import type {GrowthCard, GrowthCardEvidence} from '@/types/growthCard'
 import {displayTypeLabel, formatProcessingTime, resolvePerformanceScore, sortItemsByPriority,} from '@/utils/analysisDisplay'
+import {formatListTime} from '@/utils/analysisListDisplay'
+import {growthCardTypeLabel} from '@/utils/growthCardLabels'
 import {getErrorMessage} from '@/utils/error'
 import {
   mapActionCardsToGoals,
@@ -289,12 +291,6 @@ const chineseExpressionCount = computed(() => {
   return detail.value?.educationalSummary?.chineseExpressions?.length ?? 0
 })
 
-function growthCardTypeLabel(type: string): string {
-  if (type === 'habit') return '习惯'
-  if (type === 'vocab') return '词汇'
-  if (type === 'expression') return '表达'
-  return type
-}
 
 /** 侧栏牌序：新制卡置顶；默认按创建时间新→旧 */
 const fanOrderIds = ref<string[]>([])
@@ -387,12 +383,6 @@ const pieDistribution = computed((): ErrorTypeDistribution[] => {
   return detail.value?.errorTypeDistribution ?? []
 })
 
-function formatTime(value?: string) {
-  if (!value) {
-    return '—'
-  }
-  return value.replace('T', ' ').slice(0, 19)
-}
 
 async function loadDetail() {
   if (isEphemeral.value) {
@@ -749,7 +739,7 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
             <footer class="summary-meta">
               <span class="summary-meta-item">
                 <el-icon><Clock/></el-icon>
-                {{ formatTime(detail.createdAt) }}
+                {{ formatListTime(detail.createdAt) }}
               </span>
               <span v-if="detail.llmModelName" class="summary-meta-item">
                 <el-icon><Cpu/></el-icon>

@@ -2,6 +2,7 @@ package com.khankiddo.learning.controller;
 
 import com.khankiddo.learning.config.SiteProperties;
 import com.khankiddo.learning.dto.SiteInfoResponse;
+import com.khankiddo.learning.util.TextSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,18 +22,11 @@ public class SiteController {
     @GetMapping
     public SiteInfoResponse siteInfo() {
         return SiteInfoResponse.builder()
-                .icpNumber(trimToNull(siteProperties.getIcpNumber()))
+                .icpNumber(TextSupport.trimToNull(siteProperties.getIcpNumber()))
                 .icpUrl(resolveUrl(siteProperties.getIcpUrl(), DEFAULT_ICP_URL))
-                .psbNumber(trimToNull(siteProperties.getPsbNumber()))
+                .psbNumber(TextSupport.trimToNull(siteProperties.getPsbNumber()))
                 .psbUrl(resolveUrl(siteProperties.getPsbUrl(), DEFAULT_PSB_URL))
                 .build();
-    }
-
-    private static String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
     }
 
     private static String resolveUrl(String value, String fallback) {
