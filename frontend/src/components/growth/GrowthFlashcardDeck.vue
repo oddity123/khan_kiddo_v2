@@ -50,6 +50,7 @@ const grading = ref(false)
 const deleting = ref(false)
 const evidenceOpen = ref(false)
 const evidenceTitle = ref('')
+const evidenceReason = ref<string | null>(null)
 const evidenceItems = ref<GrowthCardEvidence[]>([])
 
 function evidenceCount(card: GrowthCard): number {
@@ -63,6 +64,7 @@ function openEvidence(card: GrowthCard, event?: Event) {
     return
   }
   evidenceTitle.value = card.front?.trim() || growthCardTypeLabel(card.type)
+  evidenceReason.value = card.reason?.trim() || null
   evidenceItems.value = [...(card.evidence ?? [])]
   evidenceOpen.value = true
 }
@@ -347,6 +349,7 @@ async function deleteCurrent() {
     <GrowthCardEvidenceDialog
         v-model="evidenceOpen"
         :title="evidenceTitle"
+        :reason="evidenceReason"
         :items="evidenceItems"
     />
   </div>

@@ -97,6 +97,7 @@ class GrowthCardReviewServiceTest {
                 .back("world")
                 .sourceAnalysisId("analysis-2")
                 .sourceRef("habit:tense")
+                .evidenceJson("{\"reason\":\"感到…用 -ed\"}")
                 .build();
 
         when(store.listEvidence("card-2")).thenReturn(List.of());
@@ -112,6 +113,27 @@ class GrowthCardReviewServiceTest {
         assertEquals("world", dto.getBack());
         assertEquals("analysis-2", dto.getSourceAnalysisId());
         assertEquals("habit:tense", dto.getSourceRef());
+        assertEquals("感到…用 -ed", dto.getReason());
         assertEquals(0, dto.getEvidence() == null ? 0 : dto.getEvidence().size());
+    }
+
+    @Test
+    void toDto_shouldOmitReasonWhenEvidenceJsonMissing() {
+        GrowthCard card = GrowthCard.builder()
+                .cardId("card-habit")
+                .type("habit")
+                .status("unfamiliar")
+                .front("时态")
+                .back("注意过去时")
+                .sourceAnalysisId("analysis-3")
+                .sourceRef("habit:tense")
+                .build();
+
+        when(store.listEvidence("card-habit")).thenReturn(List.of());
+        when(evidenceHydrator.hydrateMissing(anyList(), anyMap())).thenReturn(Map.of());
+
+        var dto = reviewService.toDto(card);
+
+        assertNull(dto.getReason());
     }
 }

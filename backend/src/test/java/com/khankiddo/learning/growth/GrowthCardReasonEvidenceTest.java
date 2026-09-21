@@ -18,4 +18,19 @@ class GrowthCardReasonEvidenceTest {
         assertThat(GrowthCardReasonEvidence.toEvidenceJson("感到…用 \"-ed\""))
                 .isEqualTo("{\"reason\":\"感到…用 \\\"-ed\\\"\"}");
     }
+
+    @Test
+    void parseReason_readsEscapedJson() {
+        String json = GrowthCardReasonEvidence.toEvidenceJson("感到…用 \"-ed\"");
+        assertThat(GrowthCardReasonEvidence.parseReason(json)).isEqualTo("感到…用 \"-ed\"");
+    }
+
+    @Test
+    void parseReason_nullBlankOrInvalid_returnsNull() {
+        assertThat(GrowthCardReasonEvidence.parseReason(null)).isNull();
+        assertThat(GrowthCardReasonEvidence.parseReason("")).isNull();
+        assertThat(GrowthCardReasonEvidence.parseReason("not-json")).isNull();
+        assertThat(GrowthCardReasonEvidence.parseReason("{\"other\":1}")).isNull();
+        assertThat(GrowthCardReasonEvidence.parseReason("{\"reason\":\"\"}")).isNull();
+    }
 }
