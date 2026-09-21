@@ -18,17 +18,17 @@
           "focusPhrase": {
             "type": "string",
             "minLength": 1,
-            "description": "闪卡正面短焦点（chinese=中文目标；expression=不自然短片段）"
+            "description": "闪卡正面短焦点（chinese=中文目标；expression=不自然短片段）；同场勿与已输出项近义重复；无法短对立时勿输出该条"
           },
           "suggestion": {
             "type": "string",
             "minLength": 1,
-            "description": "闪卡背面短对应（chinese=英文；expression=地道短说法）"
+            "description": "闪卡背面短对应（chinese=英文；expression=地道短说法）；同场勿近义重复"
           },
           "reason": {
             "type": "string",
             "minLength": 1,
-            "description": "短中文说明：为何抽这个 / 学什么 / 为何这样改"
+            "description": "短中文说明：为何抽这个 / 学什么 / 为何这样改（每条保留项必填）"
           }
         },
         "required": [
@@ -40,7 +40,7 @@
         ],
         "additionalProperties": false
       },
-      "description": "与输入条目一一对应的知识卡片内容"
+      "description": "可积累闪卡；跳过的 index 不出现；同场去重后的条目"
     }
   },
   "required": ["items"],

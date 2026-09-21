@@ -1,9 +1,15 @@
 package com.khankiddo.learning.growth;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.util.StringUtils;
+
 /**
- * 将 Phrase Review {@code reason} 写入成长卡 {@code evidence_json}（不扩 DDL）。
+ * 将 Phrase Review {@code reason} 写入成长卡 {@code evidence_json}（不扩 DDL），并在读卡时解析回 DTO。
  */
 public final class GrowthCardReasonEvidence {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private GrowthCardReasonEvidence() {
     }
@@ -12,7 +18,7 @@ public final class GrowthCardReasonEvidence {
      * @return {@code {"reason":"…"}} JSON，或 reason 为空时 {@code null}
      */
     public static String toEvidenceJson(String reason) {
-        if (!org.springframework.util.StringUtils.hasText(reason)) {
+        if (!StringUtils.hasText(reason)) {
             return null;
         }
         String trimmed = reason.trim();
@@ -37,5 +43,28 @@ public final class GrowthCardReasonEvidence {
         }
         sb.append("\"}");
         return sb.toString();
+    }
+
+    /**
+     * 从成长卡 {@code evidence_json} 解析 {@code reason}；缺失或非法 JSON 时返回 {@code null}。
+     */
+    public static String parseReason(String evidenceJson) {
+        if (!StringUtils.hasText(evidenceJson)) {
+            return null;
+        }
+        try {
+            JsonNode root = MAPPER.readTree(evidenceJson.trim());
+            if (root == null || !root.isObject()) {
+                return null;
+            }
+            JsonNode reasonNode = root.get("reason");
+            if (reasonNode == null || reasonNode.isNull() || !reasonNode.isTextual()) {
+                return null;
+            }
+            String text = reasonNode.asText();
+            return StringUtils.hasText(text) ? text.trim() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 }

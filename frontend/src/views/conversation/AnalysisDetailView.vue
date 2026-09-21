@@ -199,6 +199,7 @@ async function onDeleteGrowthCard(cardId: string) {
 
 const growthEvidenceOpen = ref(false)
 const growthEvidenceTitle = ref('')
+const growthEvidenceReason = ref<string | null>(null)
 const growthEvidenceItems = ref<GrowthCardEvidence[]>([])
 
 function onOpenGrowthEvidence(cardId: string) {
@@ -207,6 +208,7 @@ function onOpenGrowthEvidence(cardId: string) {
     return
   }
   growthEvidenceTitle.value = card.front?.trim() || growthCardTypeLabel(card.type)
+  growthEvidenceReason.value = card.reason?.trim() || null
   growthEvidenceItems.value = [...card.evidence]
   growthEvidenceOpen.value = true
 }
@@ -784,6 +786,7 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
       <GrowthCardEvidenceDialog
           v-model="growthEvidenceOpen"
           :title="growthEvidenceTitle"
+          :reason="growthEvidenceReason"
           :items="growthEvidenceItems"
       />
       <PracticePromptDialog
