@@ -24,6 +24,11 @@ public class EducationalSummaryDto {
     /** 含中文的用户句（表达缺口，不计入语法错误） */
     private List<ChineseExpressionDto> chineseExpressions;
 
+    /**
+     * NATURAL 英文句经 Phrase Review 预计算的短表达对立（对称 {@link #chineseExpressions}）。
+     */
+    private List<ExpressionPhraseDto> expressionPhrases;
+
     /** Stage 3 生成的 Top 行动卡本场诊断文案。 */
     private List<ActionCardDiagnosisDto> actionCardDiagnoses;
 }

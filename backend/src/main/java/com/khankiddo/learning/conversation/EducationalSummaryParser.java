@@ -151,6 +151,7 @@ public class EducationalSummaryParser {
                         .overallSummary(report.getOverallSummary())
                         .build())
                 .chineseExpressions(summaryRoot.getChineseExpressions())
+                .expressionPhrases(summaryRoot.getExpressionPhrases())
                 .actionCardDiagnoses(summaryRoot.getActionCardDiagnoses())
                 .build();
     }

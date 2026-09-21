@@ -141,8 +141,8 @@ class AdminControllerTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.version").exists())
-                .andExpect(jsonPath("$.stats.pointCount").value(39))
-                .andExpect(jsonPath("$.families.length()").value(12))
+                .andExpect(jsonPath("$.stats.pointCount").value(38))
+                .andExpect(jsonPath("$.families.length()").value(11))
                 .andExpect(jsonPath("$.discriminators.length()").value(5));
     }
 

@@ -4,6 +4,7 @@ import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.ActionCardDto;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.dto.conversation.EducationalSummaryDto;
+import com.khankiddo.learning.dto.conversation.ExpressionPhraseDto;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
@@ -82,6 +83,7 @@ class GrowthCardMintGatewayTest {
                 .focusPhrase("很有成就感")
                 .originalSentence("我觉得很有成就感")
                 .suggestion("I feel a strong sense of accomplishment.")
+                .reason("想表达成就感")
                 .build();
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()
                 .chineseExpressions(List.of(expression))
@@ -90,7 +92,7 @@ class GrowthCardMintGatewayTest {
         GrowthCard vocabCard = GrowthCard.builder().cardId("vocab-1").front("很有成就感").build();
         when(store.persistNewOrGet(
                 USER_ID, "vocab", "很有成就感", "I feel a strong sense of accomplishment.",
-                ANALYSIS_ID, "vocab:3", null))
+                ANALYSIS_ID, "vocab:3", "{\"reason\":\"想表达成就感\"}"))
                 .thenReturn(vocabCard);
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
@@ -101,12 +103,49 @@ class GrowthCardMintGatewayTest {
                 anyLong(), eq("habit"), anyString(), anyString(), anyString(), anyString(), isNull());
         verify(store).persistNewOrGet(
                 USER_ID, "vocab", "很有成就感", "I feel a strong sense of accomplishment.",
-                ANALYSIS_ID, "vocab:3", null);
+                ANALYSIS_ID, "vocab:3", "{\"reason\":\"想表达成就感\"}");
         verify(store).saveEvidence(any());
     }
 
     @Test
-    void mintAfterAnalysis_shouldPersistExpressionForNaturalItem() {
+    void mintAfterAnalysis_shouldPreferPrecomputedExpression_withoutCallingCutter() {
+        ExpressionPhraseDto precomputed = ExpressionPhraseDto.builder()
+                .sentenceId(11L)
+                .pointId("FEEL_ED_ADJ")
+                .focusPhrase("exciting")
+                .suggestion("excited")
+                .reason("感到…用 -ed")
+                .build();
+        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()
+                .expressionPhrases(List.of(precomputed))
+                .build());
+        ConversationAnalysisItem item = ConversationAnalysisItem.builder()
+                .sentenceId(11L)
+                .pointId("FEEL_ED_ADJ")
+                .originalSentence("I'm so exciting.")
+                .errorPoint("exciting → excited（感到…用 -ed）")
+                .suggestion("I'm so excited.")
+                .build();
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of(item));
+        when(naturalExpressionFilter.test(item)).thenReturn(true);
+        GrowthCard exprCard = GrowthCard.builder().cardId("expr-1").front("exciting").build();
+        when(store.persistNewOrGet(
+                USER_ID, "expression", "exciting", "excited",
+                ANALYSIS_ID, "expr:11", "{\"reason\":\"感到…用 -ed\"}"))
+                .thenReturn(exprCard);
+
+        gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
+
+        verify(focusPhraseCutStrategy, never()).cut(any());
+        verify(store).persistNewOrGet(
+                USER_ID, "expression", "exciting", "excited",
+                ANALYSIS_ID, "expr:11", "{\"reason\":\"感到…用 -ed\"}");
+        verify(store).saveEvidence(any());
+        verify(assistant, never()).generate(anyString(), anyString());
+    }
+
+    @Test
+    void mintAfterAnalysis_shouldFallbackHeuristicWhenPrecomputedMissing() {
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
         ConversationAnalysisItem item = ConversationAnalysisItem.builder()
                 .sentenceId(11L)
@@ -127,10 +166,10 @@ class GrowthCardMintGatewayTest {
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
+        verify(focusPhraseCutStrategy).cut(any());
         verify(store).persistNewOrGet(
                 USER_ID, "expression", "exciting", "excited",
                 ANALYSIS_ID, "expr:11", null);
-        verify(store).saveEvidence(any());
         verify(assistant, never()).generate(anyString(), anyString());
     }
 

@@ -12,8 +12,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChineseExpressionReviewResult {
+public class PhraseCardReviewResult {
 
     @Builder.Default
-    private List<ChineseExpressionReviewItemDto> items = new ArrayList<>();
+    private List<PhraseCardReviewItemDto> items = new ArrayList<>();
 }

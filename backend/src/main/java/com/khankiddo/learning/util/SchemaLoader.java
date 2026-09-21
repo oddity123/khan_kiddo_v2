@@ -16,11 +16,11 @@ public class SchemaLoader {
 
     private static final String CONVERSATION_ANALYSIS_SCHEMA_PATH = "schemas/conversation-analysis-schema.json";
     private static final String CONVERSATION_SEPARATION_SCHEMA_PATH = "schemas/conversation-separation-schema.json";
-    private static final String CHINESE_EXPRESSION_REVIEW_SCHEMA_PATH = "schemas/chinese-expression-review-schema.json";
+    private static final String PHRASE_CARD_REVIEW_SCHEMA_PATH = "schemas/phrase-card-review-schema.json";
 
     private volatile String conversationAnalysisSchema;
     private volatile String conversationSeparationSchema;
-    private volatile String chineseExpressionReviewSchema;
+    private volatile String phraseCardReviewSchema;
 
     public String getConversationAnalysisSchema() {
         if (conversationAnalysisSchema == null) {
@@ -36,11 +36,11 @@ public class SchemaLoader {
         return conversationSeparationSchema;
     }
 
-    public String getChineseExpressionReviewSchema() {
-        if (chineseExpressionReviewSchema == null) {
-            chineseExpressionReviewSchema = load(CHINESE_EXPRESSION_REVIEW_SCHEMA_PATH);
+    public String getPhraseCardReviewSchema() {
+        if (phraseCardReviewSchema == null) {
+            phraseCardReviewSchema = load(PHRASE_CARD_REVIEW_SCHEMA_PATH);
         }
-        return chineseExpressionReviewSchema;
+        return phraseCardReviewSchema;
     }
 
     private static String load(String path) {

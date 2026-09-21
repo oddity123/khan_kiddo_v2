@@ -16,7 +16,7 @@ public final class ConversationAnalysisCallLog {
 
     public static final String STAGE_SEPARATION = "separation";
     public static final String STAGE_GRAMMAR = "grammar";
-    public static final String STAGE_CHINESE_REVIEW = "chinese-review";
+    public static final String STAGE_PHRASE_REVIEW = "phrase-review";
     public static final String STAGE_SUMMARY = "summary";
     public static final String STAGE_PERSIST = "persist";
 
