@@ -29,4 +29,7 @@ public class ChineseExpressionDto {
      * 对准 {@link #focusPhrase} 的自然英文对应（词/短短语，或含该短语的口语改写）。
      */
     private String suggestion;
+
+    /** 短中文说明（Phrase Review reason；可空） */
+    private String reason;
 }

@@ -40,12 +40,12 @@ public class PromptLoader {
         return readPrompt("educational-summary/user.txt");
     }
 
-    public String getSystemPromptChineseExpressionReview() {
-        return readPrompt("chinese-expression-review/system.txt");
+    public String getSystemPromptPhraseCardReview() {
+        return readPrompt("phrase-card-review/system.txt");
     }
 
-    public String getChineseExpressionReviewTemplate() {
-        return readPrompt("chinese-expression-review/user.txt");
+    public String getPhraseCardReviewTemplate() {
+        return readPrompt("phrase-card-review/user.txt");
     }
 
     public String getSystemPromptGrowthCardMint() {

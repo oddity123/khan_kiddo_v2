@@ -4,6 +4,7 @@ import com.khankiddo.learning.conversation.EducationalSummaryParser;
 import com.khankiddo.learning.dto.conversation.ActionCardDto;
 import com.khankiddo.learning.dto.conversation.ChineseExpressionDto;
 import com.khankiddo.learning.dto.conversation.EducationalSummaryDto;
+import com.khankiddo.learning.dto.conversation.ExpressionPhraseDto;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
@@ -21,7 +22,9 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -51,13 +54,15 @@ public class GrowthCardMintGateway {
 
         // 习惯卡不再自动铸 Top1，由用户在行动卡上手动「制卡」；此处自动沉淀 vocab + expression
         ConversationAnalysis analysis = analysisOpt.get();
-        for (ChineseExpressionDto expression : scoreResultChinese(analysis)) {
+        EducationalSummaryDto summary = summaryParser.fromJson(analysis.getEducationalSummary());
+        for (ChineseExpressionDto expression : chineseFromSummary(summary)) {
             persistVocabCard(userId, analysisId, expression);
         }
+        Map<Long, ExpressionPhraseDto> precomputedBySentenceId = expressionPhrasesBySentenceId(summary);
         List<ConversationAnalysisItem> items = itemMapper.findByAnalysisId(analysisId);
         if (!CollectionUtils.isEmpty(items)) {
             for (ConversationAnalysisItem item : items) {
-                persistExpressionCard(userId, analysisId, item);
+                persistExpressionCard(userId, analysisId, item, precomputedBySentenceId);
             }
         }
     }
@@ -107,12 +112,29 @@ public class GrowthCardMintGateway {
         return analysisSupport.score(rows);
     }
 
-    private List<ChineseExpressionDto> scoreResultChinese(ConversationAnalysis analysis) {
-        EducationalSummaryDto summary = summaryParser.fromJson(analysis.getEducationalSummary());
+    private static List<ChineseExpressionDto> chineseFromSummary(EducationalSummaryDto summary) {
         if (ObjectUtils.isEmpty(summary) || CollectionUtils.isEmpty(summary.getChineseExpressions())) {
             return Collections.emptyList();
         }
         return summary.getChineseExpressions();
+    }
+
+    private static Map<Long, ExpressionPhraseDto> expressionPhrasesBySentenceId(EducationalSummaryDto summary) {
+        if (ObjectUtils.isEmpty(summary) || CollectionUtils.isEmpty(summary.getExpressionPhrases())) {
+            return Map.of();
+        }
+        Map<Long, ExpressionPhraseDto> bySentenceId = new HashMap<>();
+        for (ExpressionPhraseDto phrase : summary.getExpressionPhrases()) {
+            if (ObjectUtils.isEmpty(phrase) || phrase.getSentenceId() == null) {
+                continue;
+            }
+            if (!StringUtils.hasText(phrase.getFocusPhrase()) || !StringUtils.hasText(phrase.getSuggestion())) {
+                continue;
+            }
+            // 同句多条时保留首次（sourceRef 按 sentenceId 去重）
+            bySentenceId.putIfAbsent(phrase.getSentenceId(), phrase);
+        }
+        return bySentenceId;
     }
 
     private static ActionCardDto findActionCard(HabitCardScorer.HabitScoreResult scoreResult, String habitKey) {
@@ -180,36 +202,56 @@ public class GrowthCardMintGateway {
                 back,
                 analysisId,
                 GrowthCardSourceRefs.vocab(expression.getOriginalIndex()),
-                null);
+                GrowthCardReasonEvidence.toEvidenceJson(expression.getReason()));
         store.saveEvidence(GrowthCardEvidenceSupport.fromChineseExpression(
                 userId, card.getCardId(), analysisId, expression));
     }
 
-    private void persistExpressionCard(Long userId, String analysisId, ConversationAnalysisItem item) {
+    private void persistExpressionCard(
+            Long userId,
+            String analysisId,
+            ConversationAnalysisItem item,
+            Map<Long, ExpressionPhraseDto> precomputedBySentenceId) {
         if (ObjectUtils.isEmpty(item) || !naturalExpressionFilter.test(item)) {
             return;
         }
-        Optional<FocusPhrasePair> cut = focusPhraseCutStrategy.cut(new FocusPhraseCutRequest(
-                item.getOriginalSentence(),
-                item.getErrorPoint(),
-                item.getSuggestion(),
-                item.getPointId()));
-        if (cut.isEmpty()) {
-            return;
-        }
-        FocusPhrasePair pair = cut.get();
-        if (!StringUtils.hasText(pair.focusWrong()) || !StringUtils.hasText(pair.focusNatural())) {
-            return;
+        String front;
+        String back;
+        String reason = null;
+        ExpressionPhraseDto precomputed = item.getSentenceId() == null
+                ? null
+                : precomputedBySentenceId.get(item.getSentenceId());
+        if (precomputed != null
+                && StringUtils.hasText(precomputed.getFocusPhrase())
+                && StringUtils.hasText(precomputed.getSuggestion())) {
+            front = precomputed.getFocusPhrase().trim();
+            back = precomputed.getSuggestion().trim();
+            reason = precomputed.getReason();
+        } else {
+            Optional<FocusPhrasePair> cut = focusPhraseCutStrategy.cut(new FocusPhraseCutRequest(
+                    item.getOriginalSentence(),
+                    item.getErrorPoint(),
+                    item.getSuggestion(),
+                    item.getPointId()));
+            if (cut.isEmpty()) {
+                return;
+            }
+            FocusPhrasePair pair = cut.get();
+            if (!StringUtils.hasText(pair.focusWrong()) || !StringUtils.hasText(pair.focusNatural())) {
+                return;
+            }
+            front = pair.focusWrong().trim();
+            back = pair.focusNatural().trim();
         }
         String sourceRef = GrowthCardSourceRefs.expression(item);
         GrowthCard card = store.persistNewOrGet(
                 userId,
                 "expression",
-                pair.focusWrong().trim(),
-                pair.focusNatural().trim(),
+                front,
+                back,
                 analysisId,
                 sourceRef,
-                null);
+                GrowthCardReasonEvidence.toEvidenceJson(reason));
         store.saveEvidence(GrowthCardEvidenceSupport.fromAnalysisItem(
                 userId, card.getCardId(), analysisId, item));
     }

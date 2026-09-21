@@ -1,0 +1,23 @@
+以下是口语练习场次中需要做成闪卡的条目（中文词汇缺口 + 英文 unnatural 短表达）。请为每条抽出可复习的短对立，并给出短中文 reason。
+
+## kind 语义
+- `chinese`：用户因不会英文而夹带中文。`focusPhrase`=值得学的**中文**词/短语（非整句、无「怎么说」、无英文）；`suggestion`=对准的**英文**；`reason`=短中文说明（词汇缺口/学什么）。
+- `expression`：Stage2 已标为 NATURAL 的英文句。`focusPhrase`=不自然**短片段**；`suggestion`=地道**短**说法（勿整句照抄）；`reason`=短中文说明（为何这样改）。`point`/`suggestion` 整句只是证据，**禁止**把过长 point 原样当 focus。
+
+## 统一规则
+- `focusPhrase` / `suggestion` / `reason` 均须非空。
+- 焦点宜短（约 ≤6 词或等价中文短语），左右语义对齐。
+- 中文噪声（单字语气、无意义转录）可跳过（勿输出该 index）。
+- **禁止**输出 "How do you say ...?" 类提问句。
+- 每条 `index`/`kind` 必须与输入一致。
+
+示例：
+- chinese `楼梯怎么说` → focusPhrase=`楼梯`，suggestion=`stair / staircase`，reason=`词汇缺口：想说「楼梯」但不会英文词`
+- expression original=`I'm so exciting about the trip.` point=`exciting → excited（感到…用 -ed）` → focusPhrase=`exciting`，suggestion=`excited`，reason=`感到…用 -ed，exciting 表「令人兴奋」`
+
+## 待处理条目
+{items}
+
+## 输出要求
+- 只输出 JSON，与 Schema 一致。
+- 根对象键为 `items`（数组）。

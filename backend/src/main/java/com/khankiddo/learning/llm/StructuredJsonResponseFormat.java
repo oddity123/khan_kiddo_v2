@@ -12,7 +12,7 @@ public final class StructuredJsonResponseFormat {
 
     public static final String GRAMMAR_ANALYSIS_SCHEMA_NAME = "conversation_grammar_analysis";
     public static final String SEPARATION_SCHEMA_NAME = "conversation_separation";
-    public static final String CHINESE_EXPRESSION_REVIEW_SCHEMA_NAME = "chinese_expression_review";
+    public static final String PHRASE_CARD_REVIEW_SCHEMA_NAME = "phrase_card_review";
 
     private StructuredJsonResponseFormat() {
     }

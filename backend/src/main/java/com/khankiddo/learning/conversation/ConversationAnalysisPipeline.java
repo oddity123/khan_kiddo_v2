@@ -12,12 +12,16 @@ import com.khankiddo.learning.knowledge.KnowledgePointStatsSupport;
 import com.khankiddo.learning.knowledge.PointDefinition;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.errant.ErrantEditAnnotationService;
-import com.khankiddo.learning.llm.ChineseExpressionReviewClient;
+import com.khankiddo.learning.growth.NaturalExpressionCandidateFilter;
 import com.khankiddo.learning.llm.EducationalSummaryClient;
+import com.khankiddo.learning.llm.ExpressionReviewCandidate;
 import com.khankiddo.learning.llm.GrammarSystemPromptComposer;
 import com.khankiddo.learning.llm.LlmModelCatalog;
+import com.khankiddo.learning.llm.PhraseCardReviewClient;
+import com.khankiddo.learning.llm.PhraseReviewOutcome;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
 import com.khankiddo.learning.log.ConversationAnalysisCallLog;
+import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.enums.ErrorLevel;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +55,8 @@ public class ConversationAnalysisPipeline {
     private final GrammarAnalysisUserPromptBuilder grammarUserPromptBuilder;
     private final GrammarAnalysisSanitizer grammarAnalysisSanitizer;
     private final UtteranceRouter utteranceRouter;
-    private final ChineseExpressionReviewClient chineseExpressionReviewClient;
+    private final PhraseCardReviewClient phraseCardReviewClient;
+    private final NaturalExpressionCandidateFilter naturalExpressionCandidateFilter;
     private final PointDictionary pointDictionary;
     private final HabitCardScorer habitCardScorer;
     private final ErrantEditAnnotationService errantEditAnnotationService;
@@ -77,8 +82,6 @@ public class ConversationAnalysisPipeline {
                         "检测到 " + routed.chineseCount() + " 句中文表达，已跳过语法分析"));
             }
 
-            List<ChineseExpressionDto> chineseExpressions = reviewChineseExpressions(routed, selectedModel, onProgress);
-
             GrammarAnalysisResult grammar = analyzeGrammar(
                     routed.englishSentences(), selectedModel, analysisId, onProgress);
             grammar = grammarAnalysisSanitizer.sanitize(grammar);
@@ -87,6 +90,11 @@ public class ConversationAnalysisPipeline {
             errantEditAnnotationService.enrich(items);
             HabitCardScorer.HabitScoreResult habitScoreResult = buildHabitScoreResult(grammar);
 
+            PhraseReviewOutcome phraseReview = reviewPhrases(
+                    routed, items, selectedModel, onProgress);
+            List<ChineseExpressionDto> chineseExpressions = phraseReview.chineseExpressions();
+            List<ExpressionPhraseDto> expressionPhrases = phraseReview.expressionPhrases();
+
             int englishPracticeCount = Math.max(1, separation.userCount() - routed.chineseCount());
             SummaryOutcome summaryOutcome = buildEducationalSummary(
                     grammar,
@@ -94,6 +102,7 @@ public class ConversationAnalysisPipeline {
                     englishPracticeCount,
                     routed.chineseCount(),
                     chineseExpressions,
+                    expressionPhrases,
                     habitScoreResult.actionCards(),
                     selectedModel,
                     onProgress);
@@ -193,16 +202,54 @@ public class ConversationAnalysisPipeline {
         }
     }
 
-    private List<ChineseExpressionDto> reviewChineseExpressions(
+    private PhraseReviewOutcome reviewPhrases(
             UtteranceRouter.RoutedUtterances routed,
+            List<AnalysisItemDto> items,
             ResolvedLlmModel model,
             Consumer<ConversationAnalysisProgress> onProgress) {
-        if (CollectionUtils.isEmpty(routed.chineseSentences())) {
-            return List.of();
+        List<ExpressionReviewCandidate> expressionCandidates = collectNaturalExpressionCandidates(items);
+        if (CollectionUtils.isEmpty(routed.chineseSentences())
+                && CollectionUtils.isEmpty(expressionCandidates)) {
+            return PhraseReviewOutcome.empty();
         }
         onProgress.accept(ConversationAnalysisProgress.of(
-                ConversationAnalysisProgress.STATUS_ANALYZING, "正在生成中文表达英文建议..."));
-        return chineseExpressionReviewClient.review(routed.chineseSentences(), model);
+                ConversationAnalysisProgress.STATUS_ANALYZING,
+                "正在生成短语闪卡（中文词汇 + 地道表达）..."));
+        return phraseCardReviewClient.review(routed.chineseSentences(), expressionCandidates, model);
+    }
+
+    /**
+     * 模外过滤：仅 NATURAL 且有实质 suggestion/point 的错误进入 Phrase Review。
+     */
+    List<ExpressionReviewCandidate> collectNaturalExpressionCandidates(List<AnalysisItemDto> items) {
+        if (CollectionUtils.isEmpty(items)) {
+            return List.of();
+        }
+        List<ExpressionReviewCandidate> candidates = new ArrayList<>();
+        for (AnalysisItemDto item : items) {
+            if (ObjectUtils.isEmpty(item) || CollectionUtils.isEmpty(item.getErrors())) {
+                continue;
+            }
+            for (AnalysisErrorDto error : item.getErrors()) {
+                ConversationAnalysisItem probe = ConversationAnalysisItem.builder()
+                        .sentenceId(item.getSentenceId())
+                        .pointId(error.getPointId())
+                        .originalSentence(item.getOriginalSentence())
+                        .errorPoint(error.getPoint())
+                        .suggestion(item.getSuggestion())
+                        .build();
+                if (!naturalExpressionCandidateFilter.test(probe)) {
+                    continue;
+                }
+                candidates.add(new ExpressionReviewCandidate(
+                        item.getSentenceId(),
+                        item.getOriginalSentence(),
+                        item.getSuggestion(),
+                        error.getPoint(),
+                        error.getPointId()));
+            }
+        }
+        return candidates;
     }
 
     private GrammarAnalysisResult analyzeGrammar(List<String> englishSentences,
@@ -243,6 +290,7 @@ public class ConversationAnalysisPipeline {
                                                     int englishPracticeCount,
                                                     int chineseExpressionCount,
                                                     List<ChineseExpressionDto> chineseExpressions,
+                                                    List<ExpressionPhraseDto> expressionPhrases,
                                                     List<ActionCardDto> actionCards,
                                                     ResolvedLlmModel model,
                                                     Consumer<ConversationAnalysisProgress> onProgress) {
@@ -277,6 +325,7 @@ public class ConversationAnalysisPipeline {
             EducationalSummaryDto report = summaryParser.parseActionCardDiagnosisSummary(
                     diagnosisResult, grammar, userCount, englishPracticeCount, chineseExpressionCount, actionCards);
             report.setChineseExpressions(chineseExpressions);
+            report.setExpressionPhrases(expressionPhrases);
             return new SummaryOutcome(report, false, null);
         } catch (RuntimeException ex) {
             log.warn("Top 习惯诊断生成失败，使用默认总结: {}", ex.getMessage(), ex);
@@ -290,6 +339,7 @@ public class ConversationAnalysisPipeline {
             EducationalSummaryDto report = summaryParser.defaultReport(
                     grammar, userCount, englishPracticeCount, chineseExpressionCount);
             report.setChineseExpressions(chineseExpressions);
+            report.setExpressionPhrases(expressionPhrases);
             return new SummaryOutcome(report, true, reason);
         }
     }

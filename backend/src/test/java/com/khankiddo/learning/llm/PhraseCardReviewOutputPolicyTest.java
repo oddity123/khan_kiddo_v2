@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ChineseExpressionReviewOutputPolicyTest {
+class PhraseCardReviewOutputPolicyTest {
 
-    private ChineseExpressionReviewOutputPolicy policy;
+    private PhraseCardReviewOutputPolicy policy;
 
     @BeforeEach
     void setUp() {
-        policy = new ChineseExpressionReviewOutputPolicy(new SchemaLoader());
+        policy = new PhraseCardReviewOutputPolicy(new SchemaLoader());
     }
 
     @Test
@@ -37,6 +37,8 @@ class ChineseExpressionReviewOutputPolicyTest {
         assertThat(composed).contains("不要输出顶层数组");
         assertThat(composed).contains("\"items\"");
         assertThat(composed).contains("focusPhrase");
+        assertThat(composed).contains("reason");
+        assertThat(composed).contains("\"kind\"");
     }
 
     @Test
@@ -45,7 +47,7 @@ class ChineseExpressionReviewOutputPolicyTest {
 
         assertThat(spec.getResponseFormat().jsonSchema()).isNotNull();
         assertThat(spec.getResponseFormat().jsonSchema().name())
-                .isEqualTo(StructuredJsonResponseFormat.CHINESE_EXPRESSION_REVIEW_SCHEMA_NAME);
+                .isEqualTo(StructuredJsonResponseFormat.PHRASE_CARD_REVIEW_SCHEMA_NAME);
         assertThat(spec.isStrictJsonSchema()).isTrue();
         assertThat(policy.composeSystemPrompt("BASE", doubao())).isEqualTo("BASE");
     }

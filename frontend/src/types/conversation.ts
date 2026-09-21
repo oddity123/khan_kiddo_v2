@@ -65,6 +65,8 @@ export interface ChineseExpressionItem {
     /** 词汇求助时抽出的中文目标词；有则作为知识卡片正面 */
     focusPhrase?: string
     suggestion?: string
+    /** Phrase Review 短中文说明 */
+    reason?: string
     /** 可选角标（成长卡：习惯 / 词汇 / 表达） */
     kindLabel?: string
     /** 稳定键（成长卡 cardId 等），供闪卡列表复用 */
@@ -73,10 +75,21 @@ export interface ChineseExpressionItem {
     evidenceCount?: number
 }
 
+/** Phrase Review 预计算的 NATURAL 短表达（对称 chineseExpressions） */
+export interface ExpressionPhraseItem {
+    sentenceId?: number
+    pointId?: string
+    originalSentence?: string
+    focusPhrase?: string
+    suggestion?: string
+    reason?: string
+}
+
 /** 与后端 EducationalSummaryParser / v1 一致：{ report: { overallStats, overallSummary }, chineseExpressions? } */
 export interface EducationalSummaryRoot {
   report?: EducationalSummaryReport
   chineseExpressions?: ChineseExpressionItem[]
+  expressionPhrases?: ExpressionPhraseItem[]
   actionCardDiagnoses?: ActionCardDiagnosis[]
 }
 

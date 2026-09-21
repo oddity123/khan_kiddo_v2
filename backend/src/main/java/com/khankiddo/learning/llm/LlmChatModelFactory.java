@@ -28,7 +28,7 @@ public class LlmChatModelFactory {
     private final AiLlmProperties aiLlmProperties;
     private final SchemaLoader schemaLoader;
     private final List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies;
-    private final ChineseExpressionReviewOutputPolicy chineseExpressionReviewOutputPolicy;
+    private final PhraseCardReviewOutputPolicy phraseCardReviewOutputPolicy;
     private final HttpClientBuilder httpClientBuilder;
     private final Duration defaultChatTimeout;
     private final Duration defaultStreamingTimeout;
@@ -42,7 +42,7 @@ public class LlmChatModelFactory {
             ConversationAnalysisProperties conversationAnalysisProperties,
             SchemaLoader schemaLoader,
             List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies,
-            ChineseExpressionReviewOutputPolicy chineseExpressionReviewOutputPolicy,
+            PhraseCardReviewOutputPolicy phraseCardReviewOutputPolicy,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer defaultMaxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean defaultLogRequests,
@@ -51,7 +51,7 @@ public class LlmChatModelFactory {
         this.aiLlmProperties = aiLlmProperties;
         this.schemaLoader = schemaLoader;
         this.grammarStructuredOutputPolicies = grammarStructuredOutputPolicies;
-        this.chineseExpressionReviewOutputPolicy = chineseExpressionReviewOutputPolicy;
+        this.phraseCardReviewOutputPolicy = phraseCardReviewOutputPolicy;
         this.httpClientBuilder = httpClientBuilder;
         this.defaultChatTimeout = conversationAnalysisProperties.getChatTimeout();
         this.defaultStreamingTimeout = conversationAnalysisProperties.getHttpReadTimeout();
@@ -78,11 +78,11 @@ public class LlmChatModelFactory {
     }
 
     /**
-     * 中文表达 Review：按模型选择 json_schema 或 json_object（DeepSeek 仅后者）。
+     * Phrase Review（中英统一）：按模型选择 json_schema 或 json_object（DeepSeek 仅后者）。
      */
-    public ChatModel chatForChineseExpressionReview(ResolvedLlmModel model) {
-        GrammarStreamingModelSpec spec = chineseExpressionReviewOutputPolicy.buildSpec(model);
-        String cacheKey = cacheKey(model) + "|chinese-review" + spec.getCacheSuffix() + "|chat";
+    public ChatModel chatForPhraseCardReview(ResolvedLlmModel model) {
+        GrammarStreamingModelSpec spec = phraseCardReviewOutputPolicy.buildSpec(model);
+        String cacheKey = cacheKey(model) + "|phrase-review" + spec.getCacheSuffix() + "|chat";
         return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
     }
 
