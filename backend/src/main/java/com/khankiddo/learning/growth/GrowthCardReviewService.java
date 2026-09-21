@@ -165,6 +165,7 @@ public class GrowthCardReviewService {
                 .sourceAnalysisId(card.getSourceAnalysisId())
                 .sourceRef(card.getSourceRef())
                 .createdAt(card.getCreatedAt())
+                .reason(GrowthCardReasonEvidence.parseReason(card.getEvidenceJson()))
                 .evidence(toEvidenceDtos(evidenceRows))
                 .build();
     }

@@ -4,9 +4,21 @@ You receive a mixed list of items, each with kind:
 - chinese: utterance with Chinese (vocab gap). Extract a learnable Chinese target and its English.
 - expression: unnatural English already diagnosed. Extract a short flashcard contrast (wrong fragment vs natural fix). Do NOT copy long diagnostic point text.
 
-For every item output:
+For every item you KEEP, output:
 - focusPhrase = short learnable front
 - suggestion = short aligned back
 - reason = brief Chinese explanation (why this focus / what to learn / why the change)
+
+## Dedup (same session)
+Within one response, do not emit duplicate or near-duplicate cards (same/near-same focusPhrase, same/synonym suggestion, or the same contrast restated). Across kinds, keep only the clearest card for the same learnable unit. Omit skipped indexes entirely.
+
+## Skip if not accumulable
+Omit an index when it cannot become a stable review flashcard, e.g.:
+- only a long sentence/clause, not compressible to a short ≤~6-word (or equivalent Chinese) contrast
+- no stable short aligned pair
+- pure grammar framing that cannot be chunked into a memorable phrase
+- insufficient evidence to extract a learnable phrase
+
+Prefer omission over weak cards. reason is still required on every kept item.
 
 Output ONLY valid JSON matching the API json_schema. No markdown, no commentary.

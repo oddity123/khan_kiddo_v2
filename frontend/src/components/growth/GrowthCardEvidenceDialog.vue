@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import {ChatDotRound} from '@element-plus/icons-vue'
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 
 import HabitEvidencePreview from '@/components/conversation/HabitEvidencePreview.vue'
@@ -9,10 +10,12 @@ const open = defineModel<boolean>({default: false})
 const props = withDefaults(
     defineProps<{
       title?: string
+      reason?: string | null
       items?: GrowthCardEvidence[]
     }>(),
     {
       title: '',
+      reason: null,
       items: () => [],
     },
 )
@@ -38,6 +41,11 @@ const dialogTitle = computed(() =>
     props.title ? `证据 · ${props.title}` : '证据',
 )
 
+const reasonText = computed(() => {
+  const raw = props.reason
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : ''
+})
+
 const previewItems = computed(() =>
     (props.items ?? []).map((row) => ({
       sentenceId: row.sentenceId ?? undefined,
@@ -58,6 +66,20 @@ const previewItems = computed(() =>
       align-center
       :fullscreen="fullscreen"
   >
+    <div
+        v-if="reasonText"
+        class="gc-evidence-reason"
+        role="note"
+        aria-label="说明"
+    >
+      <el-icon class="gc-evidence-reason__icon" :size="18">
+        <ChatDotRound/>
+      </el-icon>
+      <div class="gc-evidence-reason__body">
+        <span class="gc-evidence-reason__label">说明</span>
+        <p class="gc-evidence-reason__text">{{ reasonText }}</p>
+      </div>
+    </div>
     <div v-if="previewItems.length" class="gc-evidence-list">
       <HabitEvidencePreview
           v-for="(item, i) in previewItems"
@@ -70,6 +92,48 @@ const previewItems = computed(() =>
 </template>
 
 <style scoped>
+.gc-evidence-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--kk-radius-md);
+  background: color-mix(in srgb, var(--kk-color-primary) 7%, white);
+  border: 1px solid color-mix(in srgb, var(--kk-color-primary) 16%, var(--kk-glass-inner-border));
+}
+
+.gc-evidence-reason__icon {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--kk-color-primary);
+}
+
+.gc-evidence-reason__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.gc-evidence-reason__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--kk-color-primary);
+  font-family: var(--kk-font-body);
+}
+
+.gc-evidence-reason__text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--kk-color-text);
+  font-family: var(--kk-font-body);
+  word-break: break-word;
+}
+
 .gc-evidence-list {
   display: flex;
   flex-direction: column;

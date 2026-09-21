@@ -22,6 +22,8 @@ export interface GrowthCard {
   /** 如 habit:{habitKey}，用于判断行动卡是否已铸卡 */
   sourceRef?: string | null
   createdAt?: string | null
+  /** Phrase Review 短中文说明（evidence_json.reason；habit 等可空） */
+  reason?: string | null
   /** 制卡时落库的证据句，用于弹窗展示与按句追踪 */
   evidence?: GrowthCardEvidence[]
 }

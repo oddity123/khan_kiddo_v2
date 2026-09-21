@@ -24,6 +24,10 @@ public class GrowthCardDto {
     /** 如 habit:{habitKey}，用于判断某行动卡是否已铸卡 */
     private String sourceRef;
     private java.time.LocalDateTime createdAt;
+    /**
+     * Phrase Review 短中文说明（来自 {@code evidence_json.reason}；habit 等无说明时为 null）。
+     */
+    private String reason;
     /** 关联证据句（关系表），复习弹窗展示 */
     private List<GrowthCardEvidenceDto> evidence;
 }
