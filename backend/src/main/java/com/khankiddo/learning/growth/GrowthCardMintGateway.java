@@ -128,7 +128,7 @@ public class GrowthCardMintGateway {
             if (ObjectUtils.isEmpty(phrase) || phrase.getSentenceId() == null) {
                 continue;
             }
-            if (!StringUtils.hasText(phrase.getFocusPhrase()) || !StringUtils.hasText(phrase.getSuggestion())) {
+            if (!StringUtils.hasText(phrase.getFront()) || !StringUtils.hasText(phrase.getBack())) {
                 continue;
             }
             // 同句多条时保留首次（sourceRef 按 sentenceId 去重）
@@ -188,10 +188,10 @@ public class GrowthCardMintGateway {
         if (ObjectUtils.isEmpty(expression)) {
             return;
         }
-        String front = StringUtils.hasText(expression.getFocusPhrase())
-                ? expression.getFocusPhrase()
+        String front = StringUtils.hasText(expression.getFront())
+                ? expression.getFront()
                 : expression.getOriginalSentence();
-        String back = expression.getSuggestion();
+        String back = expression.getBack();
         if (!StringUtils.hasText(front) || !StringUtils.hasText(back)) {
             return;
         }
@@ -222,10 +222,10 @@ public class GrowthCardMintGateway {
                 ? null
                 : precomputedBySentenceId.get(item.getSentenceId());
         if (precomputed != null
-                && StringUtils.hasText(precomputed.getFocusPhrase())
-                && StringUtils.hasText(precomputed.getSuggestion())) {
-            front = precomputed.getFocusPhrase().trim();
-            back = precomputed.getSuggestion().trim();
+                && StringUtils.hasText(precomputed.getFront())
+                && StringUtils.hasText(precomputed.getBack())) {
+            front = precomputed.getFront().trim();
+            back = precomputed.getBack().trim();
             reason = precomputed.getReason();
         } else {
             Optional<FocusPhrasePair> cut = focusPhraseCutStrategy.cut(new FocusPhraseCutRequest(

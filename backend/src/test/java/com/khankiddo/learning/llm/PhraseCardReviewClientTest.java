@@ -66,15 +66,15 @@ class PhraseCardReviewClientTest {
                     {
                       "kind": "chinese",
                       "index": 1,
-                      "focusPhrase": "楼梯",
-                      "suggestion": "stair / staircase",
+                      "front": "楼梯",
+                      "back": "stair / staircase",
                       "reason": "词汇缺口：想说楼梯"
                     },
                     {
                       "kind": "expression",
                       "index": 2,
-                      "focusPhrase": "exciting",
-                      "suggestion": "excited",
+                      "front": "exciting",
+                      "back": "excited",
                       "reason": "感到…用 -ed"
                     }
                   ]
@@ -97,16 +97,16 @@ class PhraseCardReviewClientTest {
 
         assertThat(outcome.chineseExpressions()).hasSize(1);
         ChineseExpressionDto zh = outcome.chineseExpressions().get(0);
-        assertThat(zh.getFocusPhrase()).isEqualTo("楼梯");
-        assertThat(zh.getSuggestion()).isEqualTo("stair / staircase");
+        assertThat(zh.getFront()).isEqualTo("楼梯");
+        assertThat(zh.getBack()).isEqualTo("stair / staircase");
         assertThat(zh.getReason()).isEqualTo("词汇缺口：想说楼梯");
 
         assertThat(outcome.expressionPhrases()).hasSize(1);
         ExpressionPhraseDto expr = outcome.expressionPhrases().get(0);
         assertThat(expr.getSentenceId()).isEqualTo(11L);
         assertThat(expr.getPointId()).isEqualTo("FEEL_ED_ADJ");
-        assertThat(expr.getFocusPhrase()).isEqualTo("exciting");
-        assertThat(expr.getSuggestion()).isEqualTo("excited");
+        assertThat(expr.getFront()).isEqualTo("exciting");
+        assertThat(expr.getBack()).isEqualTo("excited");
         assertThat(expr.getReason()).isEqualTo("感到…用 -ed");
 
         ArgumentCaptor<ChatRequest> captor = ArgumentCaptor.forClass(ChatRequest.class);
@@ -128,8 +128,8 @@ class PhraseCardReviewClientTest {
                     {
                       "kind": "expression",
                       "index": 1,
-                      "focusPhrase": "do a role-play",
-                      "suggestion": "do role-plays",
+                      "front": "do a role-play",
+                      "back": "do role-plays",
                       "reason": "固定搭配用复数"
                     }
                   ]
@@ -150,22 +150,22 @@ class PhraseCardReviewClientTest {
 
         assertThat(outcome.chineseExpressions()).isEmpty();
         assertThat(outcome.expressionPhrases()).hasSize(1);
-        assertThat(outcome.expressionPhrases().get(0).getFocusPhrase()).isEqualTo("do a role-play");
+        assertThat(outcome.expressionPhrases().get(0).getFront()).isEqualTo("do a role-play");
         verify(chatModel).chat(any(ChatRequest.class));
     }
 
     @Test
-    void review_dedupesChineseByFocusPhrase_keepsFirst_andDropsEmptyFocus() throws Exception {
+    void review_dedupesChineseByFront_keepsFirst_andDropsEmptyFocus() throws Exception {
         stubPrompt();
         when(chatModelFactory.chatForPhraseCardReview(any())).thenReturn(chatModel);
 
         String json = """
                 {
                   "items": [
-                    { "kind": "chinese", "index": 1, "focusPhrase": "直接主管", "suggestion": "direct supervisor", "reason": "职位词" },
-                    { "kind": "chinese", "index": 2, "focusPhrase": "直 接 主 管", "suggestion": "immediate manager", "reason": "重复" },
-                    { "kind": "chinese", "index": 3, "focusPhrase": "", "suggestion": "ignored", "reason": "空" },
-                    { "kind": "chinese", "index": 4, "focusPhrase": "纸巾", "suggestion": "tissue", "reason": "日常词" }
+                    { "kind": "chinese", "index": 1, "front": "直接主管", "back": "direct supervisor", "reason": "职位词" },
+                    { "kind": "chinese", "index": 2, "front": "直 接 主 管", "back": "immediate manager", "reason": "重复" },
+                    { "kind": "chinese", "index": 3, "front": "", "back": "ignored", "reason": "空" },
+                    { "kind": "chinese", "index": 4, "front": "纸巾", "back": "tissue", "reason": "日常词" }
                   ]
                 }
                 """;
@@ -181,8 +181,8 @@ class PhraseCardReviewClientTest {
         PhraseReviewOutcome outcome = client.review(input, List.of(), null);
 
         assertThat(outcome.chineseExpressions()).hasSize(2);
-        assertThat(outcome.chineseExpressions().get(0).getFocusPhrase()).isEqualTo("直接主管");
-        assertThat(outcome.chineseExpressions().get(1).getFocusPhrase()).isEqualTo("纸巾");
+        assertThat(outcome.chineseExpressions().get(0).getFront()).isEqualTo("直接主管");
+        assertThat(outcome.chineseExpressions().get(1).getFront()).isEqualTo("纸巾");
     }
 
     @Test
@@ -199,13 +199,13 @@ class PhraseCardReviewClientTest {
 
         assertThat(outcome.chineseExpressions()).hasSize(1);
         assertThat(outcome.chineseExpressions().get(0).getOriginalSentence()).isEqualTo("什么意思");
-        assertThat(outcome.chineseExpressions().get(0).getFocusPhrase()).isEmpty();
-        assertThat(outcome.chineseExpressions().get(0).getSuggestion()).isEmpty();
+        assertThat(outcome.chineseExpressions().get(0).getFront()).isEmpty();
+        assertThat(outcome.chineseExpressions().get(0).getBack()).isEmpty();
         assertThat(outcome.expressionPhrases()).isEmpty();
     }
 
     @Test
-    void review_skipsExpressionItemMissingFocusOrSuggestion() throws Exception {
+    void review_skipsExpressionItemMissingFrontOrBack() throws Exception {
         stubPrompt();
         when(chatModelFactory.chatForPhraseCardReview(any())).thenReturn(chatModel);
         String json = """
@@ -214,9 +214,9 @@ class PhraseCardReviewClientTest {
                     {
                       "kind": "expression",
                       "index": 1,
-                      "focusPhrase": "",
-                      "suggestion": "excited",
-                      "reason": "缺 focus"
+                      "front": "",
+                      "back": "excited",
+                      "reason": "缺 front"
                     }
                   ]
                 }

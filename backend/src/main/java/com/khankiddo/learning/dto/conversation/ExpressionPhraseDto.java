@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Stage2 NATURAL 句经 Phrase Review 预计算的短表达对立（挂在 educationalSummary 旁路）。
+ * Stage2 NATURAL 句经 Phrase Review 预计算的短表达（挂在 educationalSummary 旁路）。
  */
 @Data
 @Builder
@@ -21,11 +21,11 @@ public class ExpressionPhraseDto {
 
     private String originalSentence;
 
-    /** 不自然短片段（成长卡 front） */
-    private String focusPhrase;
+    /** 成长卡正面（中文题干/意图提示；不地道原文不进 front） */
+    private String front;
 
-    /** 地道短说法（成长卡 back） */
-    private String suggestion;
+    /** 成长卡背面（地道表达） */
+    private String back;
 
     /** 短中文说明 */
     private String reason;

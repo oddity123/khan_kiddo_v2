@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import {ChatLineSquare, MagicStick, QuestionFilled} from '@element-plus/icons-vue'
+import {computed} from 'vue'
 
 import type {ChineseExpressionItem} from '@/types/conversation'
 
-defineProps<{
+const props = defineProps<{
   item: ChineseExpressionItem
   index?: number
 }>()
+
+const frontText = computed(() =>
+    props.item.front?.trim() || props.item.focusPhrase?.trim() || '',
+)
+const backText = computed(() =>
+    props.item.back?.trim() || props.item.suggestion?.trim() || '',
+)
 </script>
 
 <template>
@@ -26,23 +34,23 @@ defineProps<{
         <span class="pane-head-icon" aria-hidden="true">
           <el-icon><ChatLineSquare/></el-icon>
         </span>
-        <span class="pane-tag">{{ item.focusPhrase ? '目标词' : '原句' }}</span>
+        <span class="pane-tag">{{ frontText ? '正面' : '原句' }}</span>
       </header>
-      <p class="pane-quote">{{ item.focusPhrase || item.originalSentence }}</p>
+      <p class="pane-quote">{{ frontText || item.originalSentence }}</p>
     </section>
 
-    <section v-if="item.suggestion" class="cn-pane cn-pane--suggest">
+    <section v-if="backText" class="cn-pane cn-pane--suggest">
       <header class="pane-head">
         <span class="pane-head-icon pane-head-icon--ai" aria-hidden="true">
           <el-icon><MagicStick/></el-icon>
         </span>
-        <span class="pane-tag pane-tag--ai">{{ item.focusPhrase ? '英文' : '英文建议' }}</span>
+        <span class="pane-tag pane-tag--ai">背面</span>
       </header>
-      <p class="pane-improved">{{ item.suggestion }}</p>
+      <p class="pane-improved">{{ backText }}</p>
     </section>
 
-    <p v-if="item.focusPhrase" class="cn-empty-hint">原句：{{ item.originalSentence }}</p>
-    <p v-else-if="!item.suggestion" class="cn-empty-hint">暂未生成英文建议，可稍后重试分析。</p>
+    <p v-if="frontText" class="cn-empty-hint">原句：{{ item.originalSentence }}</p>
+    <p v-else-if="!backText" class="cn-empty-hint">暂未生成对应内容，可稍后重试分析。</p>
   </article>
 </template>
 

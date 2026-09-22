@@ -64,7 +64,7 @@ class GrowthCardEvidenceHydratorTest {
                 .chineseExpressions(List.of(ChineseExpressionDto.builder()
                         .originalIndex(3)
                         .originalSentence("我想说准确度")
-                        .suggestion("accuracy")
+                        .back("accuracy")
                         .build()))
                 .build());
 

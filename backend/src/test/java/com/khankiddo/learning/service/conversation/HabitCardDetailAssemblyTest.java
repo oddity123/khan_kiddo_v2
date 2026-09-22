@@ -93,20 +93,20 @@ class HabitCardDetailAssemblyTest {
                 ChineseExpressionDto.builder()
                         .originalIndex(0)
                         .originalSentence("我觉得立法很重要")
-                        .focusPhrase("立法")
-                        .suggestion("legislation")
+                        .front("立法")
+                        .back("legislation")
                         .build(),
                 ChineseExpressionDto.builder()
                         .originalIndex(1)
                         .originalSentence("这个客商很有名")
-                        .focusPhrase("客商")
-                        .suggestion("client")
+                        .front("客商")
+                        .back("client")
                         .build(),
                 ChineseExpressionDto.builder()
                         .originalIndex(2)
                         .originalSentence("他喜欢敲碗")
-                        .focusPhrase("敲碗")
-                        .suggestion("tap the bowl")
+                        .front("敲碗")
+                        .back("tap the bowl")
                         .build()
         );
         assertEquals(3, ignored.size());

@@ -80,9 +80,9 @@ class GrowthCardMintGatewayTest {
     void mintAfterAnalysis_shouldPersistVocabOnly_withoutAutoHabit() {
         ChineseExpressionDto expression = ChineseExpressionDto.builder()
                 .originalIndex(3)
-                .focusPhrase("很有成就感")
+                .front("很有成就感")
                 .originalSentence("我觉得很有成就感")
-                .suggestion("I feel a strong sense of accomplishment.")
+                .back("I feel a strong sense of accomplishment.")
                 .reason("想表达成就感")
                 .build();
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()
@@ -112,8 +112,8 @@ class GrowthCardMintGatewayTest {
         ExpressionPhraseDto precomputed = ExpressionPhraseDto.builder()
                 .sentenceId(11L)
                 .pointId("FEEL_ED_ADJ")
-                .focusPhrase("exciting")
-                .suggestion("excited")
+                .front("exciting")
+                .back("excited")
                 .reason("感到…用 -ed")
                 .build();
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()

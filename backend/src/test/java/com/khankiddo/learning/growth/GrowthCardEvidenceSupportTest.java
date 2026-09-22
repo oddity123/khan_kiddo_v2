@@ -72,7 +72,7 @@ class GrowthCardEvidenceSupportTest {
         ChineseExpressionDto expression = ChineseExpressionDto.builder()
                 .originalIndex(3)
                 .originalSentence("这个怎么说")
-                .suggestion("How do you say this?")
+                .back("How do you say this?")
                 .build();
 
         List<GrowthCardEvidence> rows =

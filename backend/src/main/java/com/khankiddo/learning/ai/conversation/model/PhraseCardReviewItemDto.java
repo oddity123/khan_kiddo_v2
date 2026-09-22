@@ -18,14 +18,14 @@ public class PhraseCardReviewItemDto {
     private int index;
 
     /**
-     * 闪卡正面短焦点（chinese=中文目标；expression=不自然短片段）。
+     * 成长卡正面（chinese≈中文线索；expression≈中文题干/意图，不地道原文不进 front）。
      */
-    private String focusPhrase;
+    private String front;
 
     /**
-     * 闪卡背面短对应（chinese=英文；expression=地道短说法）。
+     * 成长卡背面（chinese≈英文；expression≈地道表达）。
      */
-    private String suggestion;
+    private String back;
 
     /** 短中文说明（为何抽这个 / 学什么 / 为何这样改） */
     private String reason;
