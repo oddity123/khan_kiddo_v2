@@ -43,7 +43,7 @@ app:
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
         model-name: deepseek-v4-flash-0731
-        temperature: 0.2
+        temperature: ${AI_TEMPERATURE:0.2}
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
       - id: qwen3.8-max
@@ -52,7 +52,7 @@ app:
         base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
         api-key: ${QWEN_API_KEY:}
         model-name: qwen3.8-max
-        temperature: 0.2
+        temperature: ${AI_TEMPERATURE:0.2}
         max-tokens: ${AI_MAX_TOKENS:20480}
         enabled: true
   auth:
@@ -137,7 +137,7 @@ langchain4j:
     chat-model:
       api-key: ${DOUBAO_API_KEY:}
       base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
-      model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}
+      model-name: ${DOUBAO_MODEL_NAME:doubao-seed-2-1-lite-260915}
       temperature: ${AI_TEMPERATURE:0.2}
       max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_CHAT_TIMEOUT:60s}
@@ -152,7 +152,7 @@ langchain4j:
     streaming-chat-model:
       api-key: ${DOUBAO_API_KEY:}
       base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
-      model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}
+      model-name: ${DOUBAO_MODEL_NAME:doubao-seed-2-1-lite-260915}
       temperature: ${AI_TEMPERATURE:0.2}
       max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_HTTP_READ_TIMEOUT:45s}
