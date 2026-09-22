@@ -18,7 +18,7 @@
           "front": {
             "type": "string",
             "minLength": 1,
-            "description": "成长卡正面（chinese≈中文线索；expression≈中文题干/意图提示，不地道英文原文不进 front）；同场勿与已输出项近义重复；无法短对立时勿输出该条"
+            "description": "成长卡正面（chinese≈中文线索；expression≈中文题干/意图提示）；同场勿与已输出项近义重复；无法短对立时勿输出该条"
           },
           "back": {
             "type": "string",
