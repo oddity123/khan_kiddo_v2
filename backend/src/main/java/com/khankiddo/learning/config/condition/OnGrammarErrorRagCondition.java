@@ -6,12 +6,18 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.util.StringUtils;
 
 /**
- * 语法错句 RAG：需同时配置千问嵌入 API 与 Qdrant 地址。
+ * 语法错句 RAG：需 {@code app.grammar-error-rag.enabled=true}（默认 true），
+ * 且同时配置千问嵌入 API 与 Qdrant 地址。
  */
 public class OnGrammarErrorRagCondition implements Condition {
 
     @Override
     public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+        Boolean enabled = context.getEnvironment().getProperty(
+                "app.grammar-error-rag.enabled", Boolean.class, Boolean.TRUE);
+        if (!Boolean.TRUE.equals(enabled)) {
+            return false;
+        }
         String qwenKey = context.getEnvironment().getProperty("QWEN_API_KEY");
         String qdrantHost = context.getEnvironment().getProperty("QDRANT_HOST");
         if (!StringUtils.hasText(qdrantHost)) {

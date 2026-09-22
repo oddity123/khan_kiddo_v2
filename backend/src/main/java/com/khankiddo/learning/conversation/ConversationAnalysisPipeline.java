@@ -27,6 +27,7 @@ import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -60,6 +61,10 @@ public class ConversationAnalysisPipeline {
     private final PointDictionary pointDictionary;
     private final HabitCardScorer habitCardScorer;
     private final ErrantEditAnnotationService errantEditAnnotationService;
+
+    /** Stage1 分离与 langchain4j 默认 Bean 共用 model-name（打日志用） */
+    @Value("${langchain4j.open-ai.chat-model.model-name:doubao-seed-1-8-251228}")
+    private String separationModelName;
 
     public ConversationAnalysisResultDto run(ConversationAnalysisRequest request,
                                                String analysisId,
@@ -159,14 +164,14 @@ public class ConversationAnalysisPipeline {
                     request.getConversationContent().trim());
             ConversationAnalysisCallLog.record(
                     ConversationAnalysisCallLog.STAGE_SEPARATION,
-                    properties.getSeparationModelName(),
+                    separationModelName,
                     1,
                     System.currentTimeMillis() - llmStartedAt,
                     ConversationAnalysisCallLog.RESULT_OK);
         } catch (RuntimeException ex) {
             ConversationAnalysisCallLog.record(
                     ConversationAnalysisCallLog.STAGE_SEPARATION,
-                    properties.getSeparationModelName(),
+                    separationModelName,
                     1,
                     System.currentTimeMillis() - llmStartedAt,
                     ConversationAnalysisCallLog.resultOf(ex));

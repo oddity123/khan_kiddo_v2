@@ -1,7 +1,6 @@
 package com.khankiddo.learning.eval;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.conversation.ConversationAnalysisPipeline;
 import com.khankiddo.learning.llm.LlmModelCatalog;
 import com.khankiddo.learning.llm.ResolvedLlmModel;
@@ -16,6 +15,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -59,10 +59,13 @@ class ConversationDriftHarness {
     @Autowired
     private LlmModelCatalog modelCatalog;
 
-    @Autowired
-    private ConversationAnalysisProperties conversationAnalysisProperties;
+    @Value("${langchain4j.open-ai.chat-model.model-name:doubao-seed-1-8-251228}")
+    private String stage1ModelName;
 
-    /** Stage2/Stage3 模型上下文（写入报告头）。 */
+    @Value("${langchain4j.open-ai.chat-model.temperature:0.2}")
+    private double stage1Temperature;
+
+    /** Stage2/Stage3 模型上下文（写入报告头）；Stage1 与 langchain4j 默认 Bean 同配置。 */
     private record ModelContext(
             String modelId,
             String displayName,
@@ -154,8 +157,8 @@ class ConversationDriftHarness {
                 resolved.getConfig().getModelName(),
                 resolved.getProvider(),
                 resolved.getConfig().getTemperature(),
-                conversationAnalysisProperties.getSeparationModelName(),
-                conversationAnalysisProperties.getSeparationTemperature());
+                stage1ModelName,
+                stage1Temperature);
     }
 
     private RunDetail runOnceDetail(String content, int runIndex, String modelId) {

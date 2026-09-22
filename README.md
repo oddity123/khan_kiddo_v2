@@ -20,7 +20,7 @@
 
 ```mermaid
 flowchart LR
-    A[原始字幕] --> B["Stage 1 对话分离<br/>固定 Doubao Flash"]
+    A[原始字幕] --> B["Stage 1 对话分离<br/>Doubao（与默认 Bean 同模型）"]
     B --> C{语种路由}
     C -->|中文句| D["中文表达建议<br/>词汇缺口 / 整句改写"]
     C -->|英文句| E["Stage 2 语法分析<br/>用户可选模型 · 流式"]
@@ -35,7 +35,7 @@ flowchart LR
 
 | 阶段        | 职责                                  | 模型                                    | 设计要点                                      |
 | --------- | ----------------------------------- | ------------------------------------- | ----------------------------------------- |
-| Stage 1   | 字幕 → 结构化 `user`/`assistant` 消息，拆分多句 | **固定** `doubao-seed-1-6-flash-250828` | 只做结构化不改写内容；`json_schema` + `strict` 保证可解析 |
+| Stage 1   | 字幕 → 结构化 `user`/`assistant` 消息，拆分多句 | 与 `langchain4j.open-ai.chat-model` 同模型（默认 `DOUBAO_MODEL_NAME`） | 只做结构化不改写内容；`json_schema` + `strict` 保证可解析 |
 | Stage 1.5 | 中文句生成英文表达建议                         | 用户所选模型                                | 区分「不会这个词」还是「不会这句话」                        |
 | Stage 2   | 英文句语法/表达错误检测                        | 用户所选模型                                | 超过 15 句自动切批处理（batch 5、并发 5）               |
 | Stage 3   | 中文 Markdown 诊断报告                    | 用户所选模型                                | 报告由 LLM 写，**分数由本地规则算**                    |
@@ -175,8 +175,8 @@ Chrome → 扩展管理 → 加载已解压的扩展 → 选 `extension/dist`。
 | **用** `./mvn.sh`**，不要直接** `mvn`                        | 脚本锁定 Java 21；机器上可能有 JDK 8。`./mvn.sh -version` 应显示 21.x                                                   |
 | `pom.xml` **在** `backend/`**，根目录没有 pom**               | 前后端分离结构，根目录只有包装脚本                                                                                        |
 | **启动前** `source .env`                                  | Spring Boot 不读 `.env` 文件                                                                                 |
-| `DOUBAO_API_KEY` **是硬需求**                              | Stage 1 分离硬绑豆包 Flash。缺 Key 时 `/api/conversation/llm-models` 返回空、分析必然失败                                   |
-| **RAG 需要** `QWEN_API_KEY` **+** `QDRANT_HOST` **同时配置** | 见 `config/condition/OnGrammarErrorRagCondition.java`，缺任一则整个向量检索链路不装配                                     |
+| `DOUBAO_API_KEY` **是硬需求**                              | Stage 1 分离与 LangChain4j 默认 Bean 共用豆包 Key/模型。缺 Key 时 `/api/conversation/llm-models` 返回空、分析必然失败                                   |
+| **RAG 需要** `enabled=true` **+** `QWEN_API_KEY` **+** `QDRANT_HOST` | 见 `OnGrammarErrorRagCondition`；`app.grammar-error-rag.enabled=false` 或缺 Key/Host 则整条向量链路不装配，错句不写入 Qdrant |
 | **Qdrant 用 gRPC 端口 6334**，不是 6333                      | 6333 是 REST/Dashboard                                                                                    |
 | **不要设** `LOGGING_LEVEL=INFO`                           | 与 Spring Boot 3 的配置绑定冲突，直接导致启动失败。用 `LOGGING_LEVEL_ROOT`                                                  |
 | **Nginx 反代必须** `proxy_buffering off`                   | 否则 SSE 流式分析全程无输出，直到超时                                                                                    |

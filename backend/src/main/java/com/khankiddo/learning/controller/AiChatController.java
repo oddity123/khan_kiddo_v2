@@ -54,7 +54,7 @@ public class AiChatController {
         if (!StringUtils.hasText(apiKey)) {
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
-                    "未配置 AI_API_KEY 环境变量，无法调用豆包大模型");
+                    "未配置 DOUBAO_API_KEY 环境变量，无法调用豆包大模型");
         }
     }
 }

@@ -380,10 +380,10 @@ def mine_batches(
     max_batches: int | None,
 ) -> list[Path]:
     BATCH_DIR.mkdir(parents=True, exist_ok=True)
-    api_key = env.get("DOUBAO_API_KEY") or env.get("AI_API_KEY")
+    api_key = env.get("DOUBAO_API_KEY")
     if not api_key:
-        raise RuntimeError(".env 缺少 DOUBAO_API_KEY / AI_API_KEY")
-    base_url = env.get("DOUBAO_BASE_URL") or env.get("AI_BASE_URL") or DEFAULT_BASE_URL
+        raise RuntimeError(".env 缺少 DOUBAO_API_KEY")
+    base_url = env.get("DOUBAO_BASE_URL") or DEFAULT_BASE_URL
 
     paths: list[Path] = []
     for batch_idx, batch in chunked(items, batch_size):
@@ -512,8 +512,8 @@ def synthesize(env: dict[str, str], model: str) -> dict:
         "batch_count": len(batch_files),
     }
 
-    api_key = env.get("DOUBAO_API_KEY") or env.get("AI_API_KEY")
-    base_url = env.get("DOUBAO_BASE_URL") or env.get("AI_BASE_URL") or DEFAULT_BASE_URL
+    api_key = env.get("DOUBAO_API_KEY")
+    base_url = env.get("DOUBAO_BASE_URL") or DEFAULT_BASE_URL
     user_prompt = (
         "以下是多批挖掘的预聚合结果，请合并成最终 v1 候选字典。\n"
         "硬性：只输出合法 JSON；examples 每条最多 2 个，句子截断到 120 字；"

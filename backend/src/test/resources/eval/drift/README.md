@@ -57,7 +57,8 @@ cd backend
 - `-Ddrift.runs=5`：每段对话跑几次（默认 5）。
 - `-Ddrift.modelId=<id>`：指定 Stage2/Stage3 分析模型（可选）；未设置时用
   `app.llm.default-model-id`（当前默认 **`doubao-seed`** → API 模型
-  `doubao-seed-1-8-251228`）。Stage1 对话分离始终用 Flash 模型，不受此参数影响。
+  `doubao-seed-1-8-251228`）。Stage1 对话分离使用 `langchain4j.open-ai.chat-model`
+ （同 `DOUBAO_MODEL_NAME` / `AI_TEMPERATURE`），不受 `drift.modelId` 影响。
 
 报告输出到 `backend/target/drift-report/drift-<时间戳>.md`，控制台也会打印。
 报告含**模型信息**、**汇总表**与**每次运行的分数/错误数明细**。
@@ -68,7 +69,7 @@ cd backend
 |---|---|---|
 | `-Ddrift.modelId` | Stage2 语法分析 + Stage3 教育总结 | `doubao-seed` |
 | （无参数） | 同左，走 `application.yml` 的 `default-model-id` | `doubao-seed` |
-| Stage1 分离 | 固定 Flash，见 `app.conversation-analysis.separation-model-name` | `doubao-seed-1-6-flash-250828` |
+| Stage1 分离 | `langchain4j.open-ai.chat-model.model-name` | `doubao-seed-1-8-251228` |
 
 `app.llm.models` 中已启用且 Key 已配置的条目均可作为 `drift.modelId`，例如：
 

@@ -15,9 +15,10 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Duration;
 
 /**
- * 对话分析各阶段专用 ChatModel（LangChain4j 手动 Bean，便于按阶段选模型与 temperature）。
+ * Stage1 对话分离专用 ChatModel（与 starter 默认 Bean 共用 model-name / temperature，
+ * 另挂 JSON Schema + chat-timeout）。
  * <p>
- * 默认 {@code openAiChatModel} / {@code openAiStreamingChatModel} 由 starter 自动配置（主分析、总结）。
+ * 默认 {@code openAiChatModel} / {@code openAiStreamingChatModel} 由 starter 自动配置。
  */
 @Configuration
 public class AiChatModelConfig {
@@ -30,6 +31,8 @@ public class AiChatModelConfig {
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.api-key:}") String apiKey,
             @Value("${langchain4j.open-ai.chat-model.base-url:https://ark.cn-beijing.volces.com/api/v3}") String baseUrl,
+            @Value("${langchain4j.open-ai.chat-model.model-name:doubao-seed-1-8-251228}") String modelName,
+            @Value("${langchain4j.open-ai.chat-model.temperature:0.2}") double temperature,
             @Value("${langchain4j.open-ai.chat-model.max-tokens:10240}") Integer maxTokens,
             @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer maxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean logRequests,
@@ -42,8 +45,8 @@ public class AiChatModelConfig {
                 .httpClientBuilder(clientBuilder)
                 .baseUrl(LlmEndpointSupport.normalizeDoubaoBaseUrl(baseUrl))
                 .apiKey(apiKey)
-                .modelName(conversationAnalysisProperties.getSeparationModelName())
-                .temperature(conversationAnalysisProperties.getSeparationTemperature())
+                .modelName(modelName)
+                .temperature(temperature)
                 .maxTokens(maxTokens)
                 .timeout(chatTimeout)
                 .maxRetries(maxRetries)

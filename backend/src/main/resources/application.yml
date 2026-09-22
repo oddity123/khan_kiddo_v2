@@ -69,9 +69,7 @@ app:
     http-read-timeout: ${AI_HTTP_READ_TIMEOUT:45s}
     # 非流式单次调用超时（Stage1/2 chat/Stage3）；LangChain4j max-retries=1，避免与业务重试叠乘
     chat-timeout: ${AI_CHAT_TIMEOUT:60s}
-    # Stage 1 对话分离：Flash 模型 + 低 temperature（对齐 v1）
-    separation-model-name: ${AI_SEPARATION_MODEL:doubao-seed-1-6-flash-250828}
-    separation-temperature: ${AI_SEPARATION_TEMPERATURE:0.3}
+    # Stage1 分离模型/temperature 与 langchain4j.open-ai.chat-model 共用（见 AiChatModelConfig）
     # Stage1/Stage2 使用 response_format json_schema + strict（对齐 v1 Doubao Responses）
     strict-json-schema: ${AI_STRICT_JSON_SCHEMA:true}
     # 对话分析限流：每用户每窗口最多 N 次（单实例内存计数）
@@ -91,7 +89,7 @@ app:
     base-url: ${ERRANT_BASE_URL:http://127.0.0.1:8000}
     connect-timeout: ${ERRANT_CONNECT_TIMEOUT:2s}
     read-timeout: ${ERRANT_READ_TIMEOUT:10s}
-  # 嵌入与对话分析模型目录解耦：有 QWEN_API_KEY + QDRANT_HOST 即启用 RAG
+  # 嵌入与对话分析模型目录解耦：enabled + QWEN_API_KEY + QDRANT_HOST 才启用 RAG（含错句写入）
   rag:
     embedding-base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
     embedding-api-key: ${QWEN_API_KEY:}
@@ -99,6 +97,7 @@ app:
     embedding-max-segments-per-batch: 10
     embedding-dimension: 1024
   grammar-error-rag:
+    # false 时不装配索引/检索 Bean，分析落库仍正常，错句不再写入 Qdrant
     enabled: true
     qdrant:
       host: ${QDRANT_HOST:}
@@ -136,9 +135,9 @@ mybatis-plus:
 langchain4j:
   open-ai:
     chat-model:
-      api-key: ${DOUBAO_API_KEY:${AI_API_KEY:}}
-      base-url: ${DOUBAO_BASE_URL:${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}}
-      model-name: ${DOUBAO_MODEL_NAME:${AI_MODEL:doubao-seed-1-8-251228}}
+      api-key: ${DOUBAO_API_KEY:}
+      base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+      model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}
       temperature: ${AI_TEMPERATURE:0.2}
       max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_CHAT_TIMEOUT:60s}
@@ -151,9 +150,9 @@ langchain4j:
           type: disabled
     # starter 自动装配 openAiStreamingChatModel（GrammarStatsAssistant 流式）；timeout = HTTP 无数据读超时
     streaming-chat-model:
-      api-key: ${DOUBAO_API_KEY:${AI_API_KEY:}}
-      base-url: ${DOUBAO_BASE_URL:${AI_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}}
-      model-name: ${DOUBAO_MODEL_NAME:${AI_MODEL:doubao-seed-1-8-251228}}
+      api-key: ${DOUBAO_API_KEY:}
+      base-url: ${DOUBAO_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+      model-name: ${DOUBAO_MODEL_NAME:doubao-seed-1-8-251228}
       temperature: ${AI_TEMPERATURE:0.2}
       max-tokens: ${AI_MAX_TOKENS:10240}
       timeout: ${AI_HTTP_READ_TIMEOUT:45s}
