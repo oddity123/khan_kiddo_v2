@@ -69,7 +69,7 @@ public class LlmChatModelFactory {
     }
 
     /**
-     * Stage2 语法分析：与 {@link #streamingForGrammarAnalysis} 使用相同的结构化输出策略，非流式调用更稳定。
+     * Stage2 语法分析：按结构化输出策略配置 response_format / strict / max_tokens。
      */
     public ChatModel chatForGrammarAnalysis(ResolvedLlmModel model) {
         GrammarStreamingModelSpec spec = resolveGrammarStreamingSpec(model);
@@ -90,17 +90,6 @@ public class LlmChatModelFactory {
         String cacheKey = cacheKey(model);
         return streamingCache.computeIfAbsent(
                 cacheKey, key -> buildStreamingModel(model.getConfig(), null, false, false));
-    }
-
-    /**
-     * Stage2 语法分析：由结构化输出策略决定 response_format / strict / max_tokens 行为。
-     * {@code responseFormat} 可为 null（如千问仅靠 system prompt 约束 Schema），但仍需尊重 omitMaxTokens 等策略字段。
-     */
-    public StreamingChatModel streamingForGrammarAnalysis(ResolvedLlmModel model) {
-        GrammarStreamingModelSpec spec = resolveGrammarStreamingSpec(model);
-        String cacheKey = cacheKey(model) + spec.getCacheSuffix();
-        return streamingCache.computeIfAbsent(
-                cacheKey, key -> buildStreamingModel(model.getConfig(), spec));
     }
 
     public ResponseFormat grammarAnalysisResponseFormat() {
@@ -159,11 +148,6 @@ public class LlmChatModelFactory {
             builder.responseFormat(spec.getResponseFormat())
                     .strictJsonSchema(spec.isStrictJsonSchema());
         }
-    }
-
-    private StreamingChatModel buildStreamingModel(
-            LlmModelProperties.ModelConfig config, GrammarStreamingModelSpec spec) {
-        return buildStreamingModel(config, spec.getResponseFormat(), spec.isStrictJsonSchema(), spec.isOmitMaxTokens());
     }
 
     private StreamingChatModel buildStreamingModel(

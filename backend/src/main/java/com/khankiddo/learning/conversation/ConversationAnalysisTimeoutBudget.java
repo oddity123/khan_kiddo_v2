@@ -6,14 +6,17 @@ import java.time.Duration;
 
 /**
  * 对话分析超时预算。公式：
- * 分批 Stage2 墙钟 ≈ 并发波次 × 非流式单次超时 × 失败批次重试次数；
+ * 分批 Stage2 墙钟 ≈ 并发波次 × 非流式单次超时 × {@link #GRAMMAR_CHAT_MAX_ATTEMPTS}；
  * 另加 Stage1 / 中文 Review / Stage3 各一次 chat 超时。
  * 必须明显小于 SSE 10 分钟。
  */
 public final class ConversationAnalysisTimeoutBudget {
 
     public static final Duration SSE_TIMEOUT = Duration.ofMinutes(10);
-    static final int FAILED_BATCH_MAX_ATTEMPTS = 2;
+    /**
+     * Stage2 语法 chat 最大尝试次数（单批 JSON 解析重试、失败批次再试）。
+     */
+    static final int GRAMMAR_CHAT_MAX_ATTEMPTS = 2;
     private static final int OTHER_STAGE_COUNT = 3;
 
     private ConversationAnalysisTimeoutBudget() {
@@ -30,9 +33,9 @@ public final class ConversationAnalysisTimeoutBudget {
         if (englishSentenceCount > properties.getBatchThreshold()) {
             int batches = ceilDiv(englishSentenceCount, properties.getBatchSize());
             int waves = ceilDiv(batches, properties.getBatchConcurrentLimit());
-            return chat.multipliedBy((long) waves * FAILED_BATCH_MAX_ATTEMPTS);
+            return chat.multipliedBy((long) waves * GRAMMAR_CHAT_MAX_ATTEMPTS);
         }
-        return properties.getStreamWallClockTimeout().plus(chat);
+        return chat.multipliedBy(GRAMMAR_CHAT_MAX_ATTEMPTS);
     }
 
     private static int ceilDiv(int value, int divisor) {

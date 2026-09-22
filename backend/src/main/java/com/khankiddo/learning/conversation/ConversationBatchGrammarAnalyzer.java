@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 
 /**
  * 用户句数超过阈值时，按 {@link ConversationAnalysisProperties#getBatchSize()} 均分切批并发分析。
- * 分批一律非流式（chat），不占用 Stage 2 流式连接。
+ * 分批一律非流式（chat）。
  * 失败或尚未开始的批次再试一次；已成功批次保留。并发上限沿用配置，不在此降低。
  */
 @Slf4j
@@ -35,10 +35,10 @@ import java.util.function.Consumer;
 @RequiredArgsConstructor
 public class ConversationBatchGrammarAnalyzer {
 
-    private static final int FAILED_BATCH_MAX_ATTEMPTS =
-            ConversationAnalysisTimeoutBudget.FAILED_BATCH_MAX_ATTEMPTS;
+    private static final int GRAMMAR_CHAT_MAX_ATTEMPTS =
+            ConversationAnalysisTimeoutBudget.GRAMMAR_CHAT_MAX_ATTEMPTS;
 
-    private final ConversationAnalysisStreamingHelper streamingHelper;
+    private final ConversationGrammarAnalysisHelper grammarAnalysisHelper;
     private final GrammarAnalysisUserPromptBuilder userPromptBuilder;
     private final ConversationAnalysisProperties properties;
 
@@ -81,7 +81,7 @@ public class ConversationBatchGrammarAnalyzer {
             runWave(executor, batches, systemPrompt, model, analysisId, batchProgress,
                     semaphore, completedCount, orderedResults, lastErrors, 1, true);
             List<Integer> missing = missingBatchIndexes(orderedResults);
-            if (!CollectionUtils.isEmpty(missing) && FAILED_BATCH_MAX_ATTEMPTS > 1) {
+            if (!CollectionUtils.isEmpty(missing) && GRAMMAR_CHAT_MAX_ATTEMPTS > 1) {
                 log.info("分批语法分析准备重试失败或未开始批次 analysisId={}, indexes={}",
                         analysisId, missing.stream().map(i -> i + 1).toList());
                 runWave(executor, batches, systemPrompt, model, analysisId, batchProgress,
@@ -191,7 +191,7 @@ public class ConversationBatchGrammarAnalyzer {
             log.info("分批语法分析开始 analysisId={}, batchNum={}/{}, attempt={}, sentences={}",
                     analysisId, batchNum, totalBatches, attempt, batchSentences.size());
             String userPrompt = userPromptBuilder.buildFromUserSentences(batchSentences);
-            GrammarAnalysisResult result = streamingHelper.analyzeGrammarWithoutStreaming(
+            GrammarAnalysisResult result = grammarAnalysisHelper.analyzeGrammar(
                     systemPrompt, userPrompt, model, batchNum, totalBatches, batchProgress);
             orderedResults.set(index, result);
             lastErrors[index] = null;

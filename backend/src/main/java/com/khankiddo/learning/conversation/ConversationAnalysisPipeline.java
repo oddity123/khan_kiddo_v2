@@ -44,7 +44,7 @@ import java.util.function.Consumer;
 public class ConversationAnalysisPipeline {
 
     private final ConversationSeparationAi separationAi;
-    private final ConversationAnalysisStreamingHelper streamingHelper;
+    private final ConversationGrammarAnalysisHelper grammarAnalysisHelper;
     private final ConversationBatchGrammarAnalyzer batchAnalyzer;
     private final EducationalSummaryClient summaryClient;
     private final LlmModelCatalog modelCatalog;
@@ -272,9 +272,9 @@ public class ConversationAnalysisPipeline {
             grammar = batchAnalyzer.analyzeInBatches(
                     englishSentences, systemPrompt, model, analysisId, onProgress);
         } else {
-            log.info("Stage2 grammar analysis mode=stream (preview), sentences={}", englishSentences.size());
+            log.info("Stage2 grammar analysis mode=chat, sentences={}", englishSentences.size());
             String userPrompt = grammarUserPromptBuilder.buildFromUserSentences(englishSentences);
-            grammar = streamingHelper.streamGrammarAnalysis(systemPrompt, userPrompt, model, onProgress);
+            grammar = grammarAnalysisHelper.analyzeGrammar(systemPrompt, userPrompt, model, onProgress);
         }
         if (grammar == null) {
             grammar = GrammarAnalysisResult.builder().build();

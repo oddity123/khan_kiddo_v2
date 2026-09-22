@@ -65,10 +65,8 @@ app:
     batch-threshold: 15
     batch-size: 5
     batch-concurrent-limit: 5
-    # HTTP 无数据读超时（socket 空闲）；与流式墙钟、非流式单次超时分离
+    # HTTP 无数据读超时（socket 空闲）；与非流式单次超时分离
     http-read-timeout: ${AI_HTTP_READ_TIMEOUT:45s}
-    # 流式整段生成墙钟上限（ConversationAnalysisStreamingHelper latch.await）
-    stream-wall-clock-timeout: ${AI_STREAM_WALL_CLOCK_TIMEOUT:5m}
     # 非流式单次调用超时（Stage1/2 chat/Stage3）；LangChain4j max-retries=1，避免与业务重试叠乘
     chat-timeout: ${AI_CHAT_TIMEOUT:60s}
     # Stage 1 对话分离：Flash 模型 + 低 temperature（对齐 v1）

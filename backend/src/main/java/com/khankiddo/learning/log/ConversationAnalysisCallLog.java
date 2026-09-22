@@ -21,9 +21,7 @@ public final class ConversationAnalysisCallLog {
     public static final String STAGE_PERSIST = "persist";
 
     public static final String RESULT_OK = "ok";
-    public static final String RESULT_INCOMPLETE = "incomplete";
 
-    public static final String MODE_STREAM = "stream";
     public static final String MODE_CHAT = "chat";
 
     private ConversationAnalysisCallLog() {

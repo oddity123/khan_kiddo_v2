@@ -8,7 +8,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * 分批分析 progress 中继：串行化推送，并过滤句子级流式预览字段，避免多批并发时前端事件交错。
+ * 分批分析 progress 中继：串行化推送批级文案，避免多批并发时前端事件交错。
  */
 final class ConversationAnalysisProgressRelay {
 
@@ -27,7 +27,7 @@ final class ConversationAnalysisProgressRelay {
     }
 
     /**
-     * 只转发批级文案（status + message），去掉流式预览字段；无 message 的 token 更新直接丢弃；
+     * 只转发批级文案（status + message）；无 message 直接丢弃；
      * 同一 status+message 全局只推一次（并发批交错时，仅靠「与上一条比较」去重不够）。
      */
     static Consumer<ConversationAnalysisProgress> batchLevelOnly(

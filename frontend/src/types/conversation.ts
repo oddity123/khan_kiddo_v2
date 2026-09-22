@@ -18,14 +18,6 @@ export interface ConversationAnalysisProgress {
   errorMessage?: string
   analysisId?: string
   messageStats?: MessageStats
-    /** Stage2 流式预览：当前句原句（可能以 ... 结尾） */
-    streamingOriginal?: string
-    streamingSuggestion?: string
-    streamingErrorsHint?: string
-    /** 上一句已完成，用于追加卡片 */
-    streamingCommitOriginal?: string
-    streamingCommitSuggestion?: string
-    streamingCommitErrorsHint?: string
 }
 
 export interface MessageStats {

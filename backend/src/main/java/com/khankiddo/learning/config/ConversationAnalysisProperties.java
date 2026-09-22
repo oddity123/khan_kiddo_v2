@@ -29,14 +29,9 @@ public class ConversationAnalysisProperties {
     private int batchConcurrentLimit = 5;
 
     /**
-     * HTTP 无数据读超时（流式与非流式 socket 空闲）。
+     * HTTP 无数据读超时（socket 空闲）。
      */
     private Duration httpReadTimeout = Duration.ofSeconds(45);
-
-    /**
-     * 流式整段生成墙钟上限（latch.await），允许持续出 token。
-     */
-    private Duration streamWallClockTimeout = Duration.ofMinutes(5);
 
     /**
      * 非流式单次调用超时。LangChain4j HTTP 重试关闭后，业务层各自再试。

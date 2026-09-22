@@ -20,23 +20,19 @@ class ConversationAnalysisProgressRelayTest {
         sink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
                 .message("[6/8] 正在接收 AI 分析结果...")
-                .streamingOriginal("I go to school")
                 .build());
         sink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
                 .message("[3/8] 正在接收 AI 分析结果...")
-                .streamingOriginal("She like apples")
                 .build());
-        // 无文案的 token 更新应丢弃
+        // 无文案应丢弃
         sink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
-                .streamingOriginal("partial...")
                 .build());
         // 与已见文案相同（中间插入了其它批）——不得再次转发
         sink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
                 .message("[6/8] 正在接收 AI 分析结果...")
-                .streamingOriginal("I go to school every day")
                 .build());
         sink.accept(ConversationAnalysisProgress.builder()
                 .status(ConversationAnalysisProgress.STATUS_ANALYZING)
@@ -48,6 +44,7 @@ class ConversationAnalysisProgressRelayTest {
                         "[6/8] 正在接收 AI 分析结果...",
                         "[3/8] 正在接收 AI 分析结果...",
                         "已完成 1/8 批");
-        assertThat(forwarded).allSatisfy(p -> assertThat(p.getStreamingOriginal()).isNull());
+        assertThat(forwarded).allSatisfy(p ->
+                assertThat(p.getStatus()).isEqualTo(ConversationAnalysisProgress.STATUS_ANALYZING));
     }
 }

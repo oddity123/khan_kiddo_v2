@@ -30,17 +30,6 @@ public class ConversationAnalysisProgress {
     private String analysisId;
     private MessageStats messageStats;
 
-    /** Stage 2 流式预览：原句（可不完整，以 "..." 结尾） */
-    private String streamingOriginal;
-    /** Stage 2 流式预览：建议 */
-    private String streamingSuggestion;
-    /** Stage 2 流式预览：错误 hint，如 "2 个错误" */
-    private String streamingErrorsHint;
-    /** 上一句提交时的原句（用于前端追加卡片） */
-    private String streamingCommitOriginal;
-    private String streamingCommitSuggestion;
-    private String streamingCommitErrorsHint;
-
     @Data
     @Builder
     @NoArgsConstructor
