@@ -1,0 +1,36 @@
+---
+description: 编写/修改 LLM 提示词时：正向规格优先、少写「不要旧形态」、system vs user 分工。触发：改 templates/prompts、*-schema.json，或讨论 prompt/system/user。
+globs:
+  - backend/src/main/resources/templates/prompts/**
+  - backend/src/main/resources/schemas/**
+alwaysApply: false
+---
+
+# LLM 提示词编写
+
+适用于 `backend/src/main/resources/templates/prompts/` 下各阶段（如 phrase-card-review、grammar-analysis、conversation-separation、educational-summary、growth-card-mint 等）及其配套 `schemas/`。
+
+## 正向规格优先
+
+- 先写**该产出什么**（字段含义、`kind` 映射、长度/对齐、保留条件）。
+- 改产品语义时：只更新正向映射与正例；**不要**默认同堆「不要旧形态 A」。
+
+## 负向仅实证
+
+- 负向规则只留给：**正向说不清**且会**反复踩**的坑。
+- **禁止**因「刚从形态 A 改成 B」就写「不要 A」——正向已定义 B 即可。
+
+## system vs user
+
+**system（稳定契约）**
+
+- 角色与边界
+- 字段 / `kind` → 输出字段的稳定映射
+- 场级去重、不可积累则跳过
+- 输出契约（合法 JSON / schema 一致；跳过的 index 不出现）
+
+**user（本场实例）**
+
+- 本场任务说明 + 占位符（如 `{items}`）+ 少量正例
+- 去重 / 跳过等策略**不要全文再抄**；一句「遵守 system」即可
+- 可选保留**一条**已证实会踩的防坑（例如禁止 `How do you say ...?` 类提问句）
