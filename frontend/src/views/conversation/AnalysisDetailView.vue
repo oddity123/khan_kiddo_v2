@@ -345,8 +345,8 @@ const growthFanItems = computed((): ChineseExpressionItem[] => {
         cardKey: card.cardId,
         originalIndex: index,
         originalSentence: card.front,
-        focusPhrase: card.type === 'vocab' || card.type === 'expression' ? card.front : undefined,
-        suggestion: card.back,
+        front: card.front,
+        back: card.back,
         kindLabel: growthCardTypeLabel(card.type),
         evidenceCount: card.evidence?.length ?? 0,
       }))

@@ -77,7 +77,7 @@ public final class GrowthCardEvidenceSupport {
                 .sentenceId(sentenceId)
                 .trackKey(trackKey(sentenceId, original))
                 .originalSentence(original)
-                .suggestion(TextSupport.trimToNull(expression.getSuggestion()))
+                .suggestion(TextSupport.trimToNull(expression.getBack()))
                 .sortOrder(0)
                 .build());
     }

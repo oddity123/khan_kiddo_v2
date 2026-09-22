@@ -136,42 +136,42 @@ public class PhraseCardReviewClient {
             if (KIND_CHINESE.equals(slot.kind())) {
                 chinese.add(toChineseDto(slot.chinese(), item));
             } else if (item != null
-                    && StringUtils.hasText(item.getFocusPhrase())
-                    && StringUtils.hasText(item.getSuggestion())) {
+                    && StringUtils.hasText(item.getFront())
+                    && StringUtils.hasText(item.getBack())) {
                 ExpressionReviewCandidate c = slot.expression();
                 expressionPhrases.add(ExpressionPhraseDto.builder()
                         .sentenceId(c.sentenceId())
                         .pointId(c.pointId())
                         .originalSentence(c.originalSentence())
-                        .focusPhrase(item.getFocusPhrase().trim())
-                        .suggestion(item.getSuggestion().trim())
+                        .front(item.getFront().trim())
+                        .back(item.getBack().trim())
                         .reason(trimToEmpty(item.getReason()))
                         .build());
             }
         }
-        return new PhraseReviewOutcome(dedupeChineseByFocusPhrase(chinese), expressionPhrases);
+        return new PhraseReviewOutcome(dedupeChineseByFront(chinese), expressionPhrases);
     }
 
     private static ChineseExpressionDto toChineseDto(
             UtteranceRouter.RoutedChineseSentence routed,
             PhraseCardReviewItemDto item) {
-        String suggestion = "";
-        String focusPhrase = "";
+        String back = "";
+        String front = "";
         String reason = "";
         if (item != null) {
-            if (StringUtils.hasText(item.getSuggestion())) {
-                suggestion = item.getSuggestion().trim();
+            if (StringUtils.hasText(item.getBack())) {
+                back = item.getBack().trim();
             }
-            if (StringUtils.hasText(item.getFocusPhrase())) {
-                focusPhrase = item.getFocusPhrase().trim();
+            if (StringUtils.hasText(item.getFront())) {
+                front = item.getFront().trim();
             }
             reason = trimToEmpty(item.getReason());
         }
         return ChineseExpressionDto.builder()
                 .originalIndex(routed.originalIndex())
                 .originalSentence(routed.sentence())
-                .focusPhrase(focusPhrase)
-                .suggestion(suggestion)
+                .front(front)
+                .back(back)
                 .reason(reason)
                 .build();
     }
@@ -189,20 +189,20 @@ public class PhraseCardReviewClient {
     }
 
     /**
-     * 同一 {@code focusPhrase}（去空白后）只保留首次出现；无 focusPhrase 的项跳过。
+     * 同一 {@code front}（去空白后）只保留首次出现；无 front 的项跳过。
      */
-    static List<ChineseExpressionDto> dedupeChineseByFocusPhrase(List<ChineseExpressionDto> items) {
+    static List<ChineseExpressionDto> dedupeChineseByFront(List<ChineseExpressionDto> items) {
         if (CollectionUtils.isEmpty(items)) {
             return items;
         }
-        Set<String> seenFocus = new HashSet<>();
+        Set<String> seenFront = new HashSet<>();
         List<ChineseExpressionDto> result = new ArrayList<>();
         for (ChineseExpressionDto item : items) {
-            if (!StringUtils.hasText(item.getFocusPhrase())) {
+            if (!StringUtils.hasText(item.getFront())) {
                 continue;
             }
-            String key = normalizeFocusPhrase(item.getFocusPhrase());
-            if (!seenFocus.add(key)) {
+            String key = normalizeFront(item.getFront());
+            if (!seenFront.add(key)) {
                 continue;
             }
             result.add(item);
@@ -210,8 +210,8 @@ public class PhraseCardReviewClient {
         return result;
     }
 
-    private static String normalizeFocusPhrase(String focusPhrase) {
-        return focusPhrase.replaceAll("\\s+", "");
+    private static String normalizeFront(String front) {
+        return front.replaceAll("\\s+", "");
     }
 
     private static PhraseReviewOutcome fallbackOnFailure(
@@ -221,8 +221,8 @@ public class PhraseCardReviewClient {
             result.add(ChineseExpressionDto.builder()
                     .originalIndex(routed.originalIndex())
                     .originalSentence(routed.sentence())
-                    .focusPhrase("")
-                    .suggestion("")
+                    .front("")
+                    .back("")
                     .reason("")
                     .build());
         }

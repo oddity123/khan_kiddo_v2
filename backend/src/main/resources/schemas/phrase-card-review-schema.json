@@ -15,15 +15,15 @@
             "type": "integer",
             "description": "与输入列表编号一致（从 1 开始）"
           },
-          "focusPhrase": {
+          "front": {
             "type": "string",
             "minLength": 1,
-            "description": "闪卡正面短焦点（chinese=中文目标；expression=不自然短片段）；同场勿与已输出项近义重复；无法短对立时勿输出该条"
+            "description": "成长卡正面（chinese≈中文线索；expression≈中文题干/意图提示，不地道英文原文不进 front）；同场勿与已输出项近义重复；无法短对立时勿输出该条"
           },
-          "suggestion": {
+          "back": {
             "type": "string",
             "minLength": 1,
-            "description": "闪卡背面短对应（chinese=英文；expression=地道短说法）；同场勿近义重复"
+            "description": "成长卡背面（chinese≈英文对应；expression≈地道表达）；同场勿近义重复"
           },
           "reason": {
             "type": "string",
@@ -34,8 +34,8 @@
         "required": [
           "kind",
           "index",
-          "focusPhrase",
-          "suggestion",
+          "front",
+          "back",
           "reason"
         ],
         "additionalProperties": false

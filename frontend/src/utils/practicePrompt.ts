@@ -81,8 +81,8 @@ export function vocabFromChineseExpressions(
 ): PracticeVocabCandidate[] {
   return dedupeVocabulary(
       items.map((item) => ({
-        front: item.focusPhrase?.trim() || item.originalSentence,
-        back: item.suggestion ?? '',
+        front: item.front?.trim() || item.focusPhrase?.trim() || item.originalSentence,
+        back: item.back?.trim() || item.suggestion || '',
         originalSentence: item.originalSentence,
       })),
   )

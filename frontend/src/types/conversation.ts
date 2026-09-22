@@ -54,8 +54,13 @@ export interface AnalysisResultsPayload {
 export interface ChineseExpressionItem {
     originalIndex?: number
     originalSentence: string
-    /** 词汇求助时抽出的中文目标词；有则作为知识卡片正面 */
+    /** 成长卡正面（chinese≈中文线索；expression≈中文题干/意图） */
+    front?: string
+    /** 成长卡背面（chinese≈英文；expression≈地道表达） */
+    back?: string
+    /** @deprecated 旧数据 fallback；优先读 front */
     focusPhrase?: string
+    /** @deprecated 旧数据 fallback；优先读 back */
     suggestion?: string
     /** Phrase Review 短中文说明 */
     reason?: string
@@ -72,7 +77,13 @@ export interface ExpressionPhraseItem {
     sentenceId?: number
     pointId?: string
     originalSentence?: string
+    /** 成长卡正面（中文题干/意图；不地道原文不进 front） */
+    front?: string
+    /** 成长卡背面（地道表达） */
+    back?: string
+    /** @deprecated 旧数据 fallback；优先读 front */
     focusPhrase?: string
+    /** @deprecated 旧数据 fallback；优先读 back */
     suggestion?: string
     reason?: string
 }

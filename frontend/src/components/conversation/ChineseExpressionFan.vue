@@ -44,6 +44,9 @@ interface FlashCardItem {
   id: string
   originalIndex?: number
   originalSentence: string
+  front?: string
+  back?: string
+  /** legacy fallback */
   focusPhrase?: string
   suggestion?: string
   kindLabel?: string
@@ -158,6 +161,8 @@ const deckItems = computed((): FlashCardItem[] =>
       id: item.cardKey ? `cn-expr-${item.cardKey}` : `cn-expr-${item.originalIndex ?? index}`,
       originalIndex: item.originalIndex,
       originalSentence: item.originalSentence,
+      front: item.front,
+      back: item.back,
       focusPhrase: item.focusPhrase,
       suggestion: item.suggestion,
       kindLabel: item.kindLabel,
@@ -166,31 +171,55 @@ const deckItems = computed((): FlashCardItem[] =>
     })),
 )
 
+function resolveFront(item: FlashCardItem): string {
+  const front = typeof item.front === 'string' ? item.front.trim() : ''
+  if (front) {
+    return front
+  }
+  const legacy = typeof item.focusPhrase === 'string' ? item.focusPhrase.trim() : ''
+  if (legacy) {
+    return legacy
+  }
+  return item.originalSentence
+}
+
+function resolveBack(item: FlashCardItem): string {
+  const back = typeof item.back === 'string' ? item.back.trim() : ''
+  if (back) {
+    return back
+  }
+  return typeof item.suggestion === 'string' ? item.suggestion.trim() : ''
+}
+
+function hasCardFront(item: FlashCardItem): boolean {
+  return resolveFront(item) !== item.originalSentence
+      || Boolean((item.front ?? item.focusPhrase)?.toString().trim())
+}
+
 function frontPaneTag(item: FlashCardItem): string {
   if (props.variant === 'growth') {
-    return isVocabFocus(item) ? '中文' : '提示'
+    // 仅词汇卡用中文标签；表达/习惯用「提示」，避免把 expression 硬套成中英对照
+    return item.kindLabel === '词汇' ? '中文' : '提示'
   }
-  return isVocabFocus(item) ? '目标词' : '原句'
+  return hasCardFront(item) ? '正面' : '原句'
 }
 
 function backPaneTag(item: FlashCardItem): string {
   if (props.variant === 'growth') {
-    return isVocabFocus(item) ? '英文' : '答案'
+    return item.kindLabel === '词汇' ? '英文' : '答案'
   }
-  return isVocabFocus(item) ? '英文' : '英文建议'
+  return hasCardFront(item) ? '背面' : '建议'
 }
 
 const count = computed(() => deckItems.value.length)
 
 function cardFrontText(item: FlashCardItem): string {
-  if (typeof item.focusPhrase === 'string' && item.focusPhrase.trim()) {
-    return item.focusPhrase.trim()
-  }
-  return item.originalSentence
+  return resolveFront(item)
 }
 
 function isVocabFocus(item: FlashCardItem): boolean {
-  return typeof item.focusPhrase === 'string' && item.focusPhrase.trim().length > 0
+  // 有独立正面（相对原句）时走「正面/背面」双栏布局；成长卡一律走该布局
+  return hasCardFront(item) || props.variant === 'growth'
 }
 
 const emit = defineEmits<{
@@ -568,7 +597,7 @@ onBeforeUnmount(() => {
                             >{{ cardFrontText(item) }}</p>
                           </div>
                           <p
-                              v-if="variant === 'expression' && isVocabFocus(item)"
+                              v-if="variant === 'expression' && hasCardFront(item)"
                               class="cn-orig-mini"
                               :title="item.originalSentence"
                           >
@@ -609,14 +638,14 @@ onBeforeUnmount(() => {
                           <div class="cn-suggest-block cn-suggest-block--solo">
                             <span class="pane-tag">{{ backPaneTag(item) }}</span>
                             <p
-                                v-if="item.suggestion"
+                                v-if="resolveBack(item)"
                                 class="pane-improved pane-improved--center"
-                                :title="item.suggestion"
-                            >{{ item.suggestion }}</p>
+                                :title="resolveBack(item)"
+                            >{{ resolveBack(item) }}</p>
                             <p v-else class="cn-empty-hint">暂未生成对应内容</p>
                           </div>
                           <p
-                              v-if="variant === 'expression' && isVocabFocus(item)"
+                              v-if="variant === 'expression' && hasCardFront(item)"
                               class="cn-orig-mini"
                               :title="item.originalSentence"
                           >
@@ -631,11 +660,11 @@ onBeforeUnmount(() => {
                           <div class="cn-suggest-block">
                             <span class="pane-tag">{{ backPaneTag(item) }}</span>
                             <p
-                                v-if="item.suggestion"
+                                v-if="resolveBack(item)"
                                 class="pane-improved"
-                                :title="item.suggestion"
-                            >{{ item.suggestion }}</p>
-                            <p v-else class="cn-empty-hint">暂未生成英文建议</p>
+                                :title="resolveBack(item)"
+                            >{{ resolveBack(item) }}</p>
+                            <p v-else class="cn-empty-hint">暂未生成对应内容</p>
                           </div>
                         </template>
                         <button

@@ -21,14 +21,14 @@ public class ChineseExpressionDto {
     private String originalSentence;
 
     /**
-     * 本句最值得学的中文词/短语；知识卡片正面优先展示。
+     * 成长卡正面：本句最值得学的中文词/短语线索。
      */
-    private String focusPhrase;
+    private String front;
 
     /**
-     * 对准 {@link #focusPhrase} 的自然英文对应（词/短短语，或含该短语的口语改写）。
+     * 成长卡背面：对准 {@link #front} 的自然英文对应（词/短短语，或含该短语的口语改写）。
      */
-    private String suggestion;
+    private String back;
 
     /** 短中文说明（Phrase Review reason；可空） */
     private String reason;

@@ -1,11 +1,11 @@
 以下是口语练习场次中需要做成闪卡的条目（中文词汇缺口 + 英文 unnatural 短表达）。请为每条抽出可复习的短对立，并给出短中文 reason。
 
 ## kind 语义
-- `chinese`：用户因不会英文而夹带中文。`focusPhrase`=值得学的**中文**词/短语（非整句、无「怎么说」、无英文）；`suggestion`=对准的**英文**；`reason`=短中文说明（词汇缺口/学什么）。
-- `expression`：Stage2 已标为 NATURAL 的英文句。`focusPhrase`=不自然**短片段**；`suggestion`=地道**短**说法（勿整句照抄）；`reason`=短中文说明（为何这样改）。`point`/`suggestion` 整句只是证据，**禁止**把过长 point 原样当 focus。
+- `chinese`：用户因不会英文而夹带中文。`front`=值得学的**中文**词/短语（线索；非整句、无「怎么说」、无英文）；`back`=对准的**英文**；`reason`=短中文说明（词汇缺口/学什么）。
+- `expression`：Stage2 已标为 NATURAL 的英文句。`front`=**中文题干或意图提示**（学习者想表达什么 / 如何问出地道说法）；`back`=**地道表达**（短；勿整句照抄）。**不地道英文原文不进 front**。`point`/`suggestion` 整句只是证据，**禁止**把过长 point 原样当 front。
 
 ## 统一规则（chinese / expression 均适用）
-- `focusPhrase` / `suggestion` / `reason` 均须非空。
+- `front` / `back` / `reason` 均须非空。
 - 焦点宜短（约 ≤6 词或等价中文短语），左右语义对齐。
 - 中文噪声（单字语气、无意义转录）可跳过（勿输出该 index）。
 - **禁止**输出 "How do you say ...?" 类提问句。
@@ -14,10 +14,10 @@
 ### 去重（同一场输出）
 - 同一场 `items` 内，不要出现重复或近义重复的闪卡。
 - 视为重复（只保留一条，其余 index **不要输出**）：
-  - 相同或仅空白/标点差异的 `focusPhrase`
-  - 相同或近义的 `suggestion`（如 stair / staircase 与 stairs 指向同一对立）
-  - 同一对立换说法重复出现（如 exciting→excited 与 so exciting→so excited）
-- 跨 kind 也去重：若中文卡与英文卡抽到同一可学对立，只保留更清晰的一条。
+  - 相同或仅空白/标点差异的 `front`
+  - 相同或近义的 `back`（如 stair / staircase 与 stairs 指向同一对立）
+  - 同一对立换说法重复出现
+- 跨 kind 也去重：若中文卡与英文卡抽到同一可学单元，只保留更清晰的一条。
 
 ### 无法积累则自动忽略（勿输出该 index）
 不能做成可复习闪卡的条目**不要输出**（宁缺勿滥）。判定为无法积累时跳过该 index：
@@ -31,8 +31,8 @@
 - chinese：整句「那个就是我昨天跟你说的那个东西怎么说」且无稳定目标词 → 跳过
 
 ## 正面示例
-- chinese `楼梯怎么说` → focusPhrase=`楼梯`，suggestion=`stair / staircase`，reason=`词汇缺口：想说「楼梯」但不会英文词`
-- expression original=`I'm so exciting about the trip.` point=`exciting → excited（感到…用 -ed）` → focusPhrase=`exciting`，suggestion=`excited`，reason=`感到…用 -ed，exciting 表「令人兴奋」`
+- chinese `楼梯怎么说` → front=`楼梯`，back=`stair / staircase`，reason=`词汇缺口：想说「楼梯」但不会英文词`
+- expression original=`I'm so exciting about the trip.` point=`exciting → excited（感到…用 -ed）` → front=`感到兴奋用 -ed`，back=`excited`，reason=`感到…用 -ed，exciting 表「令人兴奋」`（不地道原文 exciting 不进 front）
 
 ## 待处理条目
 {items}

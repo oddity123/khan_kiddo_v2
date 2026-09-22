@@ -36,7 +36,7 @@ class PhraseCardReviewOutputPolicyTest {
         assertThat(composed).contains("json_object");
         assertThat(composed).contains("不要输出顶层数组");
         assertThat(composed).contains("\"items\"");
-        assertThat(composed).contains("focusPhrase");
+        assertThat(composed).contains("front");
         assertThat(composed).contains("reason");
         assertThat(composed).contains("\"kind\"");
     }
