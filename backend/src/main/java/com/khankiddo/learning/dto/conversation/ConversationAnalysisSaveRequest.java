@@ -33,6 +33,9 @@ public class ConversationAnalysisSaveRequest {
     @Builder
     public static class SaveAnalysisItem {
 
+        /** 流水线句号，与 Phrase Review expressionPhrases.sentenceId 对齐；可空（旧请求回退按原句分配） */
+        private Long sentenceId;
+
         @NotBlank(message = "原句不能为空")
         private String originalSentence;
 

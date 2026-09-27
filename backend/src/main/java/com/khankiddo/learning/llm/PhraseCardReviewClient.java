@@ -84,7 +84,7 @@ public class PhraseCardReviewClient {
                     1,
                     System.currentTimeMillis() - llmStartedAt,
                     ConversationAnalysisCallLog.resultOf(ex));
-            log.warn("Phrase Review 失败，中文保留空建议、expression 交由启发式: {}", ex.getMessage(), ex);
+            log.warn("Phrase Review 失败，中文保留空建议、expression 不铸卡: {}", ex.getMessage(), ex);
             return fallbackOnFailure(chinese);
         }
     }
@@ -226,7 +226,7 @@ public class PhraseCardReviewClient {
                     .reason("")
                     .build());
         }
-        // expression 空列表 → mint 侧启发式降级
+        // expression 空列表 → mint 侧跳过（不再启发式降级）
         return new PhraseReviewOutcome(result, List.of());
     }
 

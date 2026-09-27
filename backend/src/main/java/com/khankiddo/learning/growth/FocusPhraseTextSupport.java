@@ -5,8 +5,7 @@ import org.springframework.util.StringUtils;
 import java.util.Locale;
 
 /**
- * 焦点短语文本对立：去标点归一化与「实质差异」判定。
- * 过滤层与启发式切分层共用，避免 Filter 反向依赖 Cutter。
+ * 焦点短语文本对立：去标点归一化与「实质差异」判定（供 NATURAL 候选过滤使用）。
  */
 public final class FocusPhraseTextSupport {
 

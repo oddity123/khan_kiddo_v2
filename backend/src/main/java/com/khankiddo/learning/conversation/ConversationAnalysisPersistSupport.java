@@ -3,6 +3,9 @@ package com.khankiddo.learning.conversation;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import org.springframework.util.StringUtils;
 
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * 对话分析落库字段长度，与 {@code sql/DDL.sql} 中 VARCHAR 上限对齐。
  */
@@ -37,5 +40,21 @@ public final class ConversationAnalysisPersistSupport {
         item.setPointId(truncate(item.getPointId(), POINT_ID_MAX));
         item.setErrorPoint(truncate(item.getErrorPoint(), ERROR_POINT_MAX));
         return item;
+    }
+
+    /**
+     * 优先保留流水线 {@code AnalysisItemDto.sentenceId}（与 Phrase Review / expressionPhrases 对齐）；
+     * 缺省时按原句稳定分配，兼容旧保存请求。
+     */
+    public static Long resolveSentenceId(
+            Long preferredId,
+            String originalSentence,
+            Map<String, Long> assignedBySentence,
+            AtomicLong nextId) {
+        if (preferredId != null) {
+            return preferredId;
+        }
+        String key = originalSentence == null ? "" : originalSentence;
+        return assignedBySentence.computeIfAbsent(key, ignored -> nextId.getAndIncrement());
     }
 }

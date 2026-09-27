@@ -58,8 +58,6 @@ class GrowthCardMintGatewayTest {
     private PromptLoader promptLoader;
     @Mock
     private NaturalExpressionCandidateFilter naturalExpressionFilter;
-    @Mock
-    private FocusPhraseCutStrategy focusPhraseCutStrategy;
 
     private GrowthCardMintGateway gateway;
 
@@ -68,7 +66,7 @@ class GrowthCardMintGatewayTest {
         gateway = new GrowthCardMintGateway(
                 analysisMapper, itemMapper, summaryParser, analysisSupport,
                 contextBuilder, assistant, store, promptLoader,
-                naturalExpressionFilter, focusPhraseCutStrategy);
+                naturalExpressionFilter);
         when(analysisMapper.findByAnalysisIdAndUserId(ANALYSIS_ID, USER_ID))
                 .thenReturn(Optional.of(ConversationAnalysis.builder()
                         .analysisId(ANALYSIS_ID)
@@ -108,7 +106,7 @@ class GrowthCardMintGatewayTest {
     }
 
     @Test
-    void mintAfterAnalysis_shouldPreferPrecomputedExpression_withoutCallingCutter() {
+    void mintAfterAnalysis_shouldPersistPrecomputedExpression() {
         ExpressionPhraseDto precomputed = ExpressionPhraseDto.builder()
                 .sentenceId(11L)
                 .pointId("FEEL_ED_ADJ")
@@ -136,7 +134,6 @@ class GrowthCardMintGatewayTest {
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
-        verify(focusPhraseCutStrategy, never()).cut(any());
         verify(store).persistNewOrGet(
                 USER_ID, "expression", "exciting", "excited",
                 ANALYSIS_ID, "expr:11", "{\"reason\":\"感到…用 -ed\"}");
@@ -145,7 +142,7 @@ class GrowthCardMintGatewayTest {
     }
 
     @Test
-    void mintAfterAnalysis_shouldFallbackHeuristicWhenPrecomputedMissing() {
+    void mintAfterAnalysis_shouldSkipWhenPrecomputedMissing() {
         when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder().build());
         ConversationAnalysisItem item = ConversationAnalysisItem.builder()
                 .sentenceId(11L)
@@ -156,21 +153,41 @@ class GrowthCardMintGatewayTest {
                 .build();
         when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of(item));
         when(naturalExpressionFilter.test(item)).thenReturn(true);
-        when(focusPhraseCutStrategy.cut(any())).thenReturn(Optional.of(
-                new FocusPhrasePair("exciting", "excited")));
-        GrowthCard exprCard = GrowthCard.builder().cardId("expr-1").front("exciting").build();
-        when(store.persistNewOrGet(
-                USER_ID, "expression", "exciting", "excited",
-                ANALYSIS_ID, "expr:11", null))
-                .thenReturn(exprCard);
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
-        verify(focusPhraseCutStrategy).cut(any());
-        verify(store).persistNewOrGet(
-                USER_ID, "expression", "exciting", "excited",
-                ANALYSIS_ID, "expr:11", null);
+        verify(store, never()).persistNewOrGet(
+                anyLong(), eq("expression"), anyString(), anyString(), anyString(), anyString(), any());
+        verify(store, never()).saveEvidence(any());
         verify(assistant, never()).generate(anyString(), anyString());
+    }
+
+    @Test
+    void mintAfterAnalysis_shouldSkipWhenPointIdDoesNotMatchPrecomputed() {
+        ExpressionPhraseDto precomputed = ExpressionPhraseDto.builder()
+                .sentenceId(11L)
+                .pointId("LEXICAL_GAP")
+                .front("访问外网")
+                .back("access")
+                .reason("assess → access")
+                .build();
+        when(summaryParser.fromJson("{}")).thenReturn(EducationalSummaryDto.builder()
+                .expressionPhrases(List.of(precomputed))
+                .build());
+        ConversationAnalysisItem otherPoint = ConversationAnalysisItem.builder()
+                .sentenceId(11L)
+                .pointId("COLLOCATION")
+                .originalSentence("I use VPN subscriber.")
+                .errorPoint("subscriber → subscription")
+                .suggestion("I use VPN subscription.")
+                .build();
+        when(itemMapper.findByAnalysisId(ANALYSIS_ID)).thenReturn(List.of(otherPoint));
+        when(naturalExpressionFilter.test(otherPoint)).thenReturn(true);
+
+        gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
+
+        verify(store, never()).persistNewOrGet(
+                anyLong(), eq("expression"), anyString(), anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -187,7 +204,6 @@ class GrowthCardMintGatewayTest {
 
         gateway.mintAfterAnalysis(USER_ID, ANALYSIS_ID);
 
-        verify(focusPhraseCutStrategy, never()).cut(any());
         verify(store, never()).persistNewOrGet(
                 anyLong(), eq("expression"), anyString(), anyString(), anyString(), anyString(), isNull());
     }

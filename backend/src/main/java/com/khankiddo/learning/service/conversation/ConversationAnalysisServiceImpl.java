@@ -244,11 +244,14 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
             return dbItems;
         }
         for (ConversationAnalysisSaveRequest.SaveAnalysisItem item : items) {
-            Long sentenceId = sentenceIdMap.computeIfAbsent(
-                    item.getOriginalSentence(), key -> sentenceCounter.getAndIncrement());
             if (CollectionUtils.isEmpty(item.getErrors())) {
                 continue;
             }
+            Long sentenceId = ConversationAnalysisPersistSupport.resolveSentenceId(
+                    item.getSentenceId(),
+                    item.getOriginalSentence(),
+                    sentenceIdMap,
+                    sentenceCounter);
             for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
                 String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
                 String resolvedPointId;
@@ -292,6 +295,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                 continue;
             }
             saveItems.add(ConversationAnalysisSaveRequest.SaveAnalysisItem.builder()
+                    .sentenceId(item.getSentenceId())
                     .originalSentence(item.getOriginalSentence())
                     .suggestion(item.getSuggestion())
                     .errors(item.getErrors().stream()

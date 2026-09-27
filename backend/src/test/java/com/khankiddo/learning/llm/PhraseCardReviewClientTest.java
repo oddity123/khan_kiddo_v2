@@ -186,7 +186,7 @@ class PhraseCardReviewClientTest {
     }
 
     @Test
-    void review_onFailure_chineseEmptySuggestions_expressionEmptyForHeuristic() {
+    void review_onFailure_chineseEmptySuggestions_expressionEmpty() {
         stubPrompt();
         when(chatModelFactory.chatForPhraseCardReview(any())).thenReturn(chatModel);
         when(chatModel.chat(any(ChatRequest.class))).thenThrow(new RuntimeException("LLM down"));

@@ -42,7 +42,6 @@ public class GrowthCardMintGateway {
     private final GrowthCardStore store;
     private final PromptLoader promptLoader;
     private final NaturalExpressionCandidateFilter naturalExpressionFilter;
-    private final FocusPhraseCutStrategy focusPhraseCutStrategy;
 
     public void mintAfterAnalysis(Long userId, String analysisId) {
         Optional<ConversationAnalysis> analysisOpt =
@@ -58,11 +57,11 @@ public class GrowthCardMintGateway {
         for (ChineseExpressionDto expression : chineseFromSummary(summary)) {
             persistVocabCard(userId, analysisId, expression);
         }
-        Map<Long, ExpressionPhraseDto> precomputedBySentenceId = expressionPhrasesBySentenceId(summary);
+        Map<String, ExpressionPhraseDto> precomputedByKey = expressionPhrasesByKey(summary);
         List<ConversationAnalysisItem> items = itemMapper.findByAnalysisId(analysisId);
         if (!CollectionUtils.isEmpty(items)) {
             for (ConversationAnalysisItem item : items) {
-                persistExpressionCard(userId, analysisId, item, precomputedBySentenceId);
+                persistExpressionCard(userId, analysisId, item, precomputedByKey);
             }
         }
     }
@@ -119,11 +118,11 @@ public class GrowthCardMintGateway {
         return summary.getChineseExpressions();
     }
 
-    private static Map<Long, ExpressionPhraseDto> expressionPhrasesBySentenceId(EducationalSummaryDto summary) {
+    private static Map<String, ExpressionPhraseDto> expressionPhrasesByKey(EducationalSummaryDto summary) {
         if (ObjectUtils.isEmpty(summary) || CollectionUtils.isEmpty(summary.getExpressionPhrases())) {
             return Map.of();
         }
-        Map<Long, ExpressionPhraseDto> bySentenceId = new HashMap<>();
+        Map<String, ExpressionPhraseDto> byKey = new HashMap<>();
         for (ExpressionPhraseDto phrase : summary.getExpressionPhrases()) {
             if (ObjectUtils.isEmpty(phrase) || phrase.getSentenceId() == null) {
                 continue;
@@ -131,10 +130,21 @@ public class GrowthCardMintGateway {
             if (!StringUtils.hasText(phrase.getFront()) || !StringUtils.hasText(phrase.getBack())) {
                 continue;
             }
-            // 同句多条时保留首次（sourceRef 按 sentenceId 去重）
-            bySentenceId.putIfAbsent(phrase.getSentenceId(), phrase);
+            String key = expressionPhraseKey(phrase.getSentenceId(), phrase.getPointId());
+            if (!StringUtils.hasText(key)) {
+                continue;
+            }
+            // 同句同 point 保留首次
+            byKey.putIfAbsent(key, phrase);
         }
-        return bySentenceId;
+        return byKey;
+    }
+
+    private static String expressionPhraseKey(Long sentenceId, String pointId) {
+        if (sentenceId == null || !StringUtils.hasText(pointId)) {
+            return null;
+        }
+        return sentenceId + "\0" + pointId.trim();
     }
 
     private static ActionCardDto findActionCard(HabitCardScorer.HabitScoreResult scoreResult, String habitKey) {
@@ -211,38 +221,21 @@ public class GrowthCardMintGateway {
             Long userId,
             String analysisId,
             ConversationAnalysisItem item,
-            Map<Long, ExpressionPhraseDto> precomputedBySentenceId) {
+            Map<String, ExpressionPhraseDto> precomputedByKey) {
         if (ObjectUtils.isEmpty(item) || !naturalExpressionFilter.test(item)) {
             return;
         }
-        String front;
-        String back;
-        String reason = null;
-        ExpressionPhraseDto precomputed = item.getSentenceId() == null
-                ? null
-                : precomputedBySentenceId.get(item.getSentenceId());
-        if (precomputed != null
-                && StringUtils.hasText(precomputed.getFront())
-                && StringUtils.hasText(precomputed.getBack())) {
-            front = precomputed.getFront().trim();
-            back = precomputed.getBack().trim();
-            reason = precomputed.getReason();
-        } else {
-            Optional<FocusPhrasePair> cut = focusPhraseCutStrategy.cut(new FocusPhraseCutRequest(
-                    item.getOriginalSentence(),
-                    item.getErrorPoint(),
-                    item.getSuggestion(),
-                    item.getPointId()));
-            if (cut.isEmpty()) {
-                return;
-            }
-            FocusPhrasePair pair = cut.get();
-            if (!StringUtils.hasText(pair.focusWrong()) || !StringUtils.hasText(pair.focusNatural())) {
-                return;
-            }
-            front = pair.focusWrong().trim();
-            back = pair.focusNatural().trim();
+        String key = expressionPhraseKey(item.getSentenceId(), item.getPointId());
+        ExpressionPhraseDto precomputed = StringUtils.hasText(key) ? precomputedByKey.get(key) : null;
+        if (ObjectUtils.isEmpty(precomputed)
+                || !StringUtils.hasText(precomputed.getFront())
+                || !StringUtils.hasText(precomputed.getBack())) {
+            // 仅铸造 Phrase Review 明确产出的条目；LLM 跳过或不对齐则不铸
+            return;
         }
+        String front = precomputed.getFront().trim();
+        String back = precomputed.getBack().trim();
+        String reason = precomputed.getReason();
         String sourceRef = GrowthCardSourceRefs.expression(item);
         GrowthCard card = store.persistNewOrGet(
                 userId,
