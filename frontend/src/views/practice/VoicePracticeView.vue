@@ -33,7 +33,7 @@ const {
 } = useVoiceRealtime()
 
 const customInstructions = ref('')
-const captionsEndRef = ref<HTMLElement | null>(null)
+const captionsListRef = ref<HTMLElement | null>(null)
 
 const statusLabel = computed(() => STATUS_LABEL[status.value] ?? status.value)
 const showConfigError = computed(() => Boolean(config.value && !config.value.configured))
@@ -42,6 +42,13 @@ const showStatusDetail = computed(() => {
     return false
   }
   return Boolean(statusDetail.value) && status.value !== 'idle'
+})
+const configErrorText = computed(() => {
+  if (!showConfigError.value) {
+    return ''
+  }
+  // 不向终端用户暴露密钥名 / .env 等部署说明
+  return '口语陪练暂未开通，请稍后再试或联系管理员。'
 })
 
 onMounted(async () => {
@@ -59,7 +66,11 @@ onBeforeUnmount(() => {
 
 async function scrollCaptionsToBottom() {
   await nextTick()
-  captionsEndRef.value?.scrollIntoView({behavior: 'smooth', block: 'end'})
+  const el = captionsListRef.value
+  if (!el) {
+    return
+  }
+  el.scrollTo({top: el.scrollHeight, behavior: 'smooth'})
 }
 
 watch([captions, userPartial, assistantPartial], () => {
@@ -97,7 +108,7 @@ function onBackClick() {
         <span v-if="showStatusDetail" class="voice-status__detail">{{ statusDetail }}</span>
       </div>
       <p v-if="showConfigError" class="voice-status__error">
-        {{ config?.message || '实时语音尚未配置' }}
+        {{ configErrorText }}
       </p>
     </section>
 
@@ -140,7 +151,7 @@ function onBackClick() {
     <section class="voice-captions kk-glass kk-glass--panel" aria-label="实时字幕">
       <h2 class="voice-section-title">字幕</h2>
       <div class="voice-captions__body">
-        <ul class="voice-captions__lines">
+        <ul ref="captionsListRef" class="voice-captions__lines">
           <li
             v-for="(line, idx) in captions"
             :key="idx"
@@ -169,7 +180,6 @@ function onBackClick() {
           >
             开始后，这里会显示识别与回复文本。
           </li>
-          <li ref="captionsEndRef" class="voice-captions__anchor" aria-hidden="true" />
         </ul>
       </div>
     </section>
@@ -380,15 +390,6 @@ function onBackClick() {
   text-align: center;
   padding: 1.5rem 0.5rem;
   align-self: stretch;
-}
-
-.voice-captions__anchor {
-  height: 1px;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  pointer-events: none;
 }
 
 .is-partial {
