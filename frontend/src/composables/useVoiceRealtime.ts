@@ -7,7 +7,7 @@ import {
 } from '@/api/voiceRealtime'
 import {AUTH_TOKEN_KEY} from '@/constants/auth'
 import {getErrorMessage} from '@/utils/error'
-import {mergeStreamingText} from '@/utils/voiceRealtimeText'
+import {mergeStreamingText, pickAsrStreamingPreview} from '@/utils/voiceRealtimeText'
 
 export type VoiceSessionStatus =
   | 'idle'
@@ -247,8 +247,11 @@ export function useVoiceRealtime() {
       return
     }
     if (type === 'conversation.item.input_audio_transcription.delta') {
-      const delta = String(event.delta ?? event.text ?? '')
-      userPartial.value = mergeStreamingText(userPartial.value, delta)
+      // ASR 预览一律覆盖赋值：豆包侧 delta/text 多为累计快照；前缀合并会在改写时叠字
+      const latest = pickAsrStreamingPreview(event)
+      if (latest) {
+        userPartial.value = latest
+      }
       return
     }
     if (type === 'conversation.item.input_audio_transcription.completed') {
@@ -259,7 +262,7 @@ export function useVoiceRealtime() {
     }
     if (type === 'response.output_text.delta') {
       const delta = String(event.delta ?? event.text ?? '')
-      // 与 ASR 共用稳健合并：真增量则 append，累计快照则覆盖
+      // assistant 文本流按增量/快照启发式合并（ASR 不用此路径）
       assistantPartial.value = mergeStreamingText(assistantPartial.value, delta)
       return
     }
