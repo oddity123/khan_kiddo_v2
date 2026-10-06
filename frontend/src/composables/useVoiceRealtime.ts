@@ -89,6 +89,9 @@ export function useVoiceRealtime() {
   let sendTimer: ReturnType<typeof setInterval> | null = null
   let nextPlayTime = 0
   let closing = false
+  /** 仅在收到后端 proxy.ready 后允许 session.create / 麦流上行 */
+  let proxyReady = false
+  let pendingInstructions: string | undefined
 
   function pushCaption(role: VoiceCaptionLine['role'], text: string) {
     const trimmed = text.trim()
@@ -191,6 +194,10 @@ export function useVoiceRealtime() {
       return
     }
     const type = String(event.type ?? '')
+    if (type === 'proxy.ready') {
+      onProxyReady()
+      return
+    }
     if (type === 'error') {
       console.warn('[voice-realtime] error event', event)
       status.value = 'error'
@@ -237,8 +244,41 @@ export function useVoiceRealtime() {
     }
   }
 
+  function sendSessionCreate() {
+    sendEvent({
+      type: 'session.create',
+      session: {
+        model: config.value!.model || '1.2.6.1',
+        instructions: pendingInstructions?.trim() || config.value!.defaultInstructions,
+        audio: {
+          input: {format: {type: 'pcm', rate: INPUT_RATE}},
+          output: {
+            format: {type: 'pcm_s16le', rate: OUTPUT_RATE},
+            voice: config.value!.voice,
+            speed: 0,
+            loudness: 0,
+          },
+        },
+      },
+      extension: {asr: {}, tts: {}, dialog: {}},
+    })
+    statusDetail.value = '等待 session.created…'
+  }
+
+  function onProxyReady() {
+    if (proxyReady || closing) {
+      return
+    }
+    proxyReady = true
+    statusDetail.value = '上游已就绪，创建会话…'
+    sendSessionCreate()
+    if (!sendTimer) {
+      sendTimer = setInterval(flushAudioChunk, CHUNK_MS)
+    }
+  }
+
   function flushAudioChunk() {
-    if (!socket || socket.readyState !== WebSocket.OPEN || muted.value) {
+    if (!proxyReady || !socket || socket.readyState !== WebSocket.OPEN || muted.value) {
       return
     }
     if (pcmQueue.length < SAMPLES_PER_CHUNK) {
@@ -283,11 +323,13 @@ export function useVoiceRealtime() {
     }
     source.connect(processor)
     processor.connect(captureCtx.destination)
-    sendTimer = setInterval(flushAudioChunk, CHUNK_MS)
+    // 麦流上行延后到 proxy.ready，避免 append 早于上游 attach
   }
 
   async function start(instructions?: string) {
     closing = false
+    proxyReady = false
+    pendingInstructions = instructions
     captions.value = []
     userPartial.value = ''
     assistantPartial.value = ''
@@ -319,24 +361,8 @@ export function useVoiceRealtime() {
     const wsUrl = buildVoiceRealtimeWsUrl(config.value.wsPath, token)
     socket = new WebSocket(wsUrl)
     socket.onopen = () => {
-      sendEvent({
-        type: 'session.create',
-        session: {
-          model: config.value!.model || '1.2.6.1',
-          instructions: instructions?.trim() || config.value!.defaultInstructions,
-          audio: {
-            input: {format: {type: 'pcm', rate: INPUT_RATE}},
-            output: {
-              format: {type: 'pcm_s16le', rate: OUTPUT_RATE},
-              voice: config.value!.voice,
-              speed: 0,
-              loudness: 0,
-            },
-          },
-        },
-        extension: {asr: {}, tts: {}, dialog: {}},
-      })
-      statusDetail.value = '等待 session.created…'
+      // 双保险：等后端 proxy.ready 再 session.create；服务端仍会缓冲早到帧
+      statusDetail.value = '等待代理上游就绪（proxy.ready）…'
     }
     socket.onmessage = (ev) => {
       if (typeof ev.data === 'string') {
@@ -348,6 +374,7 @@ export function useVoiceRealtime() {
       statusDetail.value = 'WebSocket 连接异常'
     }
     socket.onclose = () => {
+      proxyReady = false
       if (!closing && status.value === 'live') {
         status.value = 'ended'
         statusDetail.value = '连接已关闭'
@@ -384,6 +411,7 @@ export function useVoiceRealtime() {
 
   async function stop() {
     closing = true
+    proxyReady = false
     if (socket && socket.readyState === WebSocket.OPEN) {
       sendEvent({type: 'session.close', event_id: `close_${Date.now()}`})
       // 稍等服务端 ack；超时仍关闭

@@ -31,16 +31,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * 浏览器 ↔ 本服务 ↔ 火山 openspeech 的 JSON 文本帧双向代理。
  * 密钥仅出现在本服务到 openspeech 的连接上。
+ * <p>
+ * 客户端帧在上游未 attach 前一律入队，就绪后按序 flush；并向浏览器发送 {@code proxy.ready}。
+ * 绝不因「上游未就绪」向客户端回 error（避免 session.create 被误杀）。
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
 
-    private static final String ATTR_UPSTREAM = "voice.realtime.upstream";
-    private static final String ATTR_CLOSING = "voice.realtime.closing";
+    static final String ATTR_UPSTREAM = "voice.realtime.upstream";
+    static final String ATTR_CLOSING = "voice.realtime.closing";
     /** 上游尚未就绪时暂存的客户端文本帧，就绪后按序 flush。 */
-    private static final String ATTR_PENDING = "voice.realtime.pending";
+    static final String ATTR_PENDING = "voice.realtime.pending";
+    static final String PROXY_READY_PAYLOAD = "{\"type\":\"proxy.ready\"}";
     private static final int ERROR_PAYLOAD_LOG_LIMIT = 2000;
 
     private final VoiceRealtimeProperties properties;
@@ -66,8 +70,10 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
 
         clientSessions.put(clientSession.getId(), clientSession);
         AtomicBoolean closing = new AtomicBoolean(false);
-        clientSession.getAttributes().put(ATTR_CLOSING, closing);
-        clientSession.getAttributes().put(ATTR_PENDING, new ArrayList<String>());
+        synchronized (clientSession) {
+            clientSession.getAttributes().put(ATTR_CLOSING, closing);
+            clientSession.getAttributes().put(ATTR_PENDING, new ArrayList<String>());
+        }
 
         WebSocket.Builder builder = httpClient.newWebSocketBuilder()
                 .connectTimeout(Duration.ofSeconds(20));
@@ -85,8 +91,9 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
                         }
                         return;
                     }
-                    attachUpstreamAndFlush(clientSession, upstream);
-                    log.info("voice realtime proxy ready userId={} clientSession={}", user.id(), clientSession.getId());
+                    int flushed = attachUpstreamFlushAndNotify(clientSession, upstream);
+                    log.info("voice realtime proxy ready userId={} clientSession={} flushedPending={}",
+                            user.id(), clientSession.getId(), flushed);
                 });
     }
 
@@ -99,17 +106,7 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
         synchronized (clientSession) {
             WebSocket upstream = (WebSocket) clientSession.getAttributes().get(ATTR_UPSTREAM);
             if (upstream == null) {
-                @SuppressWarnings("unchecked")
-                List<String> pending = (List<String>) clientSession.getAttributes().get(ATTR_PENDING);
-                if (pending != null) {
-                    pending.add(payload);
-                    return;
-                }
-                try {
-                    sendClientError(clientSession, "上游连接尚未就绪，请稍候再试");
-                } catch (IOException ignored) {
-                    // ignore
-                }
+                enqueuePendingLocked(clientSession, payload);
                 return;
             }
             upstream.sendText(payload, true);
@@ -157,20 +154,63 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
         clientSessions.clear();
     }
 
-    private void attachUpstreamAndFlush(WebSocketSession clientSession, WebSocket upstream) {
+    /**
+     * 上游未就绪时入队；调用方须已持有 {@code clientSession} 锁。
+     * 返回当前队列长度（入队后）。
+     */
+    @SuppressWarnings("unchecked")
+    static int enqueuePendingLocked(WebSocketSession clientSession, String payload) {
+        List<String> pending = (List<String>) clientSession.getAttributes().get(ATTR_PENDING);
+        if (pending == null) {
+            pending = new ArrayList<>();
+            clientSession.getAttributes().put(ATTR_PENDING, pending);
+        }
+        pending.add(payload);
+        int size = pending.size();
+        log.info("voice realtime buffered client frame until upstream ready session={} pendingCount={}",
+                clientSession.getId(), size);
+        return size;
+    }
+
+    /**
+     * 挂上上游、flush 缓冲、通知客户端 proxy.ready。返回 flush 条数。
+     */
+    int attachUpstreamFlushAndNotify(WebSocketSession clientSession, WebSocket upstream) {
+        int flushed;
         synchronized (clientSession) {
             clientSession.getAttributes().put(ATTR_UPSTREAM, upstream);
             @SuppressWarnings("unchecked")
             List<String> pending = (List<String>) clientSession.getAttributes().remove(ATTR_PENDING);
-            if (CollectionUtils.isEmpty(pending)) {
-                return;
-            }
-            for (String buffered : pending) {
-                if (StringUtils.hasText(buffered)) {
-                    upstream.sendText(buffered, true);
+            flushed = flushPendingToUpstream(upstream, pending);
+        }
+        if (flushed > 0) {
+            log.info("voice realtime flushed {} buffered frames until upstream ready session={}",
+                    flushed, clientSession.getId());
+        }
+        try {
+            if (clientSession.isOpen()) {
+                synchronized (clientSession) {
+                    clientSession.sendMessage(new TextMessage(PROXY_READY_PAYLOAD));
                 }
             }
+        } catch (IOException e) {
+            log.warn("send proxy.ready failed session={}: {}", clientSession.getId(), e.toString());
         }
+        return flushed;
+    }
+
+    static int flushPendingToUpstream(WebSocket upstream, List<String> pending) {
+        if (upstream == null || CollectionUtils.isEmpty(pending)) {
+            return 0;
+        }
+        int count = 0;
+        for (String buffered : pending) {
+            if (StringUtils.hasText(buffered)) {
+                upstream.sendText(buffered, true);
+                count++;
+            }
+        }
+        return count;
     }
 
     private void applyUpstreamAuth(WebSocket.Builder builder) {
@@ -254,7 +294,6 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
 
         @Override
         public CompletionStage<?> onBinary(WebSocket webSocket, ByteBuffer data, boolean last) {
-            // 协议约定纯 JSON 文本帧；忽略意外二进制
             webSocket.request(1);
             return null;
         }
