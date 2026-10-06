@@ -122,6 +122,18 @@ app:
       # 闲置淘汰（小时）
       expire-after-access-hours: 2
 
+  # 豆包语音 · 端到端实时语音全双工（openspeech；与方舟 DOUBAO_API_KEY 分离）
+  voice:
+    realtime:
+      api-key: ${DOUBAO_SPEECH_API_KEY:}
+      ws-url: ${DOUBAO_SPEECH_WS_URL:wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue}
+      model: ${DOUBAO_SPEECH_MODEL:1.2.6.1}
+      voice: ${DOUBAO_SPEECH_VOICE:zh_female_vv_jupiter_bigtts}
+      # 旧版控制台鉴权（仅当未配置 DOUBAO_SPEECH_API_KEY 时生效）
+      app-id: ${DOUBAO_SPEECH_APP_ID:}
+      access-key: ${DOUBAO_SPEECH_ACCESS_KEY:}
+      resource-id: ${DOUBAO_SPEECH_RESOURCE_ID:volc.speech.dialog}
+
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.khankiddo.learning.model

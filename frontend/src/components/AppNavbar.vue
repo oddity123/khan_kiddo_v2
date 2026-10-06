@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ChatDotRound, Clock, Collection, DataAnalysis, House, Message, SwitchButton, Tickets, User, VideoPlay,} from '@element-plus/icons-vue'
+import {ChatDotRound, Clock, Collection, DataAnalysis, House, Message, Microphone, SwitchButton, Tickets, User, VideoPlay,} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {storeToRefs} from 'pinia'
 import {onBeforeUnmount, onMounted, ref, watch} from 'vue'
@@ -45,6 +45,8 @@ function onAnalysisCommand(command: string) {
     router.push('/conversation/analyze')
   } else if (command === 'history') {
     router.push('/conversation/analyses')
+  } else if (command === 'voice') {
+    router.push('/practice/voice')
   }
 }
 
@@ -133,6 +135,10 @@ onBeforeUnmount(() => {
                 <el-dropdown-item divided command="history">
                   <el-icon><Clock /></el-icon>
                   查看历史记录
+                </el-dropdown-item>
+                <el-dropdown-item divided command="voice">
+                  <el-icon><Microphone /></el-icon>
+                  口语陪练
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>

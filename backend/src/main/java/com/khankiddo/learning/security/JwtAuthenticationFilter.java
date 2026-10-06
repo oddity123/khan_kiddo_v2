@@ -46,13 +46,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private java.util.Optional<AuthenticatedUser> resolveBearerToken(HttpServletRequest request) {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (!StringUtils.hasText(header) || !header.startsWith("Bearer ")) {
-            return java.util.Optional.empty();
+        if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
+            String token = header.substring(7).trim();
+            if (StringUtils.hasText(token)) {
+                return jwtService.parseToken(token);
+            }
         }
-        String token = header.substring(7).trim();
-        if (!StringUtils.hasText(token)) {
-            return java.util.Optional.empty();
+        // 浏览器原生 WebSocket 不便带 Authorization 头；实时语音握手使用 access_token 查询参数
+        String accessToken = request.getParameter("access_token");
+        if (StringUtils.hasText(accessToken)) {
+            return jwtService.parseToken(accessToken.trim());
         }
-        return jwtService.parseToken(token);
+        return java.util.Optional.empty();
     }
 }

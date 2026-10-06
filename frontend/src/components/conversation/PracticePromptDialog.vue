@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {CircleCheck, CopyDocument, Lock, RefreshRight} from '@element-plus/icons-vue'
+import {CircleCheck, CopyDocument, Lock, Microphone, RefreshRight} from '@element-plus/icons-vue'
 import {ElMessage} from 'element-plus'
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
+import {useRouter} from 'vue-router'
 
 import {generatePracticePrompt} from '@/api/conversationAnalysis'
 import type {PracticePromptGoal, PracticeVocabulary} from '@/types/conversation'
@@ -9,6 +10,8 @@ import {getErrorMessage} from '@/utils/error'
 import {MAX_PRACTICE_VOCAB, type PracticeVocabCandidate} from '@/utils/practicePrompt'
 
 const open = defineModel<boolean>({default: false})
+const router = useRouter()
+const VOICE_INSTRUCTIONS_KEY = 'kk_voice_instructions'
 
 const props = withDefaults(
     defineProps<{
@@ -130,6 +133,15 @@ async function copyPrompt() {
   }
 }
 
+function openVoicePractice() {
+  const text = promptText.value.trim()
+  if (text) {
+    sessionStorage.setItem(VOICE_INSTRUCTIONS_KEY, text)
+  }
+  open.value = false
+  void router.push({name: 'practice-voice'})
+}
+
 watch(open, async (visible) => {
   if (!visible) {
     return
@@ -238,6 +250,15 @@ watch(open, async (visible) => {
             @click="requestPrompt"
         >
           重新生成
+        </el-button>
+        <el-button
+            class="pp-btn-glass"
+            size="large"
+            :icon="Microphone"
+            :disabled="loading || copying || !promptText"
+            @click="openVoicePractice"
+        >
+          站内语音陪练
         </el-button>
         <el-button
             class="pp-btn-copy"

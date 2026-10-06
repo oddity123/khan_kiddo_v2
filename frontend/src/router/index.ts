@@ -95,6 +95,17 @@ const router = createRouter({
           },
       },
       {
+          path: '/practice/voice',
+          name: 'practice-voice',
+          component: () => import('@/views/practice/VoicePracticeView.vue'),
+          meta: {
+            title: '口语陪练',
+            requiresAuth: true,
+            immersive: true,
+            robots: 'noindex, nofollow',
+          },
+      },
+      {
           path: '/review',
           name: 'review-center',
           component: () => import('@/views/review/ReviewCenterView.vue'),
