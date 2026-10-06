@@ -7,6 +7,7 @@ import {
 } from '@/api/voiceRealtime'
 import {AUTH_TOKEN_KEY} from '@/constants/auth'
 import {getErrorMessage} from '@/utils/error'
+import {mergeStreamingText} from '@/utils/voiceRealtimeText'
 
 export type VoiceSessionStatus =
   | 'idle'
@@ -88,6 +89,10 @@ export function useVoiceRealtime() {
   let pcmQueue: number[] = []
   let sendTimer: ReturnType<typeof setInterval> | null = null
   let nextPlayTime = 0
+  /** 已排程、尚未结束的 TTS BufferSource；打断时须全部 stop */
+  let activeSources: AudioBufferSourceNode[] = []
+  /** 正在播 assistant 音频（含已排程未响完） */
+  let assistantAudioPlaying = false
   let closing = false
   /** 仅在收到后端 proxy.ready 后允许 session.create / 麦流上行 */
   let proxyReady = false
@@ -135,6 +140,27 @@ export function useVoiceRealtime() {
     socket.send(JSON.stringify(payload))
   }
 
+  function markSourceEnded(source: AudioBufferSourceNode) {
+    activeSources = activeSources.filter((s) => s !== source)
+    if (activeSources.length === 0) {
+      assistantAudioPlaying = false
+    }
+  }
+
+  function stopAllPlayback() {
+    for (const source of activeSources) {
+      try {
+        source.onended = null
+        source.stop()
+      } catch {
+        // already stopped
+      }
+    }
+    activeSources = []
+    assistantAudioPlaying = false
+    nextPlayTime = playbackCtx?.currentTime ?? 0
+  }
+
   function schedulePcmPlayback(samples: Int16Array) {
     if (!playbackCtx || samples.length === 0) {
       return
@@ -151,6 +177,9 @@ export function useVoiceRealtime() {
     if (nextPlayTime < now) {
       nextPlayTime = now
     }
+    activeSources.push(source)
+    assistantAudioPlaying = true
+    source.onended = () => markSourceEnded(source)
     source.start(nextPlayTime)
     nextPlayTime += buffer.duration
   }
@@ -210,9 +239,16 @@ export function useVoiceRealtime() {
       // MVP：不在 session.created 后发 speech_text_buffer.commit（可选问候且 schema 易错）
       return
     }
+    // 用户侧 ASR 开始：若正在播 assistant，自动 barge-in（与手动按钮共用 interrupt）
+    if (type === 'conversation.item.input_audio_transcription.started') {
+      if (assistantAudioPlaying || assistantPartial.value) {
+        interrupt()
+      }
+      return
+    }
     if (type === 'conversation.item.input_audio_transcription.delta') {
       const delta = String(event.delta ?? event.text ?? '')
-      userPartial.value += delta
+      userPartial.value = mergeStreamingText(userPartial.value, delta)
       return
     }
     if (type === 'conversation.item.input_audio_transcription.completed') {
@@ -223,7 +259,8 @@ export function useVoiceRealtime() {
     }
     if (type === 'response.output_text.delta') {
       const delta = String(event.delta ?? event.text ?? '')
-      assistantPartial.value += delta
+      // 与 ASR 共用稳健合并：真增量则 append，累计快照则覆盖
+      assistantPartial.value = mergeStreamingText(assistantPartial.value, delta)
       return
     }
     if (type === 'response.output_text.done') {
@@ -235,6 +272,14 @@ export function useVoiceRealtime() {
       const audio = String(event.delta ?? event.audio ?? '')
       if (audio) {
         schedulePcmPlayback(base64ToInt16(audio))
+      }
+      return
+    }
+    if (type === 'response.canceled') {
+      stopAllPlayback()
+      if (assistantPartial.value.trim()) {
+        pushCaption('assistant', assistantPartial.value)
+        assistantPartial.value = ''
       }
       return
     }
@@ -406,7 +451,7 @@ export function useVoiceRealtime() {
       mediaStream = null
     }
     pcmQueue = []
-    nextPlayTime = 0
+    stopAllPlayback()
   }
 
   async function stop() {
@@ -428,7 +473,11 @@ export function useVoiceRealtime() {
 
   function interrupt() {
     sendEvent({type: 'response.cancel', event_id: `cancel_${Date.now()}`})
-    nextPlayTime = playbackCtx?.currentTime ?? 0
+    stopAllPlayback()
+    if (assistantPartial.value.trim()) {
+      pushCaption('assistant', assistantPartial.value)
+      assistantPartial.value = ''
+    }
   }
 
   function toggleMute() {
