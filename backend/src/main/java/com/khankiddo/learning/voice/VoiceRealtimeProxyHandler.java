@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -19,6 +20,8 @@ import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletionStage;
@@ -36,6 +39,9 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
 
     private static final String ATTR_UPSTREAM = "voice.realtime.upstream";
     private static final String ATTR_CLOSING = "voice.realtime.closing";
+    /** 上游尚未就绪时暂存的客户端文本帧，就绪后按序 flush。 */
+    private static final String ATTR_PENDING = "voice.realtime.pending";
+    private static final int ERROR_PAYLOAD_LOG_LIMIT = 2000;
 
     private final VoiceRealtimeProperties properties;
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -61,6 +67,7 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
         clientSessions.put(clientSession.getId(), clientSession);
         AtomicBoolean closing = new AtomicBoolean(false);
         clientSession.getAttributes().put(ATTR_CLOSING, closing);
+        clientSession.getAttributes().put(ATTR_PENDING, new ArrayList<String>());
 
         WebSocket.Builder builder = httpClient.newWebSocketBuilder()
                 .connectTimeout(Duration.ofSeconds(20));
@@ -78,34 +85,46 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
                         }
                         return;
                     }
-                    clientSession.getAttributes().put(ATTR_UPSTREAM, upstream);
+                    attachUpstreamAndFlush(clientSession, upstream);
                     log.info("voice realtime proxy ready userId={} clientSession={}", user.id(), clientSession.getId());
                 });
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession clientSession, TextMessage message) {
-        WebSocket upstream = (WebSocket) clientSession.getAttributes().get(ATTR_UPSTREAM);
-        if (upstream == null) {
-            try {
-                sendClientError(clientSession, "上游连接尚未就绪，请稍候再试");
-            } catch (IOException ignored) {
-                // ignore
-            }
-            return;
-        }
         String payload = message.getPayload();
         if (!StringUtils.hasText(payload)) {
             return;
         }
-        upstream.sendText(payload, true);
+        synchronized (clientSession) {
+            WebSocket upstream = (WebSocket) clientSession.getAttributes().get(ATTR_UPSTREAM);
+            if (upstream == null) {
+                @SuppressWarnings("unchecked")
+                List<String> pending = (List<String>) clientSession.getAttributes().get(ATTR_PENDING);
+                if (pending != null) {
+                    pending.add(payload);
+                    return;
+                }
+                try {
+                    sendClientError(clientSession, "上游连接尚未就绪，请稍候再试");
+                } catch (IOException ignored) {
+                    // ignore
+                }
+                return;
+            }
+            upstream.sendText(payload, true);
+        }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession clientSession, CloseStatus status) {
         clientSessions.remove(clientSession.getId());
         markClosing(clientSession);
-        WebSocket upstream = (WebSocket) clientSession.getAttributes().remove(ATTR_UPSTREAM);
+        WebSocket upstream;
+        synchronized (clientSession) {
+            clientSession.getAttributes().remove(ATTR_PENDING);
+            upstream = (WebSocket) clientSession.getAttributes().remove(ATTR_UPSTREAM);
+        }
         if (upstream != null) {
             try {
                 upstream.sendClose(WebSocket.NORMAL_CLOSURE, "client closed");
@@ -136,6 +155,22 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
             }
         }
         clientSessions.clear();
+    }
+
+    private void attachUpstreamAndFlush(WebSocketSession clientSession, WebSocket upstream) {
+        synchronized (clientSession) {
+            clientSession.getAttributes().put(ATTR_UPSTREAM, upstream);
+            @SuppressWarnings("unchecked")
+            List<String> pending = (List<String>) clientSession.getAttributes().remove(ATTR_PENDING);
+            if (CollectionUtils.isEmpty(pending)) {
+                return;
+            }
+            for (String buffered : pending) {
+                if (StringUtils.hasText(buffered)) {
+                    upstream.sendText(buffered, true);
+                }
+            }
+        }
     }
 
     private void applyUpstreamAuth(WebSocket.Builder builder) {
@@ -174,6 +209,20 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
             cur = cur.getCause();
         }
         return StringUtils.hasText(cur.getMessage()) ? cur.getMessage() : cur.getClass().getSimpleName();
+    }
+
+    static String truncateForLog(String payload, int limit) {
+        if (!StringUtils.hasText(payload) || payload.length() <= limit) {
+            return payload;
+        }
+        return payload.substring(0, limit) + "...(truncated)";
+    }
+
+    static boolean looksLikeUpstreamErrorPayload(String payload) {
+        if (!StringUtils.hasText(payload)) {
+            return false;
+        }
+        return payload.contains("\"type\":\"error\"") || payload.contains("\"type\": \"error\"");
     }
 
     private final class UpstreamListener implements WebSocket.Listener {
@@ -238,6 +287,10 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
         private void forwardToClient(String payload) {
             if (!clientSession.isOpen() || !StringUtils.hasText(payload)) {
                 return;
+            }
+            if (looksLikeUpstreamErrorPayload(payload)) {
+                log.warn("openspeech error payload session={}: {}",
+                        clientSession.getId(), truncateForLog(payload, ERROR_PAYLOAD_LOG_LIMIT));
             }
             try {
                 synchronized (clientSession) {

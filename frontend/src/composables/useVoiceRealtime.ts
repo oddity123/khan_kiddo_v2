@@ -152,6 +152,37 @@ export function useVoiceRealtime() {
     nextPlayTime += buffer.duration
   }
 
+  /**
+   * 解析上游/代理 error 帧。常见形状：
+   * - `{ type, message, code? }`（本站代理）
+   * - `{ type, error: { message, code? }, code? }`（openspeech 嵌套）
+   */
+  function formatRealtimeError(event: Record<string, unknown>): string {
+    const nested =
+      event.error && typeof event.error === 'object'
+        ? (event.error as Record<string, unknown>)
+        : null
+    const messageCandidates = [event.message, nested?.message]
+    const message = messageCandidates.find((v): v is string => typeof v === 'string' && v.trim().length > 0)
+    const codeCandidates = [event.code, nested?.code]
+    const code = codeCandidates.find((v) => v !== undefined && v !== null && String(v).length > 0)
+    if (message && code !== undefined) {
+      return `${message}（code=${String(code)}）`
+    }
+    if (message) {
+      return message
+    }
+    if (code !== undefined) {
+      return `实时语音错误 code=${String(code)}`
+    }
+    try {
+      const snippet = JSON.stringify(event)
+      return `实时语音服务返回错误：${snippet.length > 240 ? `${snippet.slice(0, 240)}…` : snippet}`
+    } catch {
+      return '实时语音服务返回错误'
+    }
+  }
+
   function handleServerEvent(raw: string) {
     let event: Record<string, unknown>
     try {
@@ -161,18 +192,15 @@ export function useVoiceRealtime() {
     }
     const type = String(event.type ?? '')
     if (type === 'error') {
+      console.warn('[voice-realtime] error event', event)
       status.value = 'error'
-      statusDetail.value = String(event.message ?? '实时语音服务返回错误')
+      statusDetail.value = formatRealtimeError(event)
       return
     }
     if (type === 'session.created') {
       status.value = 'live'
       statusDetail.value = '会话已建立 · 全双工中'
-      sendEvent({
-        type: 'speech_text_buffer.commit',
-        event_id: `greet_${Date.now()}`,
-        text: 'Hi! Ready when you are — say something in English.',
-      })
+      // MVP：不在 session.created 后发 speech_text_buffer.commit（可选问候且 schema 易错）
       return
     }
     if (type === 'conversation.item.input_audio_transcription.delta') {
