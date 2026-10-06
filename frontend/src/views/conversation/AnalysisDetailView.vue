@@ -37,6 +37,7 @@ import PracticePromptDialog from '@/components/conversation/PracticePromptDialog
 import MessageSquareShareIcon from '@/components/icons/MessageSquareShareIcon.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import GrowthCardEvidenceDialog from '@/components/growth/GrowthCardEvidenceDialog.vue'
+import {useAuthStore} from '@/stores/auth'
 import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
 import type {
   AnalysisItem,
@@ -58,6 +59,7 @@ import {
 const route = useRoute()
 const router = useRouter()
 const ephemeralStore = useEphemeralAnalysisStore()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const detail = ref<ConversationAnalysisDetail | null>(null)
@@ -66,6 +68,9 @@ const pageReady = ref(false)
 const isEphemeral = computed(() => Boolean(route.meta.ephemeralAnalysis))
 const isAdminView = computed(() => Boolean(route.meta.adminAnalysis))
 const analysisId = computed(() => (isEphemeral.value ? '' : String(route.params.id ?? '')))
+const shadowingAllowed = computed(
+    () => !isEphemeral.value && !isAdminView.value && authStore.isAuthenticated && Boolean(analysisId.value),
+)
 const adminUserId = computed(() => (isAdminView.value ? String(route.params.userId ?? '') : ''))
 const adminBackFallback = computed(() => {
   if (isAdminDetailFromGlobalAnalyses(route.query)) {
@@ -534,6 +539,7 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
                 :analysis-id="analysisId"
                 :growth-cards="growthCards"
                 :analysis-items="sortedItems"
+                :shadowing-allowed="shadowingAllowed"
                 @generated="onHabitCardGenerated"
                 @open-cards="asideTab = 'cards'"
             />

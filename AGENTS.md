@@ -31,6 +31,14 @@ AI 相关（非显而易见）：
   服务不可用时分析仍成功，仅无高亮。已有库需执行 DDL 注释中的
   `ALTER TABLE ... ADD COLUMN edit_annotations ...`。
 
+影子跟读（可选，非显而易见）：
+- 仅行动卡 Top1–3 的预览例句（每卡 ≤2 句），目标句是 `suggestion`；不落库。接口 `/api/shadowing/*`，只收 analysisId + sentenceId，后端按归属取句。
+- 打分：后端进程内 sherpa-onnx 离线识别 + 单词 LCS 比对（不做词形还原，went≠go）。`sherpa-onnx-jvm` jar 已提交在 `backend/lib/`；
+ 原生库与模型需 `./scripts/setup-sherpa-onnx.sh --model`（native jar 存在时 Maven profile 自动激活）。缺任一项时 `/status` 返回 false、打分 503，其它功能不受影响。
+- 原声：`services/edge-tts`（FastAPI，`127.0.0.1:8001`），后端按 sha256(voice+文本) 磁盘缓存；不可用时前端退回 `speechSynthesis`。
+- 本地跑：`SHADOWING_ENABLED=true SHADOWING_MODEL_DIR=~/sherpa-models/sherpa-onnx-zipformer-gigaspeech-2023-12-12`，
+ 原声另加 `SHADOWING_TTS_ENABLED=true` 并启动 edge-tts。录音需 HTTPS 或 localhost。上线步骤见 `docs/todo/shadowing/2026-10-06-deploy.md`。
+
 其它：
 - `backend/pom.xml` 含一个 macOS-only 依赖 `netty-resolver-dns-native-macos`（classifier `osx-aarch_64`），在 Linux 上仅是未使用的产物，不影响构建/运行。
 - 后端测试用 H2（`test` profile），无需 MySQL：`mvn -f backend/pom.xml test`。

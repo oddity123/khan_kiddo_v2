@@ -13,4 +13,12 @@ class TextSupportTest {
         assertNull(TextSupport.trimToNull("  "));
         assertEquals("hi", TextSupport.trimToNull("  hi  "));
     }
+
+    @Test
+    void trimTrailingSlashes_stripsAllAndFallsBack() {
+        assertEquals("http://a:1", TextSupport.trimTrailingSlashes(" http://a:1// ", "x"));
+        assertEquals("http://a:1", TextSupport.trimTrailingSlashes("http://a:1", "x"));
+        assertEquals("x", TextSupport.trimTrailingSlashes("  ", "x"));
+        assertEquals("x", TextSupport.trimTrailingSlashes(null, "x"));
+    }
 }

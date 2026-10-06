@@ -24,6 +24,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mybatis-plus.version>3.5.15</mybatis-plus.version>
         <langchain4j.version>1.15.1-beta25</langchain4j.version>
+        <!-- 升级时同步修改 profiles 中的原生库文件名与 scripts/setup-sherpa-onnx.sh -->
+        <sherpa-onnx.version>1.13.8</sherpa-onnx.version>
     </properties>
 
     <dependencies>
@@ -148,7 +150,53 @@
             <artifactId>langchain4j-qdrant</artifactId>
             <version>${langchain4j.version}</version>
         </dependency>
+
+        <!-- sherpa-onnx 离线语音识别（影子跟读打分）；未发布到 Maven Central -->
+        <dependency>
+            <groupId>com.k2fsa.sherpa.onnx</groupId>
+            <artifactId>sherpa-onnx-jvm</artifactId>
+            <version>${sherpa-onnx.version}</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/lib/sherpa-onnx-jvm-${sherpa-onnx.version}.jar</systemPath>
+        </dependency>
     </dependencies>
+
+    <profiles>
+        <profile>
+            <id>sherpa-native-linux-x64</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/lib/native/sherpa-onnx-native-lib-linux-x64-1.13.8.jar</exists>
+                </file>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.k2fsa.sherpa.onnx</groupId>
+                    <artifactId>sherpa-onnx-native-lib-linux-x64</artifactId>
+                    <version>${sherpa-onnx.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/native/sherpa-onnx-native-lib-linux-x64-${sherpa-onnx.version}.jar</systemPath>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>sherpa-native-osx-aarch64</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/lib/native/sherpa-onnx-native-lib-osx-aarch64-1.13.8.jar</exists>
+                </file>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.k2fsa.sherpa.onnx</groupId>
+                    <artifactId>sherpa-onnx-native-lib-osx-aarch64</artifactId>
+                    <version>${sherpa-onnx.version}</version>
+                    <scope>system</scope>
+                    <systemPath>${project.basedir}/lib/native/sherpa-onnx-native-lib-osx-aarch64-${sherpa-onnx.version}.jar</systemPath>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>
@@ -174,6 +222,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <includeSystemScope>true</includeSystemScope>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

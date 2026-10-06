@@ -86,6 +86,23 @@ app:
     base-url: ${ERRANT_BASE_URL:http://127.0.0.1:8000}
     connect-timeout: ${ERRANT_CONNECT_TIMEOUT:2s}
     read-timeout: ${ERRANT_READ_TIMEOUT:10s}
+  # 行动卡例句影子跟读（默认关闭）：识别打分与原声 TTS 两个开关独立
+  shadowing:
+    enabled: ${SHADOWING_ENABLED:false}
+    admin-only: ${SHADOWING_ADMIN_ONLY:false}
+    model-dir: ${SHADOWING_MODEL_DIR:}
+    num-threads: ${SHADOWING_NUM_THREADS:1}
+    max-concurrent: ${SHADOWING_MAX_CONCURRENT:1}
+    max-queue: ${SHADOWING_MAX_QUEUE:2}
+    max-audio-seconds: 20
+    pass-score: 60
+    tts:
+      enabled: ${SHADOWING_TTS_ENABLED:false}
+      base-url: ${SHADOWING_TTS_BASE_URL:http://127.0.0.1:8001}
+      voice: ${SHADOWING_TTS_VOICE:en-US-AriaNeural}
+      cache-dir: ${SHADOWING_TTS_CACHE_DIR:./data/tts-cache}
+      connect-timeout: 2s
+      read-timeout: 15s
   # 嵌入与对话分析模型目录解耦：enabled + QWEN_API_KEY + QDRANT_HOST 才启用 RAG（含错句写入）
   rag:
     embedding-base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}

@@ -1,5 +1,13 @@
 # Maven（后端）
 backend/target/
+# sherpa-onnx 原生库（scripts/setup-sherpa-onnx.sh 下载）
+backend/lib/native/
+# 跟读原声缓存（本机开发默认目录）
+backend/data/
+/data/
+# Python 小服务本地虚拟环境
+services/**/.venv/
+__pycache__/
 
 # 前端
 frontend/node_modules/
@@ -40,6 +48,8 @@ deploy.env
 
 # Package / archives
 *.jar
+# sherpa-onnx Java API 不在 Maven Central，随仓库提交（native 库由 scripts/setup-sherpa-onnx.sh 下载）
+!backend/lib/sherpa-onnx-jvm-*.jar
 *.war
 *.zip
 

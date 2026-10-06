@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.khankiddo.learning.config.ErrantProperties;
 import com.khankiddo.learning.dto.conversation.SentenceEditDto;
+import com.khankiddo.learning.util.TextSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
@@ -36,7 +37,7 @@ public class ErrantAnnotatorClient {
                         .withConnectTimeout(properties.getConnectTimeout())
                         .withReadTimeout(properties.getReadTimeout()));
         this.restClient = RestClient.builder()
-                .baseUrl(trimTrailingSlash(properties.getBaseUrl()))
+                .baseUrl(TextSupport.trimTrailingSlashes(properties.getBaseUrl(), "http://127.0.0.1:8000"))
                 .requestFactory(requestFactory)
                 .build();
     }
@@ -148,17 +149,6 @@ public class ErrantAnnotatorClient {
             case "R", "M", "U" -> op;
             default -> null;
         };
-    }
-
-    private static String trimTrailingSlash(String baseUrl) {
-        if (!StringUtils.hasText(baseUrl)) {
-            return "http://127.0.0.1:8000";
-        }
-        String trimmed = baseUrl.trim();
-        while (trimmed.endsWith("/")) {
-            trimmed = trimmed.substring(0, trimmed.length() - 1);
-        }
-        return trimmed;
     }
 
     public record AnnotatePair(String id, String original, String corrected) {

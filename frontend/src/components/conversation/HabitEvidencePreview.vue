@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import {computed} from 'vue'
 
+import ShadowingPractice from '@/components/conversation/ShadowingPractice.vue'
 import type {ActionCardExample} from '@/types/conversation'
+import type {ShadowingStatus} from '@/types/shadowing'
 
 const props = defineProps<{
   example: ActionCardExample
+  analysisId?: string
+  /** 传入即表示本句可跟读；为空时不显示跟读区 */
+  shadowing?: ShadowingStatus | null
 }>()
 
 const suggestion = computed(() => props.example.suggestion?.trim() || '')
 const showSuggestion = computed(
     () => Boolean(suggestion.value && suggestion.value !== props.example.originalSentence?.trim()),
 )
+const showShadowing = computed(() => Boolean(
+    showSuggestion.value
+    && props.analysisId
+    && props.shadowing?.scoringEnabled
+    && props.example.sentenceId != null
+    && props.example.sentenceId !== '',
+))
 </script>
 
 <template>
@@ -21,6 +33,13 @@ const showSuggestion = computed(
     <p v-if="showSuggestion" class="ev-mini-suggest" aria-label="AI 建议">
       {{ suggestion }}
     </p>
+    <ShadowingPractice
+        v-if="showShadowing && analysisId && example.sentenceId != null"
+        :analysis-id="analysisId"
+        :sentence-id="example.sentenceId"
+        :text="suggestion"
+        :tts-enabled="Boolean(shadowing?.ttsEnabled)"
+    />
   </article>
 </template>
 

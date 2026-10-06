@@ -161,6 +161,18 @@ npm run build -- --mode development   # 指向 localhost，允许改站点
 
 Chrome → 扩展管理 → 加载已解压的扩展 → 选 `extension/dist`。详见 `[extension/README.md](extension/README.md)`。
 
+### 6. 影子跟读（可选）
+
+分析报告里 Top1–3 行动卡的例句可以「听原声 → 跟读 → 逐词打分」。打分走后端离线识别（sherpa-onnx），原声走 edge-tts 小服务：
+
+```bash
+./scripts/setup-sherpa-onnx.sh --model                       # 原生库 + 英文识别模型（~/sherpa-models）
+cd services/edge-tts && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt \
+  && .venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001  # 可选：不开则浏览器朗读兜底
+```
+
+再在 `.env` 打开 `SHADOWING_ENABLED` / `SHADOWING_MODEL_DIR`（及 `SHADOWING_TTS_ENABLED`），见 `.env.example`。上线见 [deploy 清单](docs/todo/shadowing/2026-10-06-deploy.md)。
+
 ---
 
 
@@ -194,7 +206,7 @@ Chrome → 扩展管理 → 加载已解压的扩展 → 选 `extension/dist`。
 | -------- | ---------------------------- | -------------------------------- | --- |
 | 首页       | `/`                          | 产品介绍；登录后展示近 7 天句子数、累计优化点、高频错误类型  | –   |
 | **对话分析** | `/conversation/analyze`      | 粘贴或扩展导入字幕 → 选模型 → SSE 实时进度与逐句预览  | 是   |
-| 分析报告     | `/conversation/analyses/:id` | 综合得分、分项维度、错误类型饼图、中文表达翻转卡片、逐句改写建议 | 是   |
+| 分析报告     | `/conversation/analyses/:id` | 综合得分、分项维度、错误类型饼图、中文表达翻转卡片、逐句改写建议；Top1–3 例句影子跟读打分（可选） | 是   |
 | 历史记录     | `/conversation/analyses`     | 关键词搜索、分页、得分条、删除（同步清理向量）          | 是   |
 | **复盘助手** | `/conversation/grammar-rag`  | 基于个人历史错句的流式 RAG 问答               | 是   |
 | 登录 / 注册  | `/login` `/register`         | JWT，支持 redirect 回跳               | –   |

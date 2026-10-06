@@ -4,6 +4,7 @@ import {ElMessage} from 'element-plus'
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 
 import {mintHabitGrowthCard} from '@/api/growthCard'
+import {fetchShadowingStatus} from '@/api/shadowing'
 import HabitEvidencePreview from '@/components/conversation/HabitEvidencePreview.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import type {
@@ -13,9 +14,11 @@ import type {
   PointChannel,
 } from '@/types/conversation'
 import type {GrowthCard} from '@/types/growthCard'
+import type {ShadowingStatus} from '@/types/shadowing'
 import {getErrorMessage} from '@/utils/error'
 
 const PREVIEW_LIMIT = 2
+const SHADOWING_MAX_RANK = 3
 
 const props = withDefaults(
     defineProps<{
@@ -25,8 +28,10 @@ const props = withDefaults(
       growthCards?: GrowthCard[]
       /** 句子级检查完整列表，用于证据卡展示该句全部优化点 */
       analysisItems?: AnalysisItem[]
+      /** 本人登录查看自己的分析时才开；管理员代看、游客临时结果不开 */
+      shadowingAllowed?: boolean
     }>(),
-    {cards: () => [], growthCards: () => [], analysisItems: () => []},
+    {cards: () => [], growthCards: () => [], analysisItems: () => [], shadowingAllowed: false},
 )
 
 const emit = defineEmits<{
@@ -46,14 +51,32 @@ const evidenceOpen = ref(false)
 const evidenceTitle = ref('')
 const evidenceItems = ref<AnalysisItem[]>([])
 const viewportWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+const shadowingStatus = ref<ShadowingStatus | null>(null)
 
 function syncViewportWidth() {
   viewportWidth.value = window.innerWidth
 }
 
+async function loadShadowingStatus() {
+  if (!props.shadowingAllowed || !props.analysisId) {
+    return
+  }
+  try {
+    const {data} = await fetchShadowingStatus()
+    shadowingStatus.value = data
+  } catch {
+    shadowingStatus.value = null
+  }
+}
+
+function cardShadowing(card: ActionCard): ShadowingStatus | null {
+  return card.rank <= SHADOWING_MAX_RANK ? shadowingStatus.value : null
+}
+
 onMounted(() => {
   syncViewportWidth()
   window.addEventListener('resize', syncViewportWidth, {passive: true})
+  void loadShadowingStatus()
 })
 
 onBeforeUnmount(() => {
@@ -292,6 +315,8 @@ function onOpenCards(event?: Event) {
               v-for="(example, i) in previewExamples(card)"
               :key="example.sentenceId ?? `${cardKey(card)}-pv-${i}`"
               :example="example"
+              :analysis-id="analysisId"
+              :shadowing="cardShadowing(card)"
           />
         </div>
       </div>
