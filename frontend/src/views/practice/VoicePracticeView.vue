@@ -312,10 +312,11 @@ function onBackClick() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* 满屏 flex + 父级 overflow:hidden 时，大模糊外阴影会被裁成脏边/白雾带 */
-  box-shadow:
-    var(--kk-shadow-card),
-    inset 0 1px 0 var(--kk-glass-highlight);
+  /*
+   * 满屏 flex + 父级 overflow:hidden 时，kk-glass--panel 的大模糊外阴影会被裁成
+   * 四角「叠卡/鬼影」；只保留顶高光，与分析详情侧栏玻璃卡一致。
+   */
+  box-shadow: inset 0 1px 0 var(--kk-glass-highlight);
 }
 
 .voice-section-title {
@@ -328,14 +329,12 @@ function onBackClick() {
   color: var(--kk-color-primary);
 }
 
+/* 内层只做滚动容器，不再套第二层圆角玻璃（避免与外层 radius 错位叠影） */
 .voice-captions__body {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 14px;
-  background: var(--kk-glass-inner-bg);
-  border: 1px solid var(--kk-glass-inner-border);
   overflow: hidden;
   isolation: isolate;
 }
