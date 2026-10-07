@@ -1,0 +1,101 @@
+---
+description: 架构守门：禁止加厚上帝类、OCP 扩展点、公共逻辑与配置单源、依赖方向与 PR 预算。触发：新功能/重构、Support·Utils·Properties、巨型 SFC/composable、讨论分层或放哪。
+alwaysApply: true
+---
+
+# 架构守门（Khan Kiddo v2）
+
+改业务代码前对照本规则。依据全量说明见 Project Context 中的 `architecture-guardrails.md`（与本文一致；以 **`.cursor/rules` 本文件为生效版**）。
+
+## 何时必须对照
+
+- 新增/修改 `backend` 的 Service、Controller、Pipeline、Gateway、Support、LLM Factory/Policy
+- 新增/修改大型 Vue SFC、composable，或新 LLM 阶段 / 铸卡 type / `sourceRef` 形态
+- 讨论「放哪」「分层」「工具类」「配置放哪」
+
+---
+
+## R1 — 禁止继续加厚上帝类
+
+**禁止**向下列单元堆无关职责；新能力旁路到**新类 / Support / 组件 / composable**，旧类最多委托：
+
+| 后端 | 前端 |
+|------|------|
+| `ConversationAnalysisServiceImpl` | `AnalysisDetailView.vue` |
+| `ConversationAnalysisStreamingHelper` | `ChineseExpressionFan.vue` |
+| `GrowthCardMintGateway` | 勿在 Fan/Detail 上继续扩 prop 矩阵 |
+
+**检查：** diff 是否在上述文件新增另一职责的大块逻辑 → 驳回，要求旁路。
+
+---
+
+## R2 — OCP：扩展走策略 / 配置 / 新 Step
+
+| 场景 | ✅ | ❌ |
+|------|----|----|
+| 新 LLM 厂商 quirk | 新 `*StructuredOutputPolicy` 等 | Factory / `LlmProviderSupport` 无限 `contains` |
+| 新自动铸卡 type | 新 Mint Step/Persister | `GrowthCardMintGateway` 再加循环分支 |
+| pointId 走 LLM 切分 | yml / Properties | 改 `FocusPhraseCutSelector.LLM_POINT_IDS` 常量 |
+| 新 `sourceRef` 形态 | 共享 codec | Hydrator 再开 if/else 表 |
+
+---
+
+## R3 — 公共逻辑单点（Support / Utils / constants）
+
+改前先搜 `*Support`、`*Utils`、`*Helper`、`frontend/src/utils/`、`frontend/src/constants/`。
+
+**禁止：**
+
+- 复制已有职责的私有 `static` / 模块级函数（如 `trimToNull`、`sourceRef` 编解码、`HabitScore` 映射、前端 `formatTime` / `typeLabel`）
+- **同一职责两处实现**（例：JWT `access_token` 在 Filter 与 WebSocket Handshake 各写一套 → 收到 `SecurityUtils` / `JwtAccessTokenSupport`）
+- **Composable / Handler 内堆可复用纯函数**（PCM/base64、错误帧解析、ASR 合并等 → `utils/*`，composable 只编排）
+
+空判断：`CollectionUtils` / `StringUtils` / `ObjectUtils`。登录用户：`SecurityUtils`。
+
+**检查：** 新增私有工具与已有 Support 同职责 → 合并；跨层重复常量字符串 → `constants/` 单点。
+
+---
+
+## R4 — 配置单源（Properties / yml / env）
+
+**禁止配置散落：**
+
+- Controller、composable、前端常量里写**魔法数**（采样率、chunk、协议 model 版本等）而与 `*Properties` / yml 双源
+- 前端 `config || '1.2.6.1'` 类**协议兜底字面量**；缺配置应明确失败，默认值只在 **Properties + `application.yml`（+ `.env.example` 注释）** 一处定义
+- 密钥、上游 URL、model/voice：**后端 Properties**，经 REST `/config` 暴露非敏感项；**禁止**前端硬编码 openspeech 等上游地址
+
+**检查：** 新集成是否具备 `*Properties` + yml 段 + `.env.example`；前后端是否共用同一 config API，而非各写一套数字。
+
+---
+
+## R5 — 依赖方向与落位
+
+- `controller → application/service → domain/support`；Support 不依赖 Web/SSE 细节
+- Controller 保持薄（对照现有 ≤80 行门面）
+- 改前自答：「谁拥有此职责？」— 答案不是「最近那个大文件」
+
+---
+
+## R6 — 变更预算（绞杀者）
+
+- 一次 PR **只加深一个 seam**；行为默认等价，除非任务明确要求改产品
+- 禁止借重构引入未请求的新框架/新层
+- **碰到上帝类再拆**：本任务必须改该职责时才抽；不为「好看」单独开重构 PR
+
+---
+
+## R7 — 前端体量：先拆再加
+
+SFC / composable 已 ~400–500 行且混编排+交互+数学时：**先**抽 composable / 子组件 / `utils`，**再**加功能。禁止只在 `AnalysisDetailView` / `ChineseExpressionFan` 叠 prop 或入口分支。
+
+新功能优先新页面 + 新 composable（如 `voice/` 包 + `useVoiceRealtime`），勿回流上帝 SFC。
+
+---
+
+## 合并前自检（短清单）
+
+1. 上帝类 diff 是否只委托、无新职责块？
+2. 扩展是否走配置/新 Step，而非改常量名单或巨型 if？
+3. 有无重复工具 / 重复常量 / 重复 token 解析？
+4. 可调参数是否只在 Properties+yml，前端是否读 config？
+5. PR 是否只做一件事、可测、无未请求的框架？
