@@ -7,6 +7,13 @@ import {
 } from '@/api/voiceRealtime'
 import {AUTH_TOKEN_KEY} from '@/constants/auth'
 import {getErrorMessage} from '@/utils/error'
+import {
+  base64ToInt16,
+  bytesToBase64,
+  downsampleTo16k,
+  floatTo16BitPcm,
+} from '@/utils/voiceRealtimeAudio'
+import {formatRealtimeError} from '@/utils/voiceRealtimeError'
 import {mergeStreamingText, pickAsrStreamingPreview} from '@/utils/voiceRealtimeText'
 
 export type VoiceSessionStatus =
@@ -22,52 +29,10 @@ export interface VoiceCaptionLine {
   text: string
 }
 
-const INPUT_RATE = 16_000
-const OUTPUT_RATE = 24_000
-const CHUNK_MS = 20
-const SAMPLES_PER_CHUNK = (INPUT_RATE * CHUNK_MS) / 1000 // 320
-
-function floatTo16BitPcm(input: Float32Array): Int16Array {
-  const out = new Int16Array(input.length)
-  for (let i = 0; i < input.length; i++) {
-    const s = Math.max(-1, Math.min(1, input[i]!))
-    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff
-  }
-  return out
-}
-
-function downsampleTo16k(input: Float32Array, inputRate: number): Float32Array {
-  if (inputRate === INPUT_RATE) {
-    return input
-  }
-  const ratio = inputRate / INPUT_RATE
-  const newLen = Math.floor(input.length / ratio)
-  const result = new Float32Array(newLen)
-  for (let i = 0; i < newLen; i++) {
-    const start = Math.floor(i * ratio)
-    result[i] = input[start] ?? 0
-  }
-  return result
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = ''
-  const chunk = 0x8000
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
-  }
-  return btoa(binary)
-}
-
-function base64ToInt16(base64: string): Int16Array {
-  const binary = atob(base64)
-  const len = binary.length
-  const bytes = new Uint8Array(len)
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-  return new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2))
-}
+/** 与后端 VoiceRealtimeProperties 默认值同源；仅在 config 缺字段时兜底 */
+const DEFAULT_INPUT_RATE = 16_000
+const DEFAULT_OUTPUT_RATE = 24_000
+const DEFAULT_CHUNK_MS = 20
 
 /**
  * 豆包全双工实时语音客户端：浏览器采麦/播音，经后端 WS 代理转发 JSON 事件。
@@ -97,6 +62,22 @@ export function useVoiceRealtime() {
   /** 仅在收到后端 proxy.ready 后允许 session.create / 麦流上行 */
   let proxyReady = false
   let pendingInstructions: string | undefined
+
+  function inputRate(): number {
+    return config.value?.inputSampleRate || DEFAULT_INPUT_RATE
+  }
+
+  function outputRate(): number {
+    return config.value?.outputSampleRate || DEFAULT_OUTPUT_RATE
+  }
+
+  function chunkMs(): number {
+    return config.value?.chunkMs || DEFAULT_CHUNK_MS
+  }
+
+  function samplesPerChunk(): number {
+    return (inputRate() * chunkMs()) / 1000
+  }
 
   function pushCaption(role: VoiceCaptionLine['role'], text: string) {
     const trimmed = text.trim()
@@ -165,7 +146,7 @@ export function useVoiceRealtime() {
     if (!playbackCtx || samples.length === 0) {
       return
     }
-    const buffer = playbackCtx.createBuffer(1, samples.length, OUTPUT_RATE)
+    const buffer = playbackCtx.createBuffer(1, samples.length, outputRate())
     const channel = buffer.getChannelData(0)
     for (let i = 0; i < samples.length; i++) {
       channel[i] = (samples[i] ?? 0) / 0x8000
@@ -182,37 +163,6 @@ export function useVoiceRealtime() {
     source.onended = () => markSourceEnded(source)
     source.start(nextPlayTime)
     nextPlayTime += buffer.duration
-  }
-
-  /**
-   * 解析上游/代理 error 帧。常见形状：
-   * - `{ type, message, code? }`（本站代理）
-   * - `{ type, error: { message, code? }, code? }`（openspeech 嵌套）
-   */
-  function formatRealtimeError(event: Record<string, unknown>): string {
-    const nested =
-      event.error && typeof event.error === 'object'
-        ? (event.error as Record<string, unknown>)
-        : null
-    const messageCandidates = [event.message, nested?.message]
-    const message = messageCandidates.find((v): v is string => typeof v === 'string' && v.trim().length > 0)
-    const codeCandidates = [event.code, nested?.code]
-    const code = codeCandidates.find((v) => v !== undefined && v !== null && String(v).length > 0)
-    if (message && code !== undefined) {
-      return `${message}（code=${String(code)}）`
-    }
-    if (message) {
-      return message
-    }
-    if (code !== undefined) {
-      return `实时语音错误 code=${String(code)}`
-    }
-    try {
-      const snippet = JSON.stringify(event)
-      return `实时语音服务返回错误：${snippet.length > 240 ? `${snippet.slice(0, 240)}…` : snippet}`
-    } catch {
-      return '实时语音服务返回错误'
-    }
   }
 
   function handleServerEvent(raw: string) {
@@ -293,15 +243,21 @@ export function useVoiceRealtime() {
   }
 
   function sendSessionCreate() {
+    const model = config.value?.model?.trim()
+    if (!model) {
+      status.value = 'error'
+      statusDetail.value = '服务端未返回实时语音 model，无法创建会话'
+      return
+    }
     sendEvent({
       type: 'session.create',
       session: {
-        model: config.value!.model || '1.2.6.1',
+        model,
         instructions: pendingInstructions?.trim() || config.value!.defaultInstructions,
         audio: {
-          input: {format: {type: 'pcm', rate: INPUT_RATE}},
+          input: {format: {type: 'pcm', rate: inputRate()}},
           output: {
-            format: {type: 'pcm_s16le', rate: OUTPUT_RATE},
+            format: {type: 'pcm_s16le', rate: outputRate()},
             voice: config.value!.voice,
             speed: 0,
             loudness: 0,
@@ -321,7 +277,7 @@ export function useVoiceRealtime() {
     statusDetail.value = '上游已就绪，创建会话…'
     sendSessionCreate()
     if (!sendTimer) {
-      sendTimer = setInterval(flushAudioChunk, CHUNK_MS)
+      sendTimer = setInterval(flushAudioChunk, chunkMs())
     }
   }
 
@@ -329,11 +285,12 @@ export function useVoiceRealtime() {
     if (!proxyReady || !socket || socket.readyState !== WebSocket.OPEN || muted.value) {
       return
     }
-    if (pcmQueue.length < SAMPLES_PER_CHUNK) {
+    const n = samplesPerChunk()
+    if (pcmQueue.length < n) {
       return
     }
-    const chunk = new Int16Array(SAMPLES_PER_CHUNK)
-    for (let i = 0; i < SAMPLES_PER_CHUNK; i++) {
+    const chunk = new Int16Array(n)
+    for (let i = 0; i < n; i++) {
       chunk[i] = pcmQueue.shift() ?? 0
     }
     const bytes = new Uint8Array(chunk.buffer)
@@ -354,16 +311,17 @@ export function useVoiceRealtime() {
       video: false,
     })
     captureCtx = new AudioContext()
-    playbackCtx = new AudioContext({sampleRate: OUTPUT_RATE})
+    playbackCtx = new AudioContext({sampleRate: outputRate()})
     const source = captureCtx.createMediaStreamSource(mediaStream)
     // ScriptProcessor 已废弃但兼容性最好；MVP 足够
     processor = captureCtx.createScriptProcessor(4096, 1, 1)
+    const targetInputRate = inputRate()
     processor.onaudioprocess = (ev) => {
       if (muted.value || closing) {
         return
       }
       const input = ev.inputBuffer.getChannelData(0)
-      const down = downsampleTo16k(input, captureCtx!.sampleRate)
+      const down = downsampleTo16k(input, captureCtx!.sampleRate, targetInputRate)
       const pcm = floatTo16BitPcm(down)
       for (let i = 0; i < pcm.length; i++) {
         pcmQueue.push(pcm[i]!)
