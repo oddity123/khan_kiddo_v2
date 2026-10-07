@@ -312,6 +312,10 @@ function onBackClick() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* 满屏 flex + 父级 overflow:hidden 时，大模糊外阴影会被裁成脏边/白雾带 */
+  box-shadow:
+    var(--kk-shadow-card),
+    inset 0 1px 0 var(--kk-glass-highlight);
 }
 
 .voice-section-title {
@@ -331,14 +335,15 @@ function onBackClick() {
   flex-direction: column;
   border-radius: 14px;
   background: var(--kk-glass-inner-bg);
-  box-shadow: inset 0 0 0 1px var(--kk-glass-inner-border);
+  border: 1px solid var(--kk-glass-inner-border);
   overflow: hidden;
+  isolation: isolate;
 }
 
 .voice-captions__lines {
   list-style: none;
   margin: 0;
-  padding: 0.9rem 0.85rem 0.55rem;
+  padding: 0.9rem 0.7rem 0.55rem 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
@@ -347,6 +352,23 @@ function onBackClick() {
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--kk-color-primary) 22%, transparent) transparent;
+}
+
+.voice-captions__lines::-webkit-scrollbar {
+  width: 8px;
+}
+
+.voice-captions__lines::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.voice-captions__lines::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--kk-color-primary) 22%, transparent);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .caption-row {
@@ -388,9 +410,9 @@ function onBackClick() {
 }
 
 .caption-bubble--assistant {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--kk-glass-inner-bg);
   color: var(--kk-color-text);
-  box-shadow: inset 0 0 0 1px var(--kk-glass-inner-border);
+  border: 1px solid var(--kk-glass-inner-border);
   border-bottom-left-radius: 4px;
   font-family: var(--kk-font-mono);
   font-size: 0.9rem;
