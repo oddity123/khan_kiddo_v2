@@ -112,42 +112,6 @@ function onBackClick() {
       </p>
     </section>
 
-    <section class="voice-controls">
-      <el-button
-        type="primary"
-        size="large"
-        :icon="VideoPlay"
-        :disabled="status === 'live' || status === 'connecting' || (config !== null && !config.configured)"
-        @click="onStart"
-      >
-        开始对话
-      </el-button>
-      <el-button
-        size="large"
-        :icon="VideoPause"
-        :disabled="status !== 'live' && status !== 'connecting'"
-        @click="onStop"
-      >
-        结束
-      </el-button>
-      <el-button
-        size="large"
-        :icon="SwitchButton"
-        :disabled="status !== 'live'"
-        @click="interrupt"
-      >
-        打断播报
-      </el-button>
-      <el-button
-        size="large"
-        :icon="muted ? Mute : Microphone"
-        :disabled="status !== 'live'"
-        @click="toggleMute"
-      >
-        {{ muted ? '取消静音' : '静音' }}
-      </el-button>
-    </section>
-
     <section class="voice-captions kk-glass kk-glass--panel" aria-label="实时字幕">
       <h2 class="voice-section-title">字幕</h2>
       <div class="voice-captions__body">
@@ -184,38 +148,75 @@ function onBackClick() {
       </div>
     </section>
 
-    <section class="voice-prompt kk-glass kk-glass--panel">
-      <label class="voice-section-title" for="voice-instructions">本场提示词（可选）</label>
-      <el-input
-        id="voice-instructions"
-        v-model="customInstructions"
-        type="textarea"
-        :autosize="{ minRows: 3, maxRows: 8 }"
-        placeholder="可粘贴复练提示词；留空则使用默认口语教练指令"
-        :disabled="status === 'live' || status === 'connecting'"
-      />
-    </section>
+    <footer class="voice-dock">
+      <section class="voice-prompt kk-glass kk-glass--panel">
+        <label class="voice-section-title" for="voice-instructions">本场提示词（可选）</label>
+        <el-input
+          id="voice-instructions"
+          v-model="customInstructions"
+          type="textarea"
+          :autosize="{ minRows: 2, maxRows: 4 }"
+          placeholder="可粘贴复练提示词；留空则使用默认口语教练指令"
+          :disabled="status === 'live' || status === 'connecting'"
+        />
+      </section>
+      <section class="voice-controls">
+        <el-button
+          type="primary"
+          size="large"
+          :icon="VideoPlay"
+          :disabled="status === 'live' || status === 'connecting' || (config !== null && !config.configured)"
+          @click="onStart"
+        >
+          开始对话
+        </el-button>
+        <el-button
+          size="large"
+          :icon="VideoPause"
+          :disabled="status !== 'live' && status !== 'connecting'"
+          @click="onStop"
+        >
+          结束
+        </el-button>
+        <el-button
+          size="large"
+          :icon="SwitchButton"
+          :disabled="status !== 'live'"
+          @click="interrupt"
+        >
+          打断播报
+        </el-button>
+        <el-button
+          size="large"
+          :icon="muted ? Mute : Microphone"
+          :disabled="status !== 'live'"
+          @click="toggleMute"
+        >
+          {{ muted ? '取消静音' : '静音' }}
+        </el-button>
+      </section>
+    </footer>
   </div>
 </template>
 
 <style scoped>
 .voice-page {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding-bottom: 1.5rem;
+  gap: 0.75rem;
+  overflow: hidden;
 }
 
 .detail-topbar {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1.1rem;
-  margin-bottom: 0.25rem;
   border-radius: var(--kk-radius-lg);
-  position: sticky;
-  top: 0.5rem;
   z-index: 20;
 }
 
@@ -256,7 +257,11 @@ function onBackClick() {
 .voice-status,
 .voice-captions,
 .voice-prompt {
-  padding: 1rem 1.1rem;
+  padding: 0.85rem 1.1rem;
+}
+
+.voice-status {
+  flex-shrink: 0;
 }
 
 .voice-status__row {
@@ -301,15 +306,18 @@ function onBackClick() {
   line-height: 1.5;
 }
 
-.voice-controls {
+.voice-captions {
+  flex: 1 1 0;
+  min-height: 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .voice-section-title {
   display: block;
-  margin: 0 0 0.65rem;
+  flex-shrink: 0;
+  margin: 0 0 0.55rem;
   font-family: var(--kk-font-display);
   font-size: 1.05rem;
   font-weight: 700;
@@ -317,6 +325,10 @@ function onBackClick() {
 }
 
 .voice-captions__body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   border-radius: 14px;
   background: var(--kk-glass-inner-bg);
   box-shadow: inset 0 0 0 1px var(--kk-glass-inner-border);
@@ -330,8 +342,8 @@ function onBackClick() {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  min-height: 10rem;
-  max-height: min(42vh, 28rem);
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
@@ -390,6 +402,20 @@ function onBackClick() {
   text-align: center;
   padding: 1.5rem 0.5rem;
   align-self: stretch;
+}
+
+.voice-dock {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-bottom: 0.25rem;
+}
+
+.voice-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .is-partial {

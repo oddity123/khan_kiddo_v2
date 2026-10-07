@@ -102,6 +102,7 @@ const router = createRouter({
             title: '口语陪练',
             requiresAuth: true,
             robots: 'noindex, nofollow',
+            immersive: true,
           },
       },
       {
