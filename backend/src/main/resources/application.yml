@@ -129,6 +129,10 @@ app:
       ws-url: ${DOUBAO_SPEECH_WS_URL:wss://openspeech.bytedance.com/api/v3/duplex/realtime/dialogue}
       model: ${DOUBAO_SPEECH_MODEL:1.2.6.1}
       voice: ${DOUBAO_SPEECH_VOICE:zh_female_vv_jupiter_bigtts}
+      # 采播参数（openspeech 全双工协议固定值；一般无需改）
+      input-sample-rate: ${DOUBAO_SPEECH_INPUT_SAMPLE_RATE:16000}
+      output-sample-rate: ${DOUBAO_SPEECH_OUTPUT_SAMPLE_RATE:24000}
+      chunk-ms: ${DOUBAO_SPEECH_CHUNK_MS:20}
       # 旧版控制台鉴权（仅当未配置 DOUBAO_SPEECH_API_KEY 时生效）
       app-id: ${DOUBAO_SPEECH_APP_ID:}
       access-key: ${DOUBAO_SPEECH_ACCESS_KEY:}

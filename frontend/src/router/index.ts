@@ -101,8 +101,8 @@ const router = createRouter({
           meta: {
             title: '口语陪练',
             requiresAuth: true,
-            immersive: true,
             robots: 'noindex, nofollow',
+            immersive: true,
           },
       },
       {

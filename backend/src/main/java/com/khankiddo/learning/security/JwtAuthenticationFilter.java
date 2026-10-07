@@ -53,9 +53,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
         // 浏览器原生 WebSocket 不便带 Authorization 头；实时语音握手使用 access_token 查询参数
-        String accessToken = request.getParameter("access_token");
+        String accessToken = JwtAccessTokenSupport.resolveFromServletRequest(request);
         if (StringUtils.hasText(accessToken)) {
-            return jwtService.parseToken(accessToken.trim());
+            return jwtService.parseToken(accessToken);
         }
         return java.util.Optional.empty();
     }

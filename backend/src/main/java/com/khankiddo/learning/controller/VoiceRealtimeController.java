@@ -24,30 +24,20 @@ public class VoiceRealtimeController {
     @GetMapping("/config")
     public VoiceRealtimeConfigResponse config() {
         SecurityUtils.requireUserId();
-        if (!properties.isConfigured()) {
-            return VoiceRealtimeConfigResponse.builder()
-                    .configured(false)
-                    .wsPath(WS_PATH)
-                    .model(properties.getModel())
-                    .voice(properties.getVoice())
-                    .defaultInstructions(properties.getDefaultInstructions())
-                    .inputSampleRate(16_000)
-                    .outputSampleRate(24_000)
-                    .chunkMs(20)
-                    .message("未配置豆包语音实时对话密钥（DOUBAO_SPEECH_API_KEY）。"
-                            + "请在火山引擎「豆包语音」控制台创建 API Key 后写入 .env，与方舟 DOUBAO_API_KEY 不是同一把钥匙。")
-                    .build();
-        }
+        boolean configured = properties.isConfigured();
         return VoiceRealtimeConfigResponse.builder()
-                .configured(true)
+                .configured(configured)
                 .wsPath(WS_PATH)
                 .model(properties.getModel())
                 .voice(properties.getVoice())
                 .defaultInstructions(properties.getDefaultInstructions())
-                .inputSampleRate(16_000)
-                .outputSampleRate(24_000)
-                .chunkMs(20)
-                .message(null)
+                .inputSampleRate(properties.getInputSampleRate())
+                .outputSampleRate(properties.getOutputSampleRate())
+                .chunkMs(properties.getChunkMs())
+                .message(configured
+                        ? null
+                        : "未配置豆包语音实时对话密钥（DOUBAO_SPEECH_API_KEY）。"
+                                + "请在火山引擎「豆包语音」控制台创建 API Key 后写入 .env，与方舟 DOUBAO_API_KEY 不是同一把钥匙。")
                 .build();
     }
 }
