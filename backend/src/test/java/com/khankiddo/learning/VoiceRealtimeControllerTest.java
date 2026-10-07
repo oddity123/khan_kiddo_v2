@@ -66,6 +66,9 @@ class VoiceRealtimeControllerTest {
                 .andExpect(jsonPath("$.configured").value(false))
                 .andExpect(jsonPath("$.wsPath").value("/api/voice/realtime/ws"))
                 .andExpect(jsonPath("$.model").value("1.2.6.1"))
+                .andExpect(jsonPath("$.inputSampleRate").value(16000))
+                .andExpect(jsonPath("$.outputSampleRate").value(24000))
+                .andExpect(jsonPath("$.chunkMs").value(20))
                 .andExpect(jsonPath("$.message").value(containsString("DOUBAO_SPEECH_API_KEY")));
     }
 

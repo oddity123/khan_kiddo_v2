@@ -20,6 +20,12 @@ public class VoiceRealtimeProperties {
     public static final String DEFAULT_MODEL = "1.2.6.1";
     public static final String DEFAULT_VOICE = "zh_female_vv_jupiter_bigtts";
     public static final String DEFAULT_RESOURCE_ID = "volc.speech.dialog";
+    /** 输入 PCM 采样率（Hz）；openspeech 全双工文档仅支持 16000 */
+    public static final int DEFAULT_INPUT_SAMPLE_RATE = 16_000;
+    /** 输出 PCM 采样率（Hz）；openspeech 全双工文档仅支持 24000 */
+    public static final int DEFAULT_OUTPUT_SAMPLE_RATE = 24_000;
+    /** 建议上行分包时长（毫秒） */
+    public static final int DEFAULT_CHUNK_MS = 20;
 
     /** 新版控制台 API Key（请求头 {@code X-Api-Key}）；优先于旧版 AppId/AccessKey */
     private String apiKey = "";
@@ -39,6 +45,15 @@ public class VoiceRealtimeProperties {
 
     /** 旧版资源 ID，对话场景固定 {@code volc.speech.dialog} */
     private String resourceId = DEFAULT_RESOURCE_ID;
+
+    /** 输入采样率（Hz），文档仅支持 16000 */
+    private int inputSampleRate = DEFAULT_INPUT_SAMPLE_RATE;
+
+    /** 输出采样率（Hz），文档仅支持 24000 */
+    private int outputSampleRate = DEFAULT_OUTPUT_SAMPLE_RATE;
+
+    /** 建议分包时长（毫秒） */
+    private int chunkMs = DEFAULT_CHUNK_MS;
 
     /**
      * 默认系统提示词；前端可在 session.create 中覆盖。
