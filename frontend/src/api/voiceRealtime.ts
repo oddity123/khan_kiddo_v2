@@ -16,10 +16,15 @@ export function fetchVoiceRealtimeConfig() {
   return http.get<VoiceRealtimeConfig>('/api/voice/realtime/config')
 }
 
-/** 将相对 wsPath 转为当前站点的 ws(s) URL，并附带 JWT。 */
-export function buildVoiceRealtimeWsUrl(wsPath: string, accessToken: string): string {
+/** 将相对 wsPath 转为当前站点的 ws(s) URL，并附带 JWT 与已创建的练习记录。 */
+export function buildVoiceRealtimeWsUrl(
+  wsPath: string,
+  accessToken: string,
+  practiceSessionId: number,
+): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
   const path = wsPath.startsWith('/') ? wsPath : `/${wsPath}`
-  return `${proto}//${host}${path}?access_token=${encodeURIComponent(accessToken)}`
+  const token = encodeURIComponent(accessToken)
+  return `${proto}//${host}${path}?access_token=${token}&practice_session_id=${practiceSessionId}`
 }

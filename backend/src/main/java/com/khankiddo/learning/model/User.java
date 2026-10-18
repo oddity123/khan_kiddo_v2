@@ -20,6 +20,8 @@ public class User {
     private Boolean enabled;
     /** {@link UserRole#USER} 或 {@link UserRole#ADMIN} */
     private String role;
+    /** 注册时的 query {@code from}，无效值不入库 */
+    private String signupFrom;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

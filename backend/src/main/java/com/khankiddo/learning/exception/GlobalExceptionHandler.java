@@ -57,6 +57,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", ex.getMessage()));
     }
 
+    @ExceptionHandler(VoicePracticeQuotaExceededException.class)
+    public ResponseEntity<Map<String, String>> handleVoicePracticeQuota(VoicePracticeQuotaExceededException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("message", ex.getMessage()));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
         String message = ex.getReason() != null ? ex.getReason() : "请求失败";

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.mapper.VoicePracticeSessionMapper">
+
+    <resultMap id="VoicePracticeSessionMap" type="com.khankiddo.learning.model.VoicePracticeSession">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="started_at" property="startedAt"/>
+        <result column="ended_at" property="endedAt"/>
+        <result column="wall_duration_seconds" property="wallDurationSeconds"/>
+        <result column="reserved_seconds" property="reservedSeconds"/>
+        <result column="stopped_by_cap" property="stoppedByCap"/>
+        <result column="transcript" property="transcript"/>
+        <result column="transcript_saved" property="transcriptSaved"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, user_id, started_at, ended_at, wall_duration_seconds, reserved_seconds,
+        stopped_by_cap, transcript, transcript_saved
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO voice_practice_session
+            (user_id, started_at, wall_duration_seconds, reserved_seconds, stopped_by_cap, transcript_saved)
+        VALUES
+            (#{userId}, #{startedAt}, 0, #{reservedSeconds}, 0, 0)
+    </insert>
+
+    <select id="findById" resultMap="VoicePracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM voice_practice_session
+        WHERE id = #{id}
+    </select>
+
+    <select id="sumUsageSeconds" resultType="int">
+        SELECT COALESCE(SUM(
+            CASE WHEN ended_at IS NULL THEN reserved_seconds ELSE wall_duration_seconds END
+        ), 0)
+        FROM voice_practice_session
+        WHERE started_at &gt;= #{from}
+          AND started_at &lt; #{to}
+        <if test="userId != null">
+            AND user_id = #{userId}
+        </if>
+    </select>
+
+    <update id="finalizeStaleOpen">
+        UPDATE voice_practice_session
+        SET ended_at = TIMESTAMPADD(SECOND, reserved_seconds, started_at),
+            wall_duration_seconds = reserved_seconds,
+            stopped_by_cap = 1
+        WHERE ended_at IS NULL
+          AND TIMESTAMPADD(SECOND, reserved_seconds, started_at) &lt;= #{now}
+    </update>
+
+    <update id="updateClose">
+        UPDATE voice_practice_session
+        SET ended_at = #{endedAt},
+            wall_duration_seconds = #{wallDurationSeconds},
+            stopped_by_cap = #{stoppedByCap}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateTranscript">
+        UPDATE voice_practice_session
+        SET transcript = #{transcript},
+            transcript_saved = 1,
+            stopped_by_cap = #{stoppedByCap}
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </update>
+
+    <update id="abandonOpen">
+        UPDATE voice_practice_session
+        SET ended_at = #{endedAt},
+            wall_duration_seconds = 0,
+            reserved_seconds = 0,
+            stopped_by_cap = 0
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND ended_at IS NULL
+          AND transcript_saved = 0
+    </update>
+
+    <select id="findRecentSaved" resultMap="VoicePracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM voice_practice_session
+        WHERE user_id = #{userId}
+          AND transcript_saved = 1
+        ORDER BY started_at DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

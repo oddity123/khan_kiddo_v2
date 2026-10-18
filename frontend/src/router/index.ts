@@ -3,6 +3,7 @@ import {createRouter, createWebHistory} from 'vue-router'
 import {ADMIN_BASE_PATH} from '@/constants/admin'
 import {useAuthStore} from '@/stores/auth'
 import {applySeo} from '@/utils/seo'
+import {rememberSignupFrom} from '@/utils/signupFrom'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -195,6 +196,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+    const from = to.query.from
+    rememberSignupFrom(Array.isArray(from) ? from[0] : from)
     const auth = useAuthStore()
     if (!auth.initialized) {
         await auth.initialize()

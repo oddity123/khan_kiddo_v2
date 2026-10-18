@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users
     email      VARCHAR(100),
     enabled    TINYINT(1) DEFAULT 1,
     role       VARCHAR(20) NOT NULL DEFAULT 'USER',
+    signup_from VARCHAR(64),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -84,4 +85,29 @@ CREATE TABLE IF NOT EXISTS growth_card_evidence
     sort_order         INT          NOT NULL DEFAULT 0,
     created_at         TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (card_id, track_key)
+);
+
+CREATE TABLE IF NOT EXISTS voice_practice_session
+(
+    id                    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id               BIGINT    NOT NULL,
+    started_at            TIMESTAMP NOT NULL,
+    ended_at              TIMESTAMP NULL,
+    wall_duration_seconds INT       NOT NULL DEFAULT 0,
+    reserved_seconds      INT       NOT NULL DEFAULT 0,
+    stopped_by_cap        TINYINT(1) NOT NULL DEFAULT 0,
+    transcript            TEXT,
+    transcript_saved      TINYINT(1) NOT NULL DEFAULT 0,
+    created_at            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS product_funnel_event
+(
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id          BIGINT,
+    event_name       VARCHAR(40) NOT NULL,
+    guest            TINYINT(1),
+    duration_seconds INT,
+    voice_session_id BIGINT,
+    created_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

@@ -20,4 +20,8 @@ public class RegisterRequest {
     @Email(message = "邮箱格式不正确")
     @Size(max = 100, message = "邮箱长度不能超过 100 个字符")
     private String email;
+
+    /** 落地页 query {@code from}。非法字符会在服务端丢掉，不拦注册。 */
+    @Size(max = 64, message = "来源标记过长")
+    private String signupFrom;
 }

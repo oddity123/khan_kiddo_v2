@@ -3,13 +3,15 @@ import { Lock, Message, User } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { register as registerApi } from '@/api/auth'
 import { getErrorMessage } from '@/utils/error'
+import { forgetSignupFrom, readSignupFrom, rememberSignupFrom } from '@/utils/signupFrom'
 import { signalPrerenderReady } from '@/utils/prerender'
 import SiteBeian from '@/components/SiteBeian.vue'
 
+const route = useRoute()
 const router = useRouter()
 const submitting = ref(false)
 
@@ -50,6 +52,8 @@ const rules: FormRules = {
 }
 
 onMounted(() => {
+  const from = route.query.from
+  rememberSignupFrom(Array.isArray(from) ? from[0] : from)
   signalPrerenderReady()
 })
 
@@ -63,11 +67,14 @@ async function onSubmit() {
   }
   submitting.value = true
   try {
+    const signupFrom = readSignupFrom()
     await registerApi({
       username: form.username.trim(),
       password: form.password,
       email: form.email.trim(),
+      signupFrom,
     })
+    forgetSignupFrom()
     await router.push({ name: 'login', query: { registered: '1' } })
   } catch (error) {
     ElMessage.error(getErrorMessage(error, '注册失败，请稍后重试'))

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.mapper.FunnelEventMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product_funnel_event
+            (user_id, event_name, guest, duration_seconds, voice_session_id, created_at)
+        VALUES
+            (#{userId}, #{eventName}, #{guest}, #{durationSeconds}, #{voiceSessionId}, NOW())
+    </insert>
+</mapper>
