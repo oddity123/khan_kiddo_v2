@@ -14,14 +14,16 @@ CREATE TABLE IF NOT EXISTS `users`
     `email`      VARCHAR(100),
     `enabled`    TINYINT(1) DEFAULT 1,
     `role`       VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT 'USER 或 ADMIN',
+    `signup_from` VARCHAR(64)          DEFAULT NULL COMMENT '注册来源，来自 query from',
     `created_at` DATETIME   DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME   DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_username` (`username`)
 ) ENGINE = InnoDB COMMENT ='用户表';
 
--- 已有库升级（新建库已通过 CREATE TABLE 包含 role 列）：
+-- 已有库升级（新建库已通过 CREATE TABLE 包含 role、signup_from 列）：
 -- ALTER TABLE users ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'USER' COMMENT 'USER 或 ADMIN' AFTER enabled;
 -- UPDATE users SET role = 'ADMIN' WHERE username = 'admin';
+-- ALTER TABLE users ADD COLUMN signup_from VARCHAR(64) NULL COMMENT '注册来源，来自 query from' AFTER role;
 
 -- 对话分析主表
 CREATE TABLE IF NOT EXISTS `conversation_analysis`
@@ -122,3 +124,34 @@ CREATE TABLE IF NOT EXISTS `growth_card_evidence`
     INDEX `idx_user_analysis_sentence` (`user_id`, `source_analysis_id`, `sentence_id`),
     INDEX `idx_user_sentence` (`user_id`, `sentence_id`)
 ) ENGINE = InnoDB COMMENT ='成长卡关联证据句';
+
+-- 语音练习（薄）：一场一条。不存音频、不存豆包 session.id。
+-- 已有库升级：下面两张表都是 IF NOT EXISTS，直接重跑本段即可；users.signup_from 见上方 ALTER 注释。
+CREATE TABLE IF NOT EXISTS `voice_practice_session`
+(
+    `id`                     BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    `user_id`                BIGINT   NOT NULL COMMENT '登录用户',
+    `started_at`             DATETIME NOT NULL COMMENT '开始时间',
+    `ended_at`               DATETIME          DEFAULT NULL COMMENT '结束时间',
+    `wall_duration_seconds`  INT      NOT NULL DEFAULT 0 COMMENT '墙钟时长（秒）',
+    `reserved_seconds`       INT      NOT NULL DEFAULT 0 COMMENT '开始时冻结的额度（秒）',
+    `stopped_by_cap`         TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否因为额度停下',
+    `transcript`             MEDIUMTEXT        DEFAULT NULL COMMENT '已完成字幕，User:/Assistant:，不含 ASR 预览',
+    `transcript_saved`       TINYINT(1) NOT NULL DEFAULT 0 COMMENT '字幕是否已写入',
+    `created_at`             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX `idx_voice_user_started` (`user_id`, `started_at`),
+    INDEX `idx_voice_started` (`started_at`)
+) ENGINE = InnoDB COMMENT ='语音练习会话（薄记录）';
+
+-- 漏斗计数。不建增长后台，用 SQL 查次数即可。
+CREATE TABLE IF NOT EXISTS `product_funnel_event`
+(
+    `id`                BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    `user_id`           BIGINT                DEFAULT NULL COMMENT '登录用户；游客为空',
+    `event_name`        VARCHAR(40)  NOT NULL COMMENT '事件名',
+    `guest`             TINYINT(1)            DEFAULT NULL COMMENT 'analyze_start 是否游客',
+    `duration_seconds`  INT                   DEFAULT NULL COMMENT 'voice_end 墙钟秒',
+    `voice_session_id`  BIGINT                DEFAULT NULL COMMENT '交接或保存时的练习记录 id',
+    `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发生时间',
+    INDEX `idx_funnel_name_created` (`event_name`, `created_at`)
+) ENGINE = InnoDB COMMENT ='产品漏斗事件';

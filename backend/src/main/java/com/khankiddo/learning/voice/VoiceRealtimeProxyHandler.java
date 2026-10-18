@@ -48,6 +48,7 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
     private static final int ERROR_PAYLOAD_LOG_LIMIT = 2000;
 
     private final VoiceRealtimeProperties properties;
+    private final VoicePracticeLiveGuard liveGuard;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
             .build();
@@ -68,7 +69,18 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
             return;
         }
 
+        Long practiceSessionId = (Long) clientSession.getAttributes()
+                .get(VoiceRealtimeHandshakeInterceptor.ATTR_PRACTICE_SESSION_ID);
+        Integer grantedSeconds = (Integer) clientSession.getAttributes()
+                .get(VoiceRealtimeHandshakeInterceptor.ATTR_GRANTED_SECONDS);
+        if (practiceSessionId == null || grantedSeconds == null) {
+            clientSession.close(CloseStatus.BAD_DATA.withReason("missing practice session"));
+            return;
+        }
         clientSessions.put(clientSession.getId(), clientSession);
+        if (!liveGuard.arm(clientSession, practiceSessionId, grantedSeconds)) {
+            return;
+        }
         AtomicBoolean closing = new AtomicBoolean(false);
         synchronized (clientSession) {
             clientSession.getAttributes().put(ATTR_CLOSING, closing);
@@ -115,6 +127,7 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession clientSession, CloseStatus status) {
+        liveGuard.onClosed(clientSession.getId());
         clientSessions.remove(clientSession.getId());
         markClosing(clientSession);
         WebSocket upstream;

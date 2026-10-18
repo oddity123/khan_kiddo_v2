@@ -9,12 +9,13 @@
         <result column="email" property="email"/>
         <result column="enabled" property="enabled"/>
         <result column="role" property="role"/>
+        <result column="signup_from" property="signupFrom"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
     <sql id="UserColumns">
-        id, username, password, email, enabled, role, created_at, updated_at
+        id, username, password, email, enabled, role, signup_from, created_at, updated_at
     </sql>
 
     <select id="findByUsername" resultMap="UserResultMap">
@@ -111,8 +112,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, password, email, enabled, role, created_at, updated_at)
-        VALUES (#{username}, #{password}, #{email}, #{enabled}, #{role}, NOW(), NOW())
+        INSERT INTO users (username, password, email, enabled, role, signup_from, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{email}, #{enabled}, #{role}, #{signupFrom}, NOW(), NOW())
     </insert>
 
     <update id="updateRoleByUsername">

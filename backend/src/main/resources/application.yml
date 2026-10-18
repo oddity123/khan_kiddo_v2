@@ -137,6 +137,13 @@ app:
       app-id: ${DOUBAO_SPEECH_APP_ID:}
       access-key: ${DOUBAO_SPEECH_ACCESS_KEY:}
       resource-id: ${DOUBAO_SPEECH_RESOURCE_ID:volc.speech.dialog}
+    # 练习费用硬停（墙钟）。数字只在这里和 Properties；分析 token 不计入金额帽。
+    practice:
+      user-daily-minutes: ${VOICE_PRACTICE_USER_DAILY_MINUTES:8}
+      user-monthly-minutes: ${VOICE_PRACTICE_USER_MONTHLY_MINUTES:30}
+      site-daily-minutes: ${VOICE_PRACTICE_SITE_DAILY_MINUTES:40}
+      site-monthly-yuan: ${VOICE_PRACTICE_SITE_MONTHLY_YUAN:150}
+      yuan-per-wall-minute: ${VOICE_PRACTICE_YUAN_PER_WALL_MINUTE:0.25}
 
 mybatis-plus:
   mapper-locations: classpath:mapper/*.xml

@@ -13,6 +13,7 @@ import {
   downsampleTo16k,
   floatTo16BitPcm,
 } from '@/utils/voiceRealtimeAudio'
+import {VOICE_QUOTA_EXHAUSTED_MESSAGE} from '@/constants/voicePractice'
 import {formatRealtimeError} from '@/utils/voiceRealtimeError'
 import {mergeStreamingText, pickAsrStreamingPreview} from '@/utils/voiceRealtimeText'
 
@@ -27,6 +28,14 @@ export type VoiceSessionStatus =
 export interface VoiceCaptionLine {
   role: 'user' | 'assistant' | 'system'
   text: string
+}
+
+export interface VoiceRealtimeStartOptions {
+  instructions?: string
+  practiceSessionId: number
+  onLive?: () => void
+  onQuotaExhausted?: () => void
+  onClosed?: (unexpected: boolean) => void
 }
 
 /** 与后端 VoiceRealtimeProperties 默认值同源；仅在 config 缺字段时兜底 */
@@ -62,6 +71,8 @@ export function useVoiceRealtime() {
   /** 仅在收到后端 proxy.ready 后允许 session.create / 麦流上行 */
   let proxyReady = false
   let pendingInstructions: string | undefined
+  let practiceSessionId: number | null = null
+  let startHooks: VoiceRealtimeStartOptions | null = null
 
   function inputRate(): number {
     return config.value?.inputSampleRate || DEFAULT_INPUT_RATE
@@ -183,9 +194,16 @@ export function useVoiceRealtime() {
       statusDetail.value = formatRealtimeError(event)
       return
     }
+    if (type === 'proxy.quota_exhausted') {
+      status.value = 'ended'
+      statusDetail.value = VOICE_QUOTA_EXHAUSTED_MESSAGE
+      startHooks?.onQuotaExhausted?.()
+      return
+    }
     if (type === 'session.created') {
       status.value = 'live'
       statusDetail.value = '会话已建立 · 全双工中'
+      startHooks?.onLive?.()
       // MVP：不在 session.created 后发 speech_text_buffer.commit（可选问候且 schema 易错）
       return
     }
@@ -332,25 +350,33 @@ export function useVoiceRealtime() {
     // 麦流上行延后到 proxy.ready，避免 append 早于上游 attach
   }
 
-  async function start(instructions?: string) {
+  async function start(options: VoiceRealtimeStartOptions): Promise<'started' | 'mic-denied' | 'unavailable'> {
     closing = false
     proxyReady = false
-    pendingInstructions = instructions
+    pendingInstructions = options.instructions
+    practiceSessionId = options.practiceSessionId
+    startHooks = options
     captions.value = []
     userPartial.value = ''
     assistantPartial.value = ''
     pcmQueue = []
 
+    if (!practiceSessionId) {
+      status.value = 'error'
+      statusDetail.value = '请先登录后再开始实时口语陪练'
+      return 'unavailable'
+    }
+
     const ok = config.value?.configured ? true : await loadConfig()
     if (!ok || !config.value?.configured) {
-      return
+      return 'unavailable'
     }
 
     const token = localStorage.getItem(AUTH_TOKEN_KEY)
     if (!token) {
       status.value = 'error'
       statusDetail.value = '请先登录后再开始实时口语陪练'
-      return
+      return 'unavailable'
     }
 
     status.value = 'connecting'
@@ -361,10 +387,10 @@ export function useVoiceRealtime() {
     } catch {
       status.value = 'error'
       statusDetail.value = '无法获取麦克风权限，请在浏览器设置中允许后重试'
-      return
+      return 'mic-denied'
     }
 
-    const wsUrl = buildVoiceRealtimeWsUrl(config.value.wsPath, token)
+    const wsUrl = buildVoiceRealtimeWsUrl(config.value.wsPath, token, practiceSessionId)
     socket = new WebSocket(wsUrl)
     socket.onopen = () => {
       // 双保险：等后端 proxy.ready 再 session.create；服务端仍会缓冲早到帧
@@ -381,12 +407,17 @@ export function useVoiceRealtime() {
     }
     socket.onclose = () => {
       proxyReady = false
-      if (!closing && status.value === 'live') {
+      const unexpected = !closing && (status.value === 'live' || status.value === 'connecting')
+      if (unexpected) {
         status.value = 'ended'
-        statusDetail.value = '连接已关闭'
+        statusDetail.value = statusDetail.value === VOICE_QUOTA_EXHAUSTED_MESSAGE
+          ? VOICE_QUOTA_EXHAUSTED_MESSAGE
+          : '连接已关闭'
       }
       void cleanupMedia()
+      startHooks?.onClosed?.(unexpected)
     }
+    return 'started'
   }
 
   async function cleanupMedia() {
@@ -416,6 +447,10 @@ export function useVoiceRealtime() {
   }
 
   async function stop() {
+    if (closing) {
+      await cleanupMedia()
+      return
+    }
     closing = true
     proxyReady = false
     if (socket && socket.readyState === WebSocket.OPEN) {

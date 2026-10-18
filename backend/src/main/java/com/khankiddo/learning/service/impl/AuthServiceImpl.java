@@ -10,6 +10,7 @@ import com.khankiddo.learning.security.AuthenticatedUser;
 import com.khankiddo.learning.security.JwtService;
 import com.khankiddo.learning.security.SecurityUtils;
 import com.khankiddo.learning.service.AuthService;
+import com.khankiddo.learning.service.SignupFromSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
@@ -70,6 +71,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(email)
                 .enabled(true)
                 .role(UserRole.USER)
+                .signupFrom(SignupFromSupport.normalize(request.getSignupFrom()))
                 .build();
         userMapper.insert(newUser);
 

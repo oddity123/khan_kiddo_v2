@@ -17,6 +17,7 @@ export interface RegisterPayload {
   username: string
   password: string
   email: string
+  signupFrom?: string
 }
 
 export interface RegisterResponse {

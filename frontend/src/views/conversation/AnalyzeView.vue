@@ -4,7 +4,7 @@ import type {InputInstance} from 'element-plus'
 import {ElMessage} from 'element-plus'
 import {storeToRefs} from 'pinia'
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
-import {useRouter} from 'vue-router'
+import {useRoute, useRouter} from 'vue-router'
 
 import {
   analyzeConversationStream,
@@ -12,8 +12,12 @@ import {
   listConversationLlmModels,
   type GuestQuota,
 } from '@/api/conversationAnalysis'
+import {trackFunnelEvent} from '@/api/funnel'
+import {fetchVoicePracticeSession} from '@/api/voicePractice'
 import ImportMethodsPanel from '@/components/conversation/ImportMethodsPanel.vue'
+import {ANALYSIS_MIN_CONTENT_LENGTH} from '@/constants/analysisInput'
 import {SAMPLE_ORAL_CONVERSATION} from '@/constants/sampleConversation'
+import {readVoiceHandoff, writeVoiceHandoff} from '@/utils/voicePracticeTranscript'
 import {useAuthStore} from '@/stores/auth'
 import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
 import type {ConversationAnalysisProgress, LlmModelOption} from '@/types/conversation'
@@ -21,6 +25,7 @@ import {PROGRESS_STATUS} from '@/types/conversation'
 import {resultToEphemeralDetail} from '@/utils/ephemeralDetail'
 import {getErrorMessage} from '@/utils/error'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const {isAuthenticated} = storeToRefs(auth)
@@ -30,7 +35,7 @@ const MODEL_STORAGE_KEY = 'kk.conversation.analysis.modelId'
 /** Keep in sync with extension/src/shared/constants.ts */
 const EXTENSION_IMPORT_SESSION_KEY = 'kk.extension.import.conversation'
 
-const MIN_LENGTH = 10
+const MIN_LENGTH = ANALYSIS_MIN_CONTENT_LENGTH
 /** 软上限提示：超过后易触发上游读超时 */
 const SUGGESTED_MAX_LENGTH = 13000
 const content = ref('')
@@ -111,6 +116,7 @@ function fillSampleConversation() {
   if (analyzing.value) {
     return
   }
+  trackFunnelEvent({name: 'click_sample'})
   content.value = SAMPLE_ORAL_CONVERSATION
   extensionImportHint.value = ''
   ElMessage.success('已填入示例口语对话，可直接开始分析')
@@ -166,10 +172,43 @@ function consumeExtensionImport(): boolean {
   }
 }
 
+async function applySavedVoiceHandoff() {
+  const rawId = route.query.voiceSessionId
+  const idText = Array.isArray(rawId) ? rawId[0] : rawId
+  if (!idText) {
+    return
+  }
+  const id = Number(idText)
+  if (!Number.isFinite(id) || id <= 0) {
+    return
+  }
+  const cached = readVoiceHandoff(id)
+  if (cached?.transcript) {
+    content.value = cached.transcript
+  }
+  try {
+    const {data} = await fetchVoicePracticeSession(id)
+    if (data.transcriptSaved && data.transcript?.trim()) {
+      content.value = data.transcript
+      writeVoiceHandoff({voiceSessionId: id, transcript: data.transcript})
+      return
+    }
+    content.value = ''
+    ElMessage.warning('这场练习没有可分析的已保存字幕')
+  } catch (error) {
+    if (!cached?.transcript) {
+      content.value = ''
+      ElMessage.error(getErrorMessage(error, '读不到已保存的练习，字幕没有填入'))
+    }
+  }
+}
+
 onMounted(() => {
+  trackFunnelEvent({name: 'visit_analyze'})
   void loadModelOptions()
   void loadGuestQuota()
   consumeExtensionImport()
+  void applySavedVoiceHandoff()
   window.addEventListener('kk-extension-import', consumeExtensionImport)
 })
 
@@ -241,6 +280,7 @@ async function onAnalyze() {
   }
 
   localStorage.setItem(MODEL_STORAGE_KEY, selectedModelId.value)
+  trackFunnelEvent({name: 'analyze_start'})
   analyzing.value = true
   showProgress.value = true
   progressLog.value = []
@@ -254,6 +294,7 @@ async function onAnalyze() {
         onProgress,
         abortController.value.signal,
     )
+    trackFunnelEvent({name: 'analyze_success'})
     ElMessage.success('分析完成')
     if (isAuthenticated.value) {
       await router.replace(`/conversation/analyses/${analysisResult.analysisId}`)
@@ -266,6 +307,7 @@ async function onAnalyze() {
     if ((error as Error).name === 'AbortError') {
       return
     }
+    trackFunnelEvent({name: 'analyze_error'})
     const failed = error as Error & { analysisId?: string; status?: number }
     if (failed.status === 401) {
       ElMessage.warning(getErrorMessage(error, '登录已失效，请重新登录'))

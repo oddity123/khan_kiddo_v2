@@ -46,6 +46,9 @@ function onAnalysisCommand(command: string) {
   } else if (command === 'history') {
     router.push('/conversation/analyses')
   } else if (command === 'voice') {
+    if (!auth.isAuthenticated) {
+      return
+    }
     router.push('/practice/voice')
   }
 }
@@ -136,7 +139,7 @@ onBeforeUnmount(() => {
                   <el-icon><Clock /></el-icon>
                   查看历史记录
                 </el-dropdown-item>
-                <el-dropdown-item divided command="voice">
+                <el-dropdown-item v-if="isAuthenticated" divided command="voice">
                   <el-icon><Microphone /></el-icon>
                   口语陪练
                 </el-dropdown-item>

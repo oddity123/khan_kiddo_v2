@@ -3,7 +3,12 @@ import {ArrowLeft, Microphone, Mute, SwitchButton, VideoPause, VideoPlay} from '
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 
+import {trackFunnelEvent} from '@/api/funnel'
+import type {VoicePracticeSession} from '@/api/voicePractice'
+import VoicePracticeHistory from '@/components/practice/VoicePracticeHistory.vue'
+import {useVoicePracticeRecord} from '@/composables/useVoicePracticeRecord'
 import {useVoiceRealtime} from '@/composables/useVoiceRealtime'
+import {captionSavePresentation, completedCaptionLines, handoffBlockReason, parseVoiceTranscript, writeVoiceHandoff} from '@/utils/voicePracticeTranscript'
 
 const INSTRUCTIONS_KEY = 'kk_voice_instructions'
 
@@ -17,6 +22,28 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const router = useRouter()
+const {
+  sessions,
+  activeId,
+  saveState,
+  saveError,
+  review,
+  quotaBlocked,
+  quotaMessage,
+  beginError,
+  quotaHit,
+  activeSaved,
+  refresh,
+  begin,
+  markLive,
+  armClientCap,
+  abandonIfUnused,
+  saveLines,
+  noteQuota,
+  complete,
+  openReview,
+  closeReview,
+} = useVoicePracticeRecord()
 const {
   status,
   statusDetail,
@@ -38,11 +65,30 @@ const captionsListRef = ref<HTMLElement | null>(null)
 const statusLabel = computed(() => STATUS_LABEL[status.value] ?? status.value)
 const showConfigError = computed(() => Boolean(config.value && !config.value.configured))
 const showStatusDetail = computed(() => {
-  if (showConfigError.value) {
+  if (showConfigError.value || quotaMessage.value) {
     return false
   }
   return Boolean(statusDetail.value) && status.value !== 'idle'
 })
+const savePresentation = computed(() => captionSavePresentation(saveState.value))
+const shownCaptions = computed(() => {
+  if (review.value) {
+    return parseVoiceTranscript(review.value.transcript)
+  }
+  return captions.value
+})
+const handoffSession = computed(() => review.value ?? activeSaved.value)
+const handoffReason = computed(() => {
+  if (saveState.value === 'failed') {
+    return '先保存这场字幕，才能送去分析'
+  }
+  if (!handoffSession.value) {
+    return ''
+  }
+  return handoffBlockReason(handoffSession.value.transcript, handoffSession.value.transcriptSaved)
+})
+const showHandoff = computed(() =>
+  saveState.value !== 'idle' || review.value != null)
 const configErrorText = computed(() => {
   if (!showConfigError.value) {
     return ''
@@ -58,10 +104,19 @@ onMounted(async () => {
     sessionStorage.removeItem(INSTRUCTIONS_KEY)
   }
   await loadConfig()
+  await refresh()
 })
 
+function readLines() {
+  return captions.value
+}
+
 onBeforeUnmount(() => {
-  void stop()
+  if (activeId.value == null) {
+    void stop()
+    return
+  }
+  void complete(readLines, quotaHit.value, () => stop())
 })
 
 async function scrollCaptionsToBottom() {
@@ -73,16 +128,61 @@ async function scrollCaptionsToBottom() {
   el.scrollTo({top: el.scrollHeight, behavior: 'smooth'})
 }
 
-watch([captions, userPartial, assistantPartial], () => {
+watch([shownCaptions, userPartial, assistantPartial], () => {
   void scrollCaptionsToBottom()
 }, {deep: true})
 
 async function onStart() {
-  await start(customInstructions.value || undefined)
+  const opened = await begin()
+  if (!opened || activeId.value == null) {
+    return
+  }
+  const sessionId = activeId.value
+  const outcome = await start({
+    instructions: customInstructions.value || undefined,
+    practiceSessionId: sessionId,
+    onLive: () => markLive(),
+    onQuotaExhausted: () => {
+      noteQuota()
+      void complete(readLines, true, () => stop())
+    },
+    onClosed: (unexpected) => {
+      if (unexpected) {
+        void complete(readLines, quotaHit.value, () => stop())
+      }
+    },
+  })
+  if (outcome !== 'started') {
+    await abandonIfUnused()
+    return
+  }
+  armClientCap(() => {
+    noteQuota()
+    void complete(readLines, true, () => stop())
+  })
 }
 
 async function onStop() {
-  await stop()
+  await complete(readLines, false, () => stop())
+}
+
+async function onRetrySave() {
+  await saveLines(completedCaptionLines(captions.value), quotaHit.value)
+}
+
+function onHandoff(session: VoicePracticeSession | null) {
+  if (!session?.transcript) {
+    return
+  }
+  if (handoffBlockReason(session.transcript, session.transcriptSaved)) {
+    return
+  }
+  writeVoiceHandoff({voiceSessionId: session.id, transcript: session.transcript})
+  trackFunnelEvent({name: 'voice_to_analyze', voiceSessionId: session.id})
+  void router.push({
+    name: 'conversation-analyze',
+    query: {voiceSessionId: String(session.id)},
+  })
 }
 
 function onBackClick() {
@@ -110,14 +210,42 @@ function onBackClick() {
       <p v-if="showConfigError" class="voice-status__error">
         {{ configErrorText }}
       </p>
+      <p v-if="quotaMessage" class="voice-status__error">{{ quotaMessage }}</p>
+      <p v-if="beginError" class="voice-status__error">{{ beginError }}</p>
+      <p v-if="saveState === 'failed'" class="voice-status__error">
+        {{ savePresentation.text }}<template v-if="saveError">（{{ saveError }}）</template>
+      </p>
+      <p v-else-if="savePresentation.success" class="voice-status__saved">{{ savePresentation.text }}</p>
+      <button
+        v-if="saveState === 'failed'"
+        type="button"
+        class="voice-retry"
+        @click="onRetrySave"
+      >
+        再试一次保存
+      </button>
     </section>
 
+    <VoicePracticeHistory
+      class="kk-glass kk-glass--panel voice-history-panel"
+      :sessions="sessions"
+      :disabled="saveState === 'failed'"
+      @open="openReview"
+      @handoff="onHandoff"
+    />
+
     <section class="voice-captions kk-glass kk-glass--panel" aria-label="实时字幕">
-      <h2 class="voice-section-title">字幕</h2>
+      <div class="voice-captions__head">
+        <h2 class="voice-section-title">字幕</h2>
+        <button v-if="review" type="button" class="voice-review-back" @click="closeReview">
+          返回当前字幕
+        </button>
+      </div>
+      <p v-if="review" class="voice-review-note">正在查看已保存的练习</p>
       <div class="voice-captions__body">
         <ul ref="captionsListRef" class="voice-captions__lines">
           <li
-            v-for="(line, idx) in captions"
+            v-for="(line, idx) in shownCaptions"
             :key="idx"
             class="caption-row"
             :class="line.role === 'user' ? 'caption-row--user' : 'caption-row--assistant'"
@@ -130,19 +258,19 @@ function onBackClick() {
               {{ line.text }}
             </div>
           </li>
-          <li v-if="userPartial" class="caption-row caption-row--user is-partial">
+          <li v-if="!review && userPartial" class="caption-row caption-row--user is-partial">
             <span class="caption-meta">你</span>
             <div class="caption-bubble caption-bubble--user">{{ userPartial }}…</div>
           </li>
-          <li v-if="assistantPartial" class="caption-row caption-row--assistant is-partial">
+          <li v-if="!review && assistantPartial" class="caption-row caption-row--assistant is-partial">
             <span class="caption-meta">陪练</span>
             <div class="caption-bubble caption-bubble--assistant">{{ assistantPartial }}…</div>
           </li>
           <li
-            v-if="!captions.length && !userPartial && !assistantPartial"
+            v-if="!shownCaptions.length && (review || (!userPartial && !assistantPartial))"
             class="voice-captions__empty"
           >
-            开始后，这里会显示识别与回复文本。
+            {{ review ? '这场没有完成的字幕。' : '开始后，这里会显示识别与回复文本。' }}
           </li>
         </ul>
       </div>
@@ -160,12 +288,23 @@ function onBackClick() {
           :disabled="status === 'live' || status === 'connecting'"
         />
       </section>
+      <section v-if="showHandoff" class="voice-handoff">
+        <el-button
+          type="primary"
+          plain
+          :disabled="Boolean(handoffReason)"
+          @click="onHandoff(handoffSession)"
+        >
+          送去分析
+        </el-button>
+        <p v-if="handoffReason" class="voice-handoff__reason">{{ handoffReason }}</p>
+      </section>
       <section class="voice-controls">
         <el-button
           type="primary"
           size="large"
           :icon="VideoPlay"
-          :disabled="status === 'live' || status === 'connecting' || (config !== null && !config.configured)"
+          :disabled="status === 'live' || status === 'connecting' || quotaBlocked || saveState === 'failed' || (config !== null && !config.configured)"
           @click="onStart"
         >
           开始对话
@@ -215,6 +354,7 @@ function onBackClick() {
  */
 .voice-page .detail-topbar,
 .voice-page .voice-status,
+.voice-page .voice-history-panel,
 .voice-page .voice-captions,
 .voice-page .voice-prompt {
   box-shadow: inset 0 1px 0 var(--kk-glass-highlight);
@@ -266,6 +406,7 @@ function onBackClick() {
 }
 
 .voice-status,
+.voice-history-panel,
 .voice-captions,
 .voice-prompt {
   padding: 0.85rem 1.1rem;
@@ -310,11 +451,61 @@ function onBackClick() {
   font-size: 0.92rem;
 }
 
-.voice-status__error {
+.voice-status__error,
+.voice-status__saved,
+.voice-handoff__reason,
+.voice-review-note {
   margin: 0.65rem 0 0;
   font-size: 0.9rem;
-  color: var(--el-color-danger);
   line-height: 1.5;
+}
+
+.voice-status__error,
+.voice-handoff__reason {
+  color: var(--el-color-danger);
+}
+
+.voice-status__saved,
+.voice-review-note {
+  color: var(--kk-color-text-muted);
+}
+
+.voice-retry,
+.voice-review-back {
+  margin-top: 0.45rem;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--kk-color-primary);
+  font-family: var(--kk-font-body);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.voice-captions__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.voice-captions__head .voice-section-title {
+  margin-bottom: 0;
+}
+
+.voice-history-panel {
+  flex-shrink: 0;
+}
+
+.voice-handoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.voice-handoff__reason {
+  margin: 0;
 }
 
 .voice-captions {
