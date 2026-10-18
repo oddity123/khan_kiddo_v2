@@ -1,30 +1,20 @@
 <script setup lang="ts">
 import {ChatDotRound, Close} from '@element-plus/icons-vue'
 import {storeToRefs} from 'pinia'
-import {onMounted, ref, watch} from 'vue'
+import {computed, onMounted, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 
 import GrammarRagChatPanel from '@/components/review/GrammarRagChatPanel.vue'
+import {useReviewChat} from '@/composables/useReviewChat'
 import {useAuthStore} from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const {isAuthenticated} = storeToRefs(auth)
+const immersive = computed(() => Boolean(route.meta.immersive))
 
-const open = ref(false)
-
-function openChat() {
-  open.value = true
-}
-
-function closeChat() {
-  open.value = false
-}
-
-function toggleChat() {
-  open.value = !open.value
-}
+const {open, openChat, closeChat, toggleChat} = useReviewChat()
 
 async function consumeChatQuery() {
   if (route.query.chat !== '1') {
@@ -57,7 +47,7 @@ defineExpose({openChat, closeChat, toggleChat})
 </script>
 
 <template>
-  <div v-if="isAuthenticated" class="rag-float">
+  <div v-if="isAuthenticated" class="rag-float" :class="{'rag-float--immersive': immersive}">
     <div
         class="rag-panel kk-glass kk-glass--panel"
         :class="{ 'rag-panel--open': open }"
@@ -81,6 +71,7 @@ defineExpose({openChat, closeChat, toggleChat})
     </div>
 
     <button
+        v-if="!immersive"
         type="button"
         class="rag-bubble"
         :class="{ 'rag-bubble--open': open }"
@@ -105,6 +96,14 @@ defineExpose({openChat, closeChat, toggleChat})
   align-items: flex-end;
   gap: 0.75rem;
   pointer-events: none;
+}
+
+.rag-float--immersive {
+  bottom: 5.5rem;
+}
+
+.rag-float--immersive .rag-panel {
+  height: min(34rem, calc(100dvh - 11rem));
 }
 
 .rag-panel,

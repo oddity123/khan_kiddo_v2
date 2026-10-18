@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import {ArrowLeft, Microphone, Mute, SwitchButton, VideoPause, VideoPlay} from '@element-plus/icons-vue'
+import {ArrowLeft} from '@element-plus/icons-vue'
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
 
 import {trackFunnelEvent} from '@/api/funnel'
 import type {VoicePracticeSession} from '@/api/voicePractice'
+import VoicePracticeDock from '@/components/practice/VoicePracticeDock.vue'
 import VoicePracticeHistory from '@/components/practice/VoicePracticeHistory.vue'
 import {useVoicePracticeRecord} from '@/composables/useVoicePracticeRecord'
 import {useVoiceRealtime} from '@/composables/useVoiceRealtime'
@@ -13,7 +14,6 @@ import {captionSavePresentation, completedCaptionLines, handoffBlockReason, pars
 const INSTRUCTIONS_KEY = 'kk_voice_instructions'
 
 const STATUS_LABEL: Record<string, string> = {
-  idle: '待开始',
   checking: '检查中',
   connecting: '连接中',
   live: '通话中',
@@ -62,7 +62,6 @@ const {
 const customInstructions = ref('')
 const captionsListRef = ref<HTMLElement | null>(null)
 
-const statusLabel = computed(() => STATUS_LABEL[status.value] ?? status.value)
 const showConfigError = computed(() => Boolean(config.value && !config.value.configured))
 const showStatusDetail = computed(() => {
   if (showConfigError.value || quotaMessage.value) {
@@ -95,6 +94,31 @@ const configErrorText = computed(() => {
   }
   // 不向终端用户暴露密钥名 / .env 等部署说明
   return '口语陪练暂未开通，请稍后再试或联系管理员。'
+})
+const dockStatus = computed(() => {
+  if (quotaMessage.value) {
+    return {text: quotaMessage.value, tone: 'error' as const}
+  }
+  if (configErrorText.value) {
+    return {text: configErrorText.value, tone: 'error' as const}
+  }
+  if (beginError.value) {
+    return {text: beginError.value, tone: 'error' as const}
+  }
+  if (saveState.value === 'failed') {
+    const extra = saveError.value ? `（${saveError.value}）` : ''
+    return {text: `${savePresentation.value.text}${extra}`, tone: 'error' as const}
+  }
+  if (saveState.value === 'saving' || savePresentation.value.success) {
+    return {text: savePresentation.value.text, tone: 'muted' as const}
+  }
+  if (status.value === 'idle') {
+    return {text: '', tone: 'muted' as const}
+  }
+  const text = showStatusDetail.value && statusDetail.value
+    ? statusDetail.value
+    : (STATUS_LABEL[status.value] ?? status.value)
+  return {text, tone: status.value === 'error' ? 'error' as const : 'muted' as const}
 })
 
 onMounted(async () => {
@@ -201,31 +225,6 @@ function onBackClick() {
       <span class="topbar-spacer" aria-hidden="true" />
     </header>
 
-    <section class="voice-status kk-glass kk-glass--panel" aria-live="polite">
-      <div class="voice-status__row">
-        <span class="voice-status__dot" :data-state="status" />
-        <strong>{{ statusLabel }}</strong>
-        <span v-if="showStatusDetail" class="voice-status__detail">{{ statusDetail }}</span>
-      </div>
-      <p v-if="showConfigError" class="voice-status__error">
-        {{ configErrorText }}
-      </p>
-      <p v-if="quotaMessage" class="voice-status__error">{{ quotaMessage }}</p>
-      <p v-if="beginError" class="voice-status__error">{{ beginError }}</p>
-      <p v-if="saveState === 'failed'" class="voice-status__error">
-        {{ savePresentation.text }}<template v-if="saveError">（{{ saveError }}）</template>
-      </p>
-      <p v-else-if="savePresentation.success" class="voice-status__saved">{{ savePresentation.text }}</p>
-      <button
-        v-if="saveState === 'failed'"
-        type="button"
-        class="voice-retry"
-        @click="onRetrySave"
-      >
-        再试一次保存
-      </button>
-    </section>
-
     <VoicePracticeHistory
       class="kk-glass kk-glass--panel voice-history-panel"
       :sessions="sessions"
@@ -276,65 +275,27 @@ function onBackClick() {
       </div>
     </section>
 
-    <footer class="voice-dock">
-      <section class="voice-prompt kk-glass kk-glass--panel">
-        <label class="voice-section-title" for="voice-instructions">本场提示词（可选）</label>
-        <el-input
-          id="voice-instructions"
-          v-model="customInstructions"
-          type="textarea"
-          :autosize="{ minRows: 2, maxRows: 4 }"
-          placeholder="可粘贴复练提示词；留空则使用默认口语教练指令"
-          :disabled="status === 'live' || status === 'connecting'"
-        />
-      </section>
-      <section v-if="showHandoff" class="voice-handoff">
-        <el-button
-          type="primary"
-          plain
-          :disabled="Boolean(handoffReason)"
-          @click="onHandoff(handoffSession)"
-        >
-          送去分析
-        </el-button>
-        <p v-if="handoffReason" class="voice-handoff__reason">{{ handoffReason }}</p>
-      </section>
-      <section class="voice-controls">
-        <el-button
-          type="primary"
-          size="large"
-          :icon="VideoPlay"
-          :disabled="status === 'live' || status === 'connecting' || quotaBlocked || saveState === 'failed' || (config !== null && !config.configured)"
-          @click="onStart"
-        >
-          开始对话
-        </el-button>
-        <el-button
-          size="large"
-          :icon="VideoPause"
-          :disabled="status !== 'live' && status !== 'connecting'"
-          @click="onStop"
-        >
-          结束
-        </el-button>
-        <el-button
-          size="large"
-          :icon="SwitchButton"
-          :disabled="status !== 'live'"
-          @click="interrupt"
-        >
-          打断播报
-        </el-button>
-        <el-button
-          size="large"
-          :icon="muted ? Mute : Microphone"
-          :disabled="status !== 'live'"
-          @click="toggleMute"
-        >
-          {{ muted ? '取消静音' : '静音' }}
-        </el-button>
-      </section>
-    </footer>
+    <VoicePracticeDock
+      v-model:instructions="customInstructions"
+      :status-text="dockStatus.text"
+      :status-tone="dockStatus.tone"
+      :start-disabled="status === 'live' || status === 'connecting' || quotaBlocked || saveState === 'failed' || (config !== null && !config.configured)"
+      :stop-disabled="status !== 'live' && status !== 'connecting'"
+      :interrupt-disabled="status !== 'live'"
+      :mute-disabled="status !== 'live'"
+      :muted="muted"
+      :prompt-disabled="status === 'live' || status === 'connecting'"
+      :show-handoff="showHandoff"
+      :handoff-disabled="Boolean(handoffReason)"
+      :handoff-reason="handoffReason"
+      :show-retry="saveState === 'failed'"
+      @start="onStart"
+      @stop="onStop"
+      @interrupt="interrupt"
+      @toggle-mute="toggleMute"
+      @handoff="onHandoff(handoffSession)"
+      @retry="onRetrySave"
+    />
   </div>
 </template>
 
@@ -353,10 +314,8 @@ function onBackClick() {
  * 全页玻璃块只保留顶高光，边线靠 border，与分析详情侧栏「干净边」一致。
  */
 .voice-page .detail-topbar,
-.voice-page .voice-status,
 .voice-page .voice-history-panel,
-.voice-page .voice-captions,
-.voice-page .voice-prompt {
+.voice-page .voice-captions {
   box-shadow: inset 0 1px 0 var(--kk-glass-highlight);
 }
 
@@ -405,72 +364,18 @@ function onBackClick() {
   width: 5.5rem;
 }
 
-.voice-status,
 .voice-history-panel,
-.voice-captions,
-.voice-prompt {
+.voice-captions {
   padding: 0.85rem 1.1rem;
 }
 
-.voice-status {
-  flex-shrink: 0;
-}
-
-.voice-status__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  font-family: var(--kk-font-body);
-}
-
-.voice-status__dot {
-  width: 0.65rem;
-  height: 0.65rem;
-  border-radius: 50%;
-  background: var(--kk-color-text-muted);
-}
-
-.voice-status__dot[data-state='live'] {
-  background: var(--kk-color-accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--kk-color-accent) 25%, transparent);
-}
-
-.voice-status__dot[data-state='error'] {
-  background: var(--el-color-danger);
-}
-
-.voice-status__dot[data-state='connecting'],
-.voice-status__dot[data-state='checking'] {
-  background: var(--kk-color-primary);
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.voice-status__detail {
-  color: var(--kk-color-text-muted);
-  font-size: 0.92rem;
-}
-
-.voice-status__error,
-.voice-status__saved,
-.voice-handoff__reason,
 .voice-review-note {
   margin: 0.65rem 0 0;
   font-size: 0.9rem;
   line-height: 1.5;
-}
-
-.voice-status__error,
-.voice-handoff__reason {
-  color: var(--el-color-danger);
-}
-
-.voice-status__saved,
-.voice-review-note {
   color: var(--kk-color-text-muted);
 }
 
-.voice-retry,
 .voice-review-back {
   margin-top: 0.45rem;
   border: none;
@@ -495,17 +400,6 @@ function onBackClick() {
 
 .voice-history-panel {
   flex-shrink: 0;
-}
-
-.voice-handoff {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-}
-
-.voice-handoff__reason {
-  margin: 0;
 }
 
 .voice-captions {
@@ -622,41 +516,13 @@ function onBackClick() {
   align-self: stretch;
 }
 
-.voice-dock {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding-bottom: 0.25rem;
-}
-
-.voice-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
 .is-partial {
   opacity: 0.78;
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
-  }
 }
 
 @media (max-width: 640px) {
   .topbar-spacer {
     width: 4.25rem;
-  }
-
-  .voice-controls .el-button {
-    flex: 1 1 calc(50% - 0.65rem);
   }
 }
 </style>
