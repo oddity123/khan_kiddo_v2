@@ -396,18 +396,21 @@ onUnmounted(() => {
             AI 纠正助手
           </span>
           <h1 class="hero-title">
-            从「会说」到「精通」的
-            <span class="hero-title-accent">语境进化之路</span>
+            雅思口语，打开网页就练，
+            <span class="hero-title-accent">练完告诉你扣在哪。</span>
           </h1>
           <p class="hero-desc">
-            让 AI 对话练习真正变得有效。
+            不用先去 ChatGPT。对着题目说几分钟，逐句看语法和表达，并留下下次要改的一句。
           </p>
           <div class="hero-actions">
-            <button type="button" class="btn-primary" @click="router.push('/conversation/analyze')">
+            <button type="button" class="btn-primary" @click="goToAnalyze">
               <el-icon>
                 <Promotion/>
               </el-icon>
               开始分析
+            </button>
+            <button type="button" class="hero-secondary-link" @click="goToAnalyze">
+              已经有 ChatGPT 语音字幕的，仍可粘贴或用扩展导入。
             </button>
           </div>
         </div>
@@ -739,9 +742,10 @@ onUnmounted(() => {
 
 .hero-actions {
   display: flex;
+  flex-direction: column;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1.25rem;
+  align-items: flex-start;
+  gap: 0.75rem;
   margin-top: 0.25rem;
 }
 
@@ -765,6 +769,29 @@ onUnmounted(() => {
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: var(--kk-shadow-btn-hover);
+}
+
+.hero-secondary-link {
+  display: inline;
+  max-width: 22rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--kk-color-text-muted);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--kk-color-primary) 28%, transparent);
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+  transition: color var(--kk-duration-normal) ease;
+}
+
+.hero-secondary-link:hover {
+  color: var(--kk-color-primary);
 }
 
 /* Demo window — Hero 3D 透视展示 */

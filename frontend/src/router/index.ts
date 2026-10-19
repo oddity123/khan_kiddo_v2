@@ -13,9 +13,9 @@ const router = createRouter({
       name: 'home',
       component: () => import('@/views/HomeView.vue'),
       meta: {
-        title: '首页',
+        title: '雅思口语练习与扣分诊断',
         description:
-          'Khan Kiddo 是 AI 口语英语学习助手：分析对话语法与表达，生成诊断报告，帮你更自然地说英语。',
+          '打开网页就能练雅思口语：对着题目说几分钟，逐句看语法和表达，并留下下次要改的一句。',
       },
     },
       {
