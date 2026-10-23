@@ -64,11 +64,21 @@
                 },
                 "point": {
                   "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ERROR",
+                    "RISK",
+                    "UNNATURAL",
+                    "OPTIONAL"
+                  ]
                 }
               },
               "required": [
                 "pointId",
-                "point"
+                "point",
+                "status"
               ],
               "additionalProperties": false
             }
@@ -83,6 +93,8 @@
       }
     }
   },
-  "required": ["items"],
+  "required": [
+    "items"
+  ],
   "additionalProperties": false
 }

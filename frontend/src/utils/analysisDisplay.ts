@@ -27,6 +27,10 @@ export const PERFORMANCE_DIMENSION_META: ReadonlyArray<{
     {key: 'lexical', label: '词汇表达'},
 ]
 
+export function expressionStatusLabel(status?: AnalysisError['status']) {
+  return {ERROR: '错误', RISK: '注意', UNNATURAL: '更自然', OPTIONAL: '可选表达'}[status ?? 'ERROR']
+}
+
 export function displayTypeLabel(type?: string) {
   if (!type) {
     return '待优化'
@@ -57,7 +61,7 @@ export function getErrorLevelOrder(level?: string) {
 }
 
 function calculateSentencePriority(item: AnalysisItem) {
-  const errors = item.errors ?? []
+  const errors = (item.errors ?? []).filter(error => error.status !== 'OPTIONAL')
   let fatal = 0
   let basic = 0
   let natural = 0
@@ -83,7 +87,7 @@ function calculateSentencePriority(item: AnalysisItem) {
 }
 
 export function sortItemsByPriority(items: AnalysisItem[]) {
-  return [...items].sort((a, b) => {
+  return items.filter(item => !item.errors?.length || item.errors.some(error => error.status !== 'OPTIONAL')).sort((a, b) => {
     const pa = calculateSentencePriority(a)
     const pb = calculateSentencePriority(b)
     if (pb.score !== pa.score) {
@@ -103,7 +107,7 @@ export function sortItemsByPriority(items: AnalysisItem[]) {
 }
 
 export function sortErrors(errors: AnalysisError[]) {
-  return [...errors].sort(
+  return errors.filter(error => error.status !== 'OPTIONAL').sort(
       (a, b) => getErrorLevelOrder(a.errorLevel) - getErrorLevelOrder(b.errorLevel),
   )
 }

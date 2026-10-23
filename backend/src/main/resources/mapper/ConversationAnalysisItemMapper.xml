@@ -8,6 +8,7 @@
         <result column="sentence_id" property="sentenceId"/>
         <result column="original_sentence" property="originalSentence"/>
         <result column="point_id" property="pointId"/>
+        <result column="expression_status" property="status"/>
         <result column="error_point" property="errorPoint"/>
         <result column="suggestion" property="suggestion"/>
         <result column="created_at" property="createdAt"/>
@@ -97,7 +98,8 @@
                cai.sentence_id,
                cai.original_sentence,
                cai.point_id,
-               cai.error_point,
+               cai.expression_status,
+        cai.error_point,
                cai.suggestion,
                cai.created_at
         FROM conversation_analysis_item cai
@@ -120,6 +122,7 @@
                sentence_id,
                original_sentence,
                point_id,
+               expression_status,
                error_point,
                suggestion,
                created_at
@@ -135,6 +138,7 @@
                sentence_id,
                original_sentence,
                point_id,
+               expression_status,
                error_point,
                suggestion,
                created_at
@@ -164,6 +168,7 @@
         cai.sentence_id,
         cai.original_sentence,
         cai.point_id,
+        cai.expression_status,
         cai.error_point,
         cai.suggestion,
         cai.created_at
@@ -213,12 +218,12 @@
     </select>
 
     <insert id="batchInsert">
-        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, point_id, error_point,
+        INSERT INTO conversation_analysis_item (analysis_id, sentence_id, original_sentence, point_id, expression_status, error_point,
         suggestion, created_at)
         VALUES
         <foreach collection="items" item="item" separator=",">
             (#{item.analysisId}, #{item.sentenceId}, #{item.originalSentence}, #{item.pointId},
-            #{item.errorPoint}, #{item.suggestion}, NOW())
+            COALESCE(#{item.status}, 'ERROR'), #{item.errorPoint}, #{item.suggestion}, NOW())
         </foreach>
     </insert>
 

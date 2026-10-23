@@ -152,7 +152,10 @@ export interface SentenceEdit {
   cStr?: string
 }
 
+export type ExpressionStatus = 'ERROR' | 'RISK' | 'UNNATURAL' | 'OPTIONAL'
+
 export interface AnalysisError {
+  status?: ExpressionStatus
   type: string
   point?: string
   errorLevel?: string
@@ -184,6 +187,8 @@ export interface SaveAnalysisItem {
 }
 
 export interface SaveAnalysisError {
+  status?: ExpressionStatus
+  pointId?: string
   type: string
   point?: string
 }

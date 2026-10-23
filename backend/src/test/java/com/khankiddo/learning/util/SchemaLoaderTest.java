@@ -41,7 +41,13 @@ class SchemaLoaderTest {
         assertThat(errorProperties.has("type")).isFalse();
 
         List<String> required = toStringList(errorItemNode(new SchemaLoader()).path("required"));
-        assertThat(required).containsExactlyInAnyOrder("pointId", "point");
+        assertThat(required).containsExactlyInAnyOrder("pointId", "point", "status");
+    }
+
+    @Test
+    void expressionStatusIsRequiredAndHasFourExplicitValues() throws Exception {
+        assertThat(toStringList(errorItemNode(new SchemaLoader()).path("properties").path("status").path("enum")))
+                .containsExactlyInAnyOrder("ERROR", "RISK", "UNNATURAL", "OPTIONAL");
     }
 
     @Test

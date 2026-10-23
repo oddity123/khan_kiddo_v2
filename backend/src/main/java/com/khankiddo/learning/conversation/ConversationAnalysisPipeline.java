@@ -23,6 +23,7 @@ import com.khankiddo.learning.llm.ResolvedLlmModel;
 import com.khankiddo.learning.log.ConversationAnalysisCallLog;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.enums.ErrorLevel;
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import com.khankiddo.learning.prompt.PromptLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -444,6 +445,7 @@ public class ConversationAnalysisPipeline {
                 .pointId(definition.pointId())
                 .type(definition.titleZh())
                 .point(error.getPoint())
+                .status(ExpressionStatus.effective(error.getStatus()))
                 .errorLevel(level.name())
                 .familyId(definition.familyId())
                 .familyTitleZh(KnowledgePointStatsSupport.familyTitle(pointDictionary, definition.familyId()))

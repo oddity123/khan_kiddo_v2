@@ -4,6 +4,7 @@ import com.khankiddo.learning.ai.conversation.model.GrammarAnalysisResult;
 import com.khankiddo.learning.ai.conversation.model.GrammarErrorDto;
 import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -42,6 +43,7 @@ public final class HabitScoreSupport {
             return List.of();
         }
         return rows.stream()
+                .filter(row -> ExpressionStatus.isIssue(row.getStatus()))
                 .map(row -> new HabitScoreInput.ErrorHit(
                         row.getPointId(),
                         row.getSentenceId() != null ? String.valueOf(row.getSentenceId()) : null,
@@ -66,6 +68,9 @@ public final class HabitScoreSupport {
         for (GrammarSentenceItemDto item : grammar.getItems()) {
             if (!CollectionUtils.isEmpty(item.getErrors())) {
                 for (GrammarErrorDto error : item.getErrors()) {
+                    if (!ExpressionStatus.isIssue(error.getStatus())) {
+                        continue;
+                    }
                     PointDefinition point = pointDictionary.resolveOrFallback(error.getPointId());
                     hits.add(new HabitScoreInput.ErrorHit(
                             point.pointId(),

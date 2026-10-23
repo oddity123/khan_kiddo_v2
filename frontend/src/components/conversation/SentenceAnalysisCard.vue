@@ -17,7 +17,7 @@ import {
 } from '@element-plus/icons-vue'
 
 import type {AnalysisError, AnalysisItem} from '@/types/conversation'
-import {displayTypeLabel, errorPointText, sortErrors} from '@/utils/analysisDisplay'
+import {displayTypeLabel, errorPointText, expressionStatusLabel, sortErrors} from '@/utils/analysisDisplay'
 import EditAnnotatedText from '@/components/conversation/EditAnnotatedText.vue'
 
 const props = defineProps<{
@@ -53,7 +53,10 @@ const hiddenChipCount = computed(() => {
   return Math.max(0, unique.size - visibleChips.value.length)
 })
 
-function errorBadgeClass(level?: string) {
+function errorBadgeClass(error: AnalysisError) {
+  if (error.status === 'RISK') return 'chip--warn'
+  if (error.status === 'UNNATURAL') return 'chip--soft'
+  const level = error.errorLevel
   if (level === 'FATAL' || level === 'BASIC') {
     return 'chip--fatal'
   }
@@ -144,7 +147,7 @@ function chipLabel(err: AnalysisError): string {
           v-for="(err, i) in visibleChips"
           :key="i"
           class="chip"
-          :class="errorBadgeClass(err.errorLevel)"
+          :class="errorBadgeClass(err)"
       >
         <el-icon class="chip-icon">
           <component :is="chipIcon(chipLabel(err))"/>
@@ -168,13 +171,13 @@ function chipLabel(err: AnalysisError): string {
             :key="i"
             class="error-point-card"
         >
-          <span class="error-point-tag" :class="errorBadgeClass(err.errorLevel)">
+          <span class="error-point-tag" :class="errorBadgeClass(err)">
             <el-icon class="error-point-tag-icon">
               <component :is="chipIcon(chipLabel(err))"/>
             </el-icon>
             {{ chipLabel(err) }}
           </span>
-          <p class="error-point-text">{{ errorPointText(err) }}</p>
+          <p class="error-point-text"><strong>{{ expressionStatusLabel(err.status) }}：</strong>{{ errorPointText(err) }}</p>
         </div>
       </div>
     </details>

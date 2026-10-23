@@ -1,5 +1,6 @@
 package com.khankiddo.learning.dto.conversation;
 
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -57,5 +58,7 @@ public class ConversationAnalysisSaveRequest {
         private String point;
 
         private String pointId;
+
+        private ExpressionStatus status;
     }
 }

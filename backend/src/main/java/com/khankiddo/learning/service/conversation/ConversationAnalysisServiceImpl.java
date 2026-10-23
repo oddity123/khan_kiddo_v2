@@ -20,6 +20,7 @@ import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import com.khankiddo.learning.model.ConversationAnalysisWithUsername;
 import com.khankiddo.learning.dto.growth.GrowthCardDto;
 import com.khankiddo.learning.errant.ErrantEditAnnotationsCodec;
@@ -253,6 +254,9 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                     sentenceIdMap,
                     sentenceCounter);
             for (ConversationAnalysisSaveRequest.SaveError error : item.getErrors()) {
+                if (!ExpressionStatus.isIssue(error.getStatus())) {
+                    continue;
+                }
                 String point = StringUtils.hasText(error.getPoint()) ? error.getPoint() : "（未返回具体错误措辞）";
                 String resolvedPointId;
                 if (StringUtils.hasText(error.getPointId())) {
@@ -266,6 +270,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                         .sentenceId(sentenceId)
                         .originalSentence(item.getOriginalSentence())
                         .pointId(resolvedPointId)
+                        .status(ExpressionStatus.effective(error.getStatus()))
                         .errorPoint(point)
                         .suggestion(StringUtils.hasText(item.getSuggestion()) ? item.getSuggestion() : "")
                         .build()));
@@ -303,6 +308,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                                     .type(err.getType())
                                     .point(err.getPoint())
                                     .pointId(err.getPointId())
+                                    .status(ExpressionStatus.effective(err.getStatus()))
                                     .build())
                             .toList())
                     .build());
@@ -320,10 +326,12 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                             .errors(CollectionUtils.isEmpty(item.getErrors())
                                     ? List.of()
                                     : item.getErrors().stream()
+                                    .filter(err -> ExpressionStatus.isIssue(err.getStatus()))
                                     .map(err -> AnalysisErrorDto.builder()
                                             .type(err.getType())
                                             .point(err.getPoint())
                                             .pointId(err.getPointId())
+                                            .status(ExpressionStatus.effective(err.getStatus()))
                                             .build())
                                     .toList())
                             .build())
@@ -373,6 +381,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
                     .pointId(definition != null ? definition.pointId() : row.getPointId())
                     .type(displayType)
                     .point(row.getErrorPoint())
+                    .status(ExpressionStatus.effective(row.getStatus()))
                     .errorLevel(errorLevel)
                     .familyId(definition != null ? definition.familyId() : null)
                     .familyTitleZh(definition != null

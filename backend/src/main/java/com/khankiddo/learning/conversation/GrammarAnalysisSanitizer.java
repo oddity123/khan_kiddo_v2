@@ -5,6 +5,7 @@ import com.khankiddo.learning.ai.conversation.model.GrammarErrorDto;
 import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -44,8 +45,7 @@ public class GrammarAnalysisSanitizer {
     private final PointDictionary pointDictionary;
 
     public GrammarAnalysisResult sanitize(GrammarAnalysisResult grammar) {
-        if (!properties.isSanitizerEnabled()
-                || grammar == null
+        if (grammar == null
                 || CollectionUtils.isEmpty(grammar.getItems())) {
             return grammar;
         }
@@ -62,7 +62,9 @@ public class GrammarAnalysisSanitizer {
             List<GrammarErrorDto> kept = new ArrayList<>();
             if (!CollectionUtils.isEmpty(item.getErrors())) {
                 for (GrammarErrorDto error : item.getErrors()) {
-                    if (shouldKeep(error, normalizedOriginal)) {
+                    if (error != null && ExpressionStatus.isIssue(error.getStatus())
+                            && (!properties.isSanitizerEnabled() || shouldKeep(error, normalizedOriginal))) {
+                        error.setStatus(ExpressionStatus.effective(error.getStatus()));
                         error.setPointId(pointDictionary.resolveOrFallback(error.getPointId()).pointId());
                         kept.add(error);
                     } else {

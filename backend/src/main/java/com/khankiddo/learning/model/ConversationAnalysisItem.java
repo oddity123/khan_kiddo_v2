@@ -1,5 +1,6 @@
 package com.khankiddo.learning.model;
 
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class ConversationAnalysisItem {
     private Long sentenceId;
     private String originalSentence;
     private String pointId;
+    private ExpressionStatus status;
     private String errorPoint;
     private String suggestion;
     private LocalDateTime createdAt;

@@ -1,5 +1,6 @@
 package com.khankiddo.learning.dto.conversation;
 
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class AnalysisErrorDto {
 
     private String pointId;
+    private ExpressionStatus status;
     private String type;
     private String point;
     private String errorLevel;

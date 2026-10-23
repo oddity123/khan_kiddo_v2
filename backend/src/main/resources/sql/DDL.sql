@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
     `sentence_id`       BIGINT       NOT NULL COMMENT '句子ID（同一个句子的不同错误使用相同的sentenceId）',
     `original_sentence` TEXT         NOT NULL COMMENT '用户原句',
     `point_id`          VARCHAR(48)           NULL COMMENT '知识点叶子 pointId',
+    `expression_status` VARCHAR(16) NOT NULL DEFAULT 'ERROR' COMMENT 'ERROR/RISK/UNNATURAL；仅存问题',
     `error_point`       VARCHAR(500) NOT NULL COMMENT '错误点描述',
     `suggestion`        TEXT         NOT NULL COMMENT '修改建议或正确英文表达',
     `created_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_item`
 ) ENGINE = InnoDB COMMENT = '对话分析明细表';
 
 -- 已存在数据库需手动执行：
+-- 表达状态上线前：执行 sql/migrations/2026-10-23-expression-status.sql（仅一次）。
 -- ALTER TABLE conversation_analysis ADD COLUMN point_dictionary_version VARCHAR(64) NULL COMMENT '分析时知识点字典版本' AFTER llm_provider;
 -- ALTER TABLE conversation_analysis ADD COLUMN edit_annotations MEDIUMTEXT NULL COMMENT '句级 ERRANT 操作批注 JSON（tokens + R/M/U edits）' AFTER point_dictionary_version;
 -- ALTER TABLE conversation_analysis_item DROP COLUMN problem_types;

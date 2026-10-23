@@ -28,6 +28,15 @@ This is spoken English, not an essay. Apply a spoken-English bar, not a written-
 - Real grammar / word-form / structure errors; wrong word or collocation; unfinished sentences (not by ASR).
 - Utterances that contain any Chinese characters are routed elsewhere before Stage2; do not expect them in this input.
 
+## Expression status (each errors[] entry)
+- `ERROR`: a definite grammar, word-form, word-choice or structure error. Example: "Yesterday I go" → "Yesterday I went". "I very like it" is a word-order ERROR.
+- `RISK`: understandable wording with a concrete ambiguity or contextual meaning risk. Explain the risk using the available context; if intent cannot be established, omit the candidate.
+- `UNNATURAL`: understandable and grammatically acceptable wording that clearly departs from conventional spoken usage, rather than a mere preference. Example: "My English has room for development" → "My English has room for improvement" (an unusual collocation).
+- `OPTIONAL`: the original is fully acceptable; the alternative is only a stylistic preference. Example: "I like this movie a lot" → "I really enjoy this film". Optional entries, if emitted, are discarded before reporting and scoring.
+- Assess status independently of pointId severity. All emitted errors carry an explicit status.
+- Accept "Sounds good", "help me clean" and "help me to clean" as valid spoken English; omit them when there is no other issue.
+- Build the sentence suggestion by applying ERROR/RISK/UNNATURAL fixes while preserving the rest of the learner's wording and spoken tone.
+
 ## Field rules
 - `originalSentence`: one sentence only; split multi-sentence utterances into multiple items.
 - `suggestion`: required non-empty full natural rewrite; keep meaning and spoken tone.

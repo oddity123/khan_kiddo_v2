@@ -6,6 +6,7 @@ import com.khankiddo.learning.ai.conversation.model.GrammarSentenceItemDto;
 import com.khankiddo.learning.dto.conversation.AnalysisErrorDto;
 import com.khankiddo.learning.dto.conversation.AnalysisItemDto;
 import com.khankiddo.learning.knowledge.PointDictionary;
+import com.khankiddo.learning.model.enums.ExpressionStatus;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -30,9 +31,14 @@ public record PerformanceScoringInput(int totalSentences, List<SentenceErrors> s
                 }
                 List<String> pointIds = new ArrayList<>();
                 for (GrammarErrorDto error : item.getErrors()) {
+                    if (!ExpressionStatus.isIssue(error.getStatus())) {
+                        continue;
+                    }
                     pointIds.add(requirePersistedPointId(error.getPointId(), pointDictionary));
                 }
-                sentences.add(new SentenceErrors(pointIds));
+                if (!pointIds.isEmpty()) {
+                    sentences.add(new SentenceErrors(pointIds));
+                }
             }
         }
         return new PerformanceScoringInput(Math.max(1, totalSentences), sentences);
@@ -48,9 +54,14 @@ public record PerformanceScoringInput(int totalSentences, List<SentenceErrors> s
                 }
                 List<String> pointIds = new ArrayList<>();
                 for (AnalysisErrorDto error : item.getErrors()) {
+                    if (!ExpressionStatus.isIssue(error.getStatus())) {
+                        continue;
+                    }
                     pointIds.add(requirePersistedPointId(error.getPointId(), pointDictionary));
                 }
-                sentences.add(new SentenceErrors(pointIds));
+                if (!pointIds.isEmpty()) {
+                    sentences.add(new SentenceErrors(pointIds));
+                }
             }
         }
         return new PerformanceScoringInput(Math.max(1, totalSentences), sentences);
