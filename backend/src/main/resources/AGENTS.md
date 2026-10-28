@@ -1,10 +1,4 @@
----
-description: 编写/修改 LLM 提示词时：正向规格优先、少写「不要旧形态」、system vs user 分工。触发：改 templates/prompts、*-schema.json，或讨论 prompt/system/user。
-globs:
-  - backend/src/main/resources/templates/prompts/**
-  - backend/src/main/resources/schemas/**
-alwaysApply: false
----
+# Backend resources (prompts / schemas) agent instructions
 
 # LLM 提示词编写
 

@@ -1,9 +1,4 @@
----
-description: 前端开发在 frontend/ 目录执行 npm，API 开发代理到 backend:8080。
-globs:
-  - frontend/**
-alwaysApply: false
----
+# Frontend agent instructions
 
 # 前端（frontend/）
 
