@@ -55,3 +55,10 @@ scripts/out/
 
 # Git worktrees
 .worktrees/
+
+# Impeccable 本地缓存（二进制）
+.impeccable-cache/
+
+# 本地 Python 服务虚拟环境（勿提交 site-packages）
+services/**/.venv/
+services/**/__pycache__/

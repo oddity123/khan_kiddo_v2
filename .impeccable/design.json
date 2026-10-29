@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-28T16:03:00+08:00",
+  "title": "Design System: Khan Kiddo",
+  "extensions": {
+    "colorMeta": {
+      "ink-navy": {
+        "role": "primary",
+        "displayName": "Ink Navy",
+        "canonical": "#0b1a7d",
+        "tonalRamp": ["#060e45", "#0b1a7d", "#223194", "#3d4f9e", "#6e7cb5", "#9ea8cb", "#d0d5e8", "#eef1f6"]
+      },
+      "ink-navy-soft": {
+        "role": "primary",
+        "displayName": "Ink Navy Soft",
+        "canonical": "#223194",
+        "tonalRamp": ["#091566", "#0b1a7d", "#223194", "#3d4f9e", "#6e7cb5", "#9ea8cb", "#b7bfd9", "#d0d5e8"]
+      },
+      "restrained-brass": {
+        "role": "secondary",
+        "displayName": "Restrained Brass",
+        "canonical": "#b8941f",
+        "tonalRamp": ["#5c4a00", "#7a6200", "#b8941f", "#d4bc6a", "#e6d49a", "#f3ecd4", "#f8f3e4", "#fcfaf3"]
+      },
+      "restrained-brass-soft": {
+        "role": "secondary",
+        "displayName": "Brass Soft",
+        "canonical": "#d4bc6a",
+        "tonalRamp": ["#5c4a00", "#b8941f", "#d4bc6a", "#e0cc88", "#ecdcb0", "#f3ecd4", "#f8f3e4", "#fcfaf3"]
+      },
+      "brass-wash": {
+        "role": "secondary",
+        "displayName": "Brass Wash",
+        "canonical": "#f3ecd4",
+        "tonalRamp": ["#b8941f", "#d4bc6a", "#e6d49a", "#f3ecd4", "#f6f1de", "#f8f3e4", "#faf7ed", "#fcfaf3"]
+      },
+      "brass-ink": {
+        "role": "secondary",
+        "displayName": "Brass Ink",
+        "canonical": "#5c4a00",
+        "tonalRamp": ["#3d3200", "#5c4a00", "#7a6200", "#b8941f", "#d4bc6a", "#e6d49a", "#f3ecd4", "#f8f3e4"]
+      },
+      "fog-paper": {
+        "role": "neutral",
+        "displayName": "Fog Paper",
+        "canonical": "#eef1f6",
+        "tonalRamp": ["#141824", "#3d4460", "#5a6175", "#9ea8cb", "#d0d5e8", "#e3e7ef", "#eef1f6", "#f7f8fc"]
+      },
+      "fog-mid": {
+        "role": "neutral",
+        "displayName": "Fog Mid",
+        "canonical": "#e8ebf2",
+        "tonalRamp": ["#141824", "#3d4460", "#7a8094", "#b7bfd9", "#d0d5e8", "#e3e7ef", "#e8ebf2", "#f7f8fc"]
+      },
+      "fog-deep": {
+        "role": "neutral",
+        "displayName": "Fog Deep",
+        "canonical": "#e3e7ef",
+        "tonalRamp": ["#141824", "#3d4460", "#5a6175", "#9ea8cb", "#d0d5e8", "#e3e7ef", "#e8ebf2", "#eef1f6"]
+      },
+      "surface-solid": {
+        "role": "neutral",
+        "displayName": "Surface Solid",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#e3e7ef", "#eef1f6", "#f7f8fc", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"]
+      },
+      "surface-glass": {
+        "role": "neutral",
+        "displayName": "Surface Glass",
+        "canonical": "rgba(255, 255, 255, 0.88)",
+        "tonalRamp": ["rgba(255,255,255,0.35)", "rgba(255,255,255,0.45)", "rgba(255,255,255,0.52)", "rgba(255,255,255,0.72)", "rgba(255,255,255,0.88)", "rgba(255,255,255,0.92)", "rgba(255,255,255,0.96)", "#ffffff"]
+      },
+      "text-ink": {
+        "role": "neutral",
+        "displayName": "Text Ink",
+        "canonical": "#141824",
+        "tonalRamp": ["#0a0c12", "#141824", "#3d4460", "#5a6175", "#7a8094", "#9ea8cb", "#d0d5e8", "#eef1f6"]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "canonical": "#3d4460",
+        "tonalRamp": ["#141824", "#3d4460", "#5a6175", "#7a8094", "#9ea8cb", "#b7bfd9", "#d0d5e8", "#eef1f6"]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Text Muted",
+        "canonical": "#5a6175",
+        "tonalRamp": ["#141824", "#3d4460", "#5a6175", "#7a8094", "#9ea8cb", "#b7bfd9", "#d0d5e8", "#eef1f6"]
+      },
+      "text-subtle": {
+        "role": "neutral",
+        "displayName": "Text Subtle",
+        "canonical": "#7a8094",
+        "tonalRamp": ["#3d4460", "#5a6175", "#7a8094", "#9ea8cb", "#b7bfd9", "#d0d5e8", "#e8ebf2", "#f7f8fc"]
+      },
+      "success": {
+        "role": "primary",
+        "displayName": "Success",
+        "canonical": "#2d6a4f",
+        "tonalRamp": ["#1a3f2e", "#2d6a4f", "#3d8a66", "#6aaf90", "#a8d4c0", "#cfe9dc", "#edf7f0", "#f6fbf8"]
+      },
+      "danger": {
+        "role": "primary",
+        "displayName": "Danger",
+        "canonical": "#a01818",
+        "tonalRamp": ["#5c0c0c", "#a01818", "#c43a3a", "#e07a7a", "#f0b0b0", "#ffd6d6", "#ffecec", "#fff6f6"]
+      },
+      "warn": {
+        "role": "primary",
+        "displayName": "Warn",
+        "canonical": "#7a6200",
+        "tonalRamp": ["#4a3b00", "#7a6200", "#b8941f", "#d4bc6a", "#e6d49a", "#f3ecd4", "#fff8e0", "#fffcf0"]
+      },
+      "link": {
+        "role": "primary",
+        "displayName": "Link Blue",
+        "canonical": "#1f4da9",
+        "tonalRamp": ["#0b1a7d", "#1f4da9", "#3d6bc0", "#6e8fd4", "#9eb0e0", "#c5d0ee", "#e0e6f5", "#eef1f6"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero and brand-level titles; score numerals when emphasis is needed." },
+      "headline": { "displayName": "Headline", "purpose": "Section and detail-page titles." },
+      "title": { "displayName": "Title", "purpose": "Card headers and pillar headings." },
+      "body": { "displayName": "Body", "purpose": "Task copy, explanations, diagnosis prose." },
+      "label": { "displayName": "Label", "purpose": "Badges, dimension names, compact UI labels." },
+      "mono": { "displayName": "Mono", "purpose": "English source/suggestion lines and code-like language material." }
+    },
+    "shadows": [
+      { "name": "glass-ambient", "value": "0 8px 32px rgba(11, 26, 125, 0.12)", "purpose": "Default Liquid Glass float." },
+      { "name": "panel-soft", "value": "0 24px 48px rgba(11, 26, 125, 0.1)", "purpose": "Large glass panels and landing shells." },
+      { "name": "card", "value": "0 16px 32px rgba(11, 26, 125, 0.08)", "purpose": "Interactive cards at rest." },
+      { "name": "card-hover", "value": "0 22px 40px rgba(11, 26, 125, 0.12)", "purpose": "Card lift on hover." },
+      { "name": "btn", "value": "0 12px 28px rgba(11, 26, 125, 0.28)", "purpose": "Primary CTA weight." },
+      { "name": "btn-hover", "value": "0 16px 32px rgba(11, 26, 125, 0.32)", "purpose": "Primary CTA hover lift." },
+      { "name": "nav", "value": "0 12px 40px rgba(11, 26, 125, 0.14)", "purpose": "Floating glass navigation." }
+    ],
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Hero/demo settle and longer reveals." },
+      { "name": "duration-normal", "value": "0.25s", "purpose": "Default control transitions." },
+      { "name": "duration-slow", "value": "0.65s", "purpose": "Perspective and large surface motion." }
+    ],
+    "breakpoints": [
+      { "name": "shell-mobile", "value": "768px" },
+      { "name": "nav-compact", "value": "992px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Capsule Ink Navy CTA with restrained lift on hover.",
+      "html": "<button type=\"button\" class=\"ds-btn-primary\">开始分析</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:0.45rem;padding:0.85rem 1.75rem;border:none;border-radius:999px;background:linear-gradient(135deg,#0b1a7d 0%,#223194 100%);color:#fff;font-family:DM Sans,PingFang SC,Microsoft YaHei,sans-serif;font-size:0.95rem;font-weight:700;cursor:pointer;box-shadow:0 12px 28px rgba(11,26,125,0.28);transition:transform 0.25s ease,box-shadow 0.25s ease}.ds-btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 32px rgba(11,26,125,0.32)}.ds-btn-primary:focus-visible{outline:2px solid #1f4da9;outline-offset:3px}"
+    },
+    {
+      "name": "Brass Chip",
+      "kind": "chip",
+      "refersTo": "chip-brass",
+      "description": "Scarce Restrained Brass badge for hero labels.",
+      "html": "<span class=\"ds-chip-brass\">口语诊断</span>",
+      "css": ".ds-chip-brass{display:inline-flex;align-items:center;padding:0.35rem 0.85rem;border-radius:999px;background:#f3ecd4;color:#5c4a00;font-family:DM Sans,PingFang SC,Microsoft YaHei,sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.02em;border:1px solid rgba(184,148,31,0.35)}"
+    },
+    {
+      "name": "Glass Panel",
+      "kind": "card",
+      "refersTo": "glass-panel",
+      "description": "Primary content Liquid Glass panel.",
+      "html": "<div class=\"ds-glass-panel\"><h3 class=\"ds-glass-panel-title\">Khan AI 分析助手</h3><p class=\"ds-glass-panel-body\">逐句解析对话字幕，定位语法与表达中的可优化点。</p></div>",
+      "css": ".ds-glass-panel{background:rgba(255,255,255,0.72);backdrop-filter:blur(28px) saturate(1.75);-webkit-backdrop-filter:blur(28px) saturate(1.75);border:1px solid rgba(255,255,255,0.65);border-radius:28px;box-shadow:0 24px 48px rgba(11,26,125,0.1),inset 0 1px 0 rgba(255,255,255,0.95);padding:1.5rem 1.75rem;max-width:22rem}.ds-glass-panel-title{margin:0 0 0.5rem;font-family:Fraunces,Georgia,Songti SC,serif;font-size:1.14rem;font-weight:700;color:#0b1a7d}.ds-glass-panel-body{margin:0;font-family:DM Sans,PingFang SC,Microsoft YaHei,sans-serif;font-size:0.95rem;line-height:1.65;color:#5a6175}"
+    },
+    {
+      "name": "Glass Nav",
+      "kind": "nav",
+      "refersTo": "glass-nav",
+      "description": "Floating Liquid Glass navigation bar.",
+      "html": "<nav class=\"ds-glass-nav\" aria-label=\"Demo nav\"><span class=\"ds-glass-nav-brand\">Khan Kiddo</span><button type=\"button\" class=\"ds-glass-nav-link ds-glass-nav-link--active\">首页</button><button type=\"button\" class=\"ds-glass-nav-link\">分析</button></nav>",
+      "css": ".ds-glass-nav{display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.85rem;background:rgba(255,255,255,0.38);backdrop-filter:blur(40px) saturate(2);-webkit-backdrop-filter:blur(40px) saturate(2);border:1px solid rgba(255,255,255,0.88);border-radius:14px;box-shadow:0 12px 40px rgba(11,26,125,0.14),inset 0 1px 1px rgba(255,255,255,0.95)}.ds-glass-nav-brand{font-family:DM Sans,PingFang SC,Microsoft YaHei,sans-serif;font-weight:700;color:#0b1a7d;margin-right:0.5rem}.ds-glass-nav-link{border:none;background:transparent;padding:0.42rem 0.72rem;border-radius:10px;font-family:DM Sans,PingFang SC,Microsoft YaHei,sans-serif;font-size:0.9rem;font-weight:500;color:#3d4460;cursor:pointer}.ds-glass-nav-link:hover,.ds-glass-nav-link--active{color:#0b1a7d;background:rgba(255,255,255,0.55);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.7)}.ds-glass-nav-link:focus-visible{outline:2px solid #1f4da9;outline-offset:2px}"
+    },
+    {
+      "name": "Diagnosis Demo Pane",
+      "kind": "custom",
+      "refersTo": "card-surface",
+      "description": "Before/after correction demo used on the home hero.",
+      "html": "<div class=\"ds-demo\"><div class=\"ds-demo-pane\"><span class=\"ds-demo-tag\">原句</span><p class=\"ds-demo-quote\">When I give presentation, I feel very embarrassing.</p></div><div class=\"ds-demo-pane ds-demo-pane--after\"><span class=\"ds-demo-tag ds-demo-tag--ai\">AI 建议</span><p class=\"ds-demo-improved\">When I give presentations, I feel embarrassed.</p><ul class=\"ds-demo-list\"><li class=\"ds-demo-li ds-demo-li--fatal\">可数名词：presentation → presentations</li><li class=\"ds-demo-li ds-demo-li--soft\">表达地道：embarrassing → embarrassed</li></ul></div></div>",
+      "css": ".ds-demo{display:grid;gap:0.75rem;padding:1rem;background:rgba(255,255,255,0.52);backdrop-filter:blur(28px) saturate(1.75);border:1px solid rgba(255,255,255,0.82);border-radius:20px;box-shadow:0 8px 32px rgba(11,26,125,0.12),inset 0 1px 0 rgba(255,255,255,0.95);max-width:22rem}.ds-demo-pane{padding:0.75rem 0.85rem;border-radius:14px;background:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.55)}.ds-demo-tag{display:inline-block;font-family:DM Sans,PingFang SC,sans-serif;font-size:0.68rem;font-weight:700;color:#5a6175;margin-bottom:0.35rem}.ds-demo-tag--ai{color:#0b1a7d}.ds-demo-quote,.ds-demo-improved{margin:0;font-family:IBM Plex Mono,Menlo,monospace;font-size:0.82rem;line-height:1.5;color:#141824}.ds-demo-list{margin:0.55rem 0 0;padding:0;list-style:none}.ds-demo-li{font-family:DM Sans,PingFang SC,sans-serif;font-size:0.72rem;line-height:1.4;margin-top:0.25rem;padding-left:0.5rem;border-left:3px solid #a01818;color:#3d4460}.ds-demo-li--soft{border-left-color:#b8941f}"
+    },
+    {
+      "name": "Score Strip",
+      "kind": "custom",
+      "refersTo": "card-surface",
+      "description": "Four-dimension naturalness score showcase.",
+      "html": "<div class=\"ds-score\" aria-label=\"表现评分示意\"><div class=\"ds-score-head\"><span class=\"ds-score-num\">86</span><div><div class=\"ds-score-lbl\">综合自然度</div><div class=\"ds-score-hint\">四维诊断 · 分数可追溯</div></div></div><div class=\"ds-score-row\"><span>表达自然</span><span class=\"ds-score-track\"><i style=\"width:81%\"></i></span><b>88</b></div><div class=\"ds-score-row\"><span>语法准确</span><span class=\"ds-score-track\"><i style=\"width:74%\"></i></span><b>84</b></div></div>",
+      "css": ".ds-score{padding:1rem 1.15rem;border-radius:20px;background:rgba(255,255,255,0.72);border:1px solid rgba(255,255,255,0.65);box-shadow:0 16px 32px rgba(11,26,125,0.08);max-width:18rem;font-family:DM Sans,PingFang SC,sans-serif}.ds-score-head{display:flex;align-items:center;gap:0.75rem;margin-bottom:0.85rem}.ds-score-num{font-family:Fraunces,Georgia,serif;font-size:2rem;font-weight:800;color:#0b1a7d;line-height:1}.ds-score-lbl{font-weight:700;color:#141824;font-size:0.9rem}.ds-score-hint{font-size:0.72rem;color:#7a8094}.ds-score-row{display:grid;grid-template-columns:4.5rem 1fr 1.5rem;align-items:center;gap:0.45rem;font-size:0.72rem;color:#3d4460;margin-top:0.4rem}.ds-score-row b{font-family:Fraunces,Georgia,serif;font-weight:700;color:#0b1a7d;text-align:right}.ds-score-track{height:6px;border-radius:999px;background:rgba(11,26,125,0.08);overflow:hidden}.ds-score-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0b1a7d,#223194)}"
+    },
+    {
+      "name": "Growth Flashcard",
+      "kind": "custom",
+      "refersTo": "card-surface",
+      "description": "Growth phrase card: Chinese prompt with English target and example.",
+      "html": "<article class=\"ds-flash\"><p class=\"ds-flash-zh\">说话说到一半，突然忘了接下来要说什么</p><p class=\"ds-flash-en\">lose my train of thought</p><p class=\"ds-flash-ex\">I lost my train of thought mid-sentence.</p></article>",
+      "css": ".ds-flash{width:16rem;padding:1.25rem 1.35rem;border-radius:20px;background:rgba(255,255,255,0.88);border:1px solid rgba(11,26,125,0.08);box-shadow:0 16px 32px rgba(11,26,125,0.08)}.ds-flash-zh{margin:0 0 0.75rem;font-family:DM Sans,PingFang SC,sans-serif;font-size:0.95rem;line-height:1.55;color:#3d4460}.ds-flash-en{margin:0 0 0.5rem;font-family:Fraunces,Georgia,serif;font-size:1.25rem;font-weight:700;color:#0b1a7d;line-height:1.25}.ds-flash-ex{margin:0;font-family:IBM Plex Mono,Menlo,monospace;font-size:0.78rem;line-height:1.5;color:#5a6175}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "card-surface",
+      "description": "EP-aligned field using Ink Navy focus ring language.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">对话字幕</span><input class=\"ds-field-input\" type=\"text\" placeholder=\"粘贴 ChatGPT Voice 字幕…\" /></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:0.4rem;max-width:20rem;font-family:DM Sans,PingFang SC,sans-serif}.ds-field-label{font-size:0.78rem;font-weight:700;color:#3d4460}.ds-field-input{padding:0.7rem 0.85rem;border-radius:14px;border:1px solid rgba(11,26,125,0.12);background:#fff;color:#141824;font:inherit;font-size:0.95rem}.ds-field-input::placeholder{color:#7a8094}.ds-field-input:hover{border-color:rgba(11,26,125,0.22)}.ds-field-input:focus{outline:none;border-color:#0b1a7d;box-shadow:0 0 0 3px rgba(11,26,125,0.15)}.ds-field-input:focus-visible{outline:none}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Glass Study",
+    "overview": "Khan Kiddo 的界面是一间玻璃自习室：雾面灰蓝底、半透明浮层、海军蓝骨架，暖金只作点缀。气质是沉静专业的学习向杂志版面——玻璃质感服务聚焦，编辑排版服务可读，不抢诊断内容的戏。\n\n密度中等偏疏：大字标题与得分数字用展示衬线压住层级，正文与导航用干净无衬线走完任务流。深度优先靠 Liquid Glass 与雾面底色分层，阴影是同色相低饱和环境光，不是硬黑投影。",
+    "keyCharacteristics": [
+      "Glass Study：毛玻璃浮层 + 雾面纸底",
+      "Editorial Calm：Fraunces 标题 / DM Sans 正文 / 克制暖金点缀",
+      "Token-first：一切色、圆角、玻璃、阴影走 --kk-*，禁止平行色板",
+      "Refined and restrained：主按钮有分量但不夸张；组件圆角克制",
+      "Anti-references：黄绿高饱和渐变、Inter/Roboto、紫色 SaaS 风"
+    ],
+    "rules": [
+      { "name": "The One Brass Rule", "body": "Restrained Brass 在任一屏占比应明显少于 Ink Navy；它是高光，不是第二主色。", "section": "colors" },
+      { "name": "The Token-Only Rule", "body": "颜色只从 --kk-* 消费；禁止在组件里硬编码品牌色或平行色板。", "section": "colors" },
+      { "name": "The Three-Voice Rule", "body": "Display 只扛标题与关键数据；Body 扛任务文案；Mono 只进语言材料本身，不进导航。", "section": "typography" },
+      { "name": "The One Shell Rule", "body": "新页面必须进 AppLayout + .kk-page-shell；不要发明第二套内容宽度。", "section": "layout" },
+      { "name": "The Navy Shadow Rule", "body": "阴影色相跟主色，禁止中性黑灰大投影。", "section": "elevation" },
+      { "name": "The No Scoped Glass Rule", "body": "禁止在组件 scoped CSS 里手写 backdrop-filter 或复制半透明玻璃底；只用 .kk-glass* 与 --kk-glass-*。", "section": "elevation" },
+      { "name": "The Pill-For-CTA Rule", "body": "全圆胶囊留给主行动与徽章；内容面板不要一律 pill。", "section": "shapes" }
+    ],
+    "dos": [
+      "Do 新 UI 只引用 --kk-* 与 .kk-glass* / .kk-page-*。",
+      "Do 保持 Glass Study：雾底 + 玻璃浮层 + Ink Navy 骨架 + 稀缺 Brass。",
+      "Do 标题/关键数据用 Fraunces，导航与正文用 DM Sans，语言材料用 IBM Plex Mono。",
+      "Do 页面进 AppLayout，内容宽用 .kk-page-shell。",
+      "Do 阴影保持海军蓝环境光；主 CTA 可用轻 translateY 抬升。"
+    ],
+    "donts": [
+      "Don't 使用黄绿高饱和渐变、紫色 SaaS 风、Inter/Roboto/Arial 作为品牌字体。",
+      "Don't 在组件内重定义 :root token 或硬编码品牌色。",
+      "Don't 在 scoped 样式里复制 backdrop-filter / 半透明玻璃配方。",
+      "Don't 把 Restrained Brass 铺成大面积主色或第二主题。",
+      "Don't 用中性黑大阴影或全屏贴边实心顶栏替代浮动玻璃导航。"
+    ]
+  }
+}
