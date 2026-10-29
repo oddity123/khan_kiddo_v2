@@ -7,3 +7,11 @@ export function growthCardTypeLabel(type?: string | GrowthCardType): string {
   if (type === 'expression') return '表达'
   return type ?? ''
 }
+
+/** 成长卡进度 → 中文标签（仅三档，不做百分制）。 */
+export function growthCardStatusLabel(status?: string): string {
+  if (status === 'unfamiliar') return '不熟'
+  if (status === 'fuzzy') return '模糊'
+  if (status === 'mastered') return '掌握'
+  return status ?? ''
+}

@@ -1,8 +1,10 @@
 package com.khankiddo.learning.voice;
 
 import com.khankiddo.learning.config.VoicePracticeCapProperties;
+import com.khankiddo.learning.dto.voice.VoicePracticeBeginRequest;
 import com.khankiddo.learning.dto.voice.VoicePracticeBeginResponse;
 import com.khankiddo.learning.dto.voice.VoicePracticeCaptionRequest;
+import com.khankiddo.learning.dto.voice.VoicePracticeMaterialSnapshotDto;
 import com.khankiddo.learning.dto.voice.VoicePracticeSessionResponse;
 import com.khankiddo.learning.dto.voice.VoicePracticeTranscriptRequest;
 import com.khankiddo.learning.exception.BadRequestException;
@@ -32,24 +34,39 @@ public class VoicePracticeSessionService {
 
     private final VoicePracticeSessionMapper mapper;
     private final VoicePracticeCapProperties caps;
+    private final VoicePracticeMaterialAccess materialAccess;
+    private final VoicePracticeMaterialSnapshotSupport snapshotSupport;
     private final Clock clock;
 
-    public synchronized VoicePracticeBeginResponse begin(long userId) {
+    public synchronized VoicePracticeBeginResponse begin(long userId, VoicePracticeBeginRequest request) {
         LocalDateTime now = now();
         sweepStale(now);
         int remaining = VoicePracticeQuota.remainingSeconds(caps, usage(userId, now));
         if (remaining <= 0) {
             throw new VoicePracticeQuotaExceededException();
         }
+        VoicePracticeMaterialSnapshot snap = materialAccess.validateAndNormalize(
+                userId,
+                new VoicePracticeMaterialSnapshot(
+                        request == null ? List.of() : request.getCardIds(),
+                        request == null ? List.of() : request.getAnalysisIds()));
+        String snapshotJson;
+        try {
+            snapshotJson = snapshotSupport.toJson(snap);
+        } catch (Exception e) {
+            throw new BadRequestException("无法保存本场材料快照");
+        }
         VoicePracticeSession row = VoicePracticeSession.builder()
                 .userId(userId)
                 .startedAt(now)
                 .reservedSeconds(remaining)
+                .materialSnapshot(snapshotJson)
                 .build();
         mapper.insert(row);
         return VoicePracticeBeginResponse.builder()
                 .id(row.getId())
                 .grantedSeconds(remaining)
+                .materials(toMaterialsDto(snap))
                 .build();
     }
 
@@ -176,6 +193,13 @@ public class VoicePracticeSessionService {
                 .stoppedByCap(Boolean.TRUE.equals(row.getStoppedByCap()))
                 .transcriptSaved(Boolean.TRUE.equals(row.getTranscriptSaved()))
                 .transcript(row.getTranscript())
+                .build();
+    }
+
+    private static VoicePracticeMaterialSnapshotDto toMaterialsDto(VoicePracticeMaterialSnapshot snap) {
+        return VoicePracticeMaterialSnapshotDto.builder()
+                .cardIds(snap.cardIds())
+                .analysisIds(snap.analysisIds())
                 .build();
     }
 

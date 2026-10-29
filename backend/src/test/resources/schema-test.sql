@@ -98,7 +98,25 @@ CREATE TABLE IF NOT EXISTS voice_practice_session
     stopped_by_cap        TINYINT(1) NOT NULL DEFAULT 0,
     transcript            TEXT,
     transcript_saved      TINYINT(1) NOT NULL DEFAULT 0,
+    material_snapshot     CLOB,
     created_at            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS voice_practice_event
+(
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    practice_session_id BIGINT      NOT NULL,
+    user_id             BIGINT      NOT NULL,
+    event_type          VARCHAR(16) NOT NULL,
+    card_id             VARCHAR(64),
+    analysis_id         VARCHAR(64),
+    outcome             VARCHAR(24),
+    user_utterance      VARCHAR(500),
+    reason              VARCHAR(300),
+    note_text           VARCHAR(500),
+    status_before       VARCHAR(16),
+    status_after        VARCHAR(16),
+    created_at          TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS product_funnel_event

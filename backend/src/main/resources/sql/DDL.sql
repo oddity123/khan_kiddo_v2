@@ -127,6 +127,8 @@ CREATE TABLE IF NOT EXISTS `growth_card_evidence`
 
 -- 语音练习（薄）：一场一条。不存音频、不存豆包 session.id。
 -- 已有库升级：下面两张表都是 IF NOT EXISTS，直接重跑本段即可；users.signup_from 见上方 ALTER 注释。
+-- 已有库补材料快照：
+--   ALTER TABLE voice_practice_session ADD COLUMN material_snapshot JSON NULL COMMENT '本场材料快照' AFTER transcript_saved;
 CREATE TABLE IF NOT EXISTS `voice_practice_session`
 (
     `id`                     BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
@@ -138,10 +140,31 @@ CREATE TABLE IF NOT EXISTS `voice_practice_session`
     `stopped_by_cap`         TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否因为额度停下',
     `transcript`             MEDIUMTEXT        DEFAULT NULL COMMENT '已完成字幕，User:/Assistant:，不含 ASR 预览',
     `transcript_saved`       TINYINT(1) NOT NULL DEFAULT 0 COMMENT '字幕是否已写入',
+    `material_snapshot`      JSON              DEFAULT NULL COMMENT '本场材料快照 cardIds/analysisIds',
     `created_at`             DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX `idx_voice_user_started` (`user_id`, `started_at`),
     INDEX `idx_voice_started` (`started_at`)
 ) ENGINE = InnoDB COMMENT ='语音练习会话（薄记录）';
+
+-- 语音练习本场学习证据：焦点卡 / 回合尝试 / 备注，一张表按 event_type 区分，可按场次查询。
+CREATE TABLE IF NOT EXISTS `voice_practice_event`
+(
+    `id`                  BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    `practice_session_id` BIGINT       NOT NULL COMMENT 'voice_practice_session.id',
+    `user_id`             BIGINT       NOT NULL COMMENT '登录用户',
+    `event_type`          VARCHAR(16)  NOT NULL COMMENT 'focus | attempt | note',
+    `card_id`             VARCHAR(64)           DEFAULT NULL COMMENT '成长卡（须在本场快照内）',
+    `analysis_id`         VARCHAR(64)           DEFAULT NULL COMMENT '分析记录（须在本场快照内，仅 note）',
+    `outcome`             VARCHAR(24)           DEFAULT NULL COMMENT 'attempt: independent_success|prompted|uncertain|miss',
+    `user_utterance`      VARCHAR(500)          DEFAULT NULL COMMENT 'attempt: 学习者原话',
+    `reason`              VARCHAR(300)          DEFAULT NULL COMMENT 'attempt: 判定原因',
+    `note_text`           VARCHAR(500)          DEFAULT NULL COMMENT 'note 正文 / focus 的 promptHint',
+    `status_before`       VARCHAR(16)           DEFAULT NULL COMMENT 'attempt: 写入前卡片状态',
+    `status_after`        VARCHAR(16)           DEFAULT NULL COMMENT 'attempt: 状态上调后的值；未变为空',
+    `created_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发生时间',
+    INDEX `idx_voice_event_session` (`practice_session_id`, `id`),
+    INDEX `idx_voice_event_user` (`user_id`, `created_at`)
+) ENGINE = InnoDB COMMENT ='语音练习本场学习证据';
 
 -- 漏斗计数。不建增长后台，用 SQL 查次数即可。
 CREATE TABLE IF NOT EXISTS `product_funnel_event`

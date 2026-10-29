@@ -1,10 +1,17 @@
 import http from '@/api/http'
 
+import type {VoiceLearningPanelState} from '@/utils/voiceLearningPanel'
 import type {VoiceTranscriptLine} from '@/utils/voicePracticeTranscript'
+
+export interface VoicePracticeMaterialSelection {
+  cardIds: string[]
+  analysisIds: string[]
+}
 
 export interface VoicePracticeBeginResult {
   id: number
   grantedSeconds: number
+  materials?: VoicePracticeMaterialSelection | null
 }
 
 export interface VoicePracticeSession {
@@ -17,8 +24,8 @@ export interface VoicePracticeSession {
   transcript?: string | null
 }
 
-export function beginVoicePracticeSession() {
-  return http.post<VoicePracticeBeginResult>('/api/voice/practice/sessions')
+export function beginVoicePracticeSession(body?: VoicePracticeMaterialSelection) {
+  return http.post<VoicePracticeBeginResult>('/api/voice/practice/sessions', body ?? {})
 }
 
 export function abandonVoicePracticeSession(id: number) {
@@ -38,4 +45,9 @@ export function listVoicePracticeSessions() {
 
 export function fetchVoicePracticeSession(id: number) {
   return http.get<VoicePracticeSession>(`/api/voice/practice/sessions/${id}`)
+}
+
+/** 本场学习证据（焦点卡 / 尝试 / 备注）；刷新或回看时恢复右侧面板。 */
+export function fetchVoiceLearningPanel(id: number) {
+  return http.get<VoiceLearningPanelState>(`/api/voice/practice/sessions/${id}/learning`)
 }

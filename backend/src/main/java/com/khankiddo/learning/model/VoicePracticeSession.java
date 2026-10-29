@@ -22,4 +22,6 @@ public class VoicePracticeSession {
     private Boolean stoppedByCap;
     private String transcript;
     private Boolean transcriptSaved;
+    /** 本场材料快照 JSON：cardIds / analysisIds */
+    private String materialSnapshot;
 }

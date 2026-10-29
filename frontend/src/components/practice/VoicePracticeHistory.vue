@@ -74,7 +74,7 @@ const emit = defineEmits<{
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  max-height: 8.5rem;
+  max-height: min(50vh, 22rem);
   overflow-y: auto;
 }
 

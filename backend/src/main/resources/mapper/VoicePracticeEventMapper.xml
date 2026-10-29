@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.mapper.VoicePracticeEventMapper">
+
+    <resultMap id="VoicePracticeEventMap" type="com.khankiddo.learning.model.VoicePracticeEvent">
+        <id column="id" property="id"/>
+        <result column="practice_session_id" property="practiceSessionId"/>
+        <result column="user_id" property="userId"/>
+        <result column="event_type" property="eventType"/>
+        <result column="card_id" property="cardId"/>
+        <result column="analysis_id" property="analysisId"/>
+        <result column="outcome" property="outcome"/>
+        <result column="user_utterance" property="userUtterance"/>
+        <result column="reason" property="reason"/>
+        <result column="note_text" property="noteText"/>
+        <result column="status_before" property="statusBefore"/>
+        <result column="status_after" property="statusAfter"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO voice_practice_event
+            (practice_session_id, user_id, event_type, card_id, analysis_id, outcome,
+             user_utterance, reason, note_text, status_before, status_after, created_at)
+        VALUES
+            (#{practiceSessionId}, #{userId}, #{eventType}, #{cardId}, #{analysisId}, #{outcome},
+             #{userUtterance}, #{reason}, #{noteText}, #{statusBefore}, #{statusAfter}, #{createdAt})
+    </insert>
+
+    <select id="findBySession" resultMap="VoicePracticeEventMap">
+        SELECT id, practice_session_id, user_id, event_type, card_id, analysis_id, outcome,
+               user_utterance, reason, note_text, status_before, status_after, created_at
+        FROM voice_practice_event
+        WHERE practice_session_id = #{practiceSessionId}
+          AND user_id = #{userId}
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countPromotionsForCard" resultType="int">
+        SELECT COUNT(1)
+        FROM voice_practice_event
+        WHERE practice_session_id = #{practiceSessionId}
+          AND user_id = #{userId}
+          AND card_id = #{cardId}
+          AND event_type = 'attempt'
+          AND status_after IS NOT NULL
+          AND status_after != ''
+    </select>
+</mapper>

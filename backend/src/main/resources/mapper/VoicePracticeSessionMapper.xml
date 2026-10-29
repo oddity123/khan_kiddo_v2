@@ -12,18 +12,20 @@
         <result column="stopped_by_cap" property="stoppedByCap"/>
         <result column="transcript" property="transcript"/>
         <result column="transcript_saved" property="transcriptSaved"/>
+        <result column="material_snapshot" property="materialSnapshot"/>
     </resultMap>
 
     <sql id="Columns">
         id, user_id, started_at, ended_at, wall_duration_seconds, reserved_seconds,
-        stopped_by_cap, transcript, transcript_saved
+        stopped_by_cap, transcript, transcript_saved, material_snapshot
     </sql>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO voice_practice_session
-            (user_id, started_at, wall_duration_seconds, reserved_seconds, stopped_by_cap, transcript_saved)
+            (user_id, started_at, wall_duration_seconds, reserved_seconds, stopped_by_cap, transcript_saved,
+             material_snapshot)
         VALUES
-            (#{userId}, #{startedAt}, 0, #{reservedSeconds}, 0, 0)
+            (#{userId}, #{startedAt}, 0, #{reservedSeconds}, 0, 0, #{materialSnapshot})
     </insert>
 
     <select id="findById" resultMap="VoicePracticeSessionMap">

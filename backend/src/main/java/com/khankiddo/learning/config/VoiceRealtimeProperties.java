@@ -56,13 +56,18 @@ public class VoiceRealtimeProperties {
     private int chunkMs = DEFAULT_CHUNK_MS;
 
     /**
-     * 默认系统提示词；前端可在 session.create 中覆盖。
+     * 默认教练人设（材料驱动）；前端 session.create 可用本场自定义提示词覆盖。
+     * 工具调用协议（先取材料、逐卡聚焦、记录证据）随工具声明在前端 voiceRealtimeFunctionCall.ts 追加。
      */
     private String defaultInstructions = """
-            You are a warm English speaking coach for Chinese learners.
-            Keep each turn short (1–3 sentences), ask one question at a time,
-            and wait for the learner to speak. Prefer natural spoken English.
-            Gently correct only errors that block understanding.
+            You are a warm, patient English speaking coach for Chinese learners.
+            Your job is to help the learner actually say their own target expressions out loud,
+            drawn from the practice materials selected for this session.
+            Keep each turn short (1-3 sentences) and ask one question at a time, then wait.
+            Create a small natural situation that makes the learner produce the target themselves;
+            do not read out the answer first. Prefer natural spoken English.
+            Give a hint only after the learner struggles, and correct only errors that block understanding.
+            Be honest: only count it as success when the learner said it correctly without your help.
             """;
 
     public boolean isConfigured() {

@@ -1,9 +1,12 @@
 package com.khankiddo.learning.controller;
 
+import com.khankiddo.learning.dto.voice.VoiceLearningPanelResponse;
+import com.khankiddo.learning.dto.voice.VoicePracticeBeginRequest;
 import com.khankiddo.learning.dto.voice.VoicePracticeBeginResponse;
 import com.khankiddo.learning.dto.voice.VoicePracticeSessionResponse;
 import com.khankiddo.learning.dto.voice.VoicePracticeTranscriptRequest;
 import com.khankiddo.learning.security.SecurityUtils;
+import com.khankiddo.learning.voice.VoiceLearningPanelService;
 import com.khankiddo.learning.voice.VoicePracticeSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,10 +28,11 @@ import java.util.List;
 public class VoicePracticeController {
 
     private final VoicePracticeSessionService sessions;
+    private final VoiceLearningPanelService learningPanel;
 
     @PostMapping("/sessions")
-    public VoicePracticeBeginResponse begin() {
-        return sessions.begin(SecurityUtils.requireUserId());
+    public VoicePracticeBeginResponse begin(@RequestBody(required = false) VoicePracticeBeginRequest request) {
+        return sessions.begin(SecurityUtils.requireUserId(), request);
     }
 
     @PostMapping("/sessions/{id}/abandon")
@@ -51,5 +55,10 @@ public class VoicePracticeController {
     @GetMapping("/sessions/{id}")
     public VoicePracticeSessionResponse get(@PathVariable long id) {
         return sessions.get(SecurityUtils.requireUserId(), id);
+    }
+
+    @GetMapping("/sessions/{id}/learning")
+    public VoiceLearningPanelResponse learning(@PathVariable long id) {
+        return learningPanel.load(SecurityUtils.requireUserId(), id);
     }
 }

@@ -6,6 +6,7 @@ import {
   beginVoicePracticeSession,
   listVoicePracticeSessions,
   saveVoicePracticeTranscript,
+  type VoicePracticeMaterialSelection,
   type VoicePracticeSession,
 } from '@/api/voicePractice'
 import {trackFunnelEvent} from '@/api/funnel'
@@ -68,14 +69,14 @@ export function useVoicePracticeRecord() {
     startedAtMs = 0
   }
 
-  async function begin(): Promise<boolean> {
+  async function begin(materials?: VoicePracticeMaterialSelection): Promise<boolean> {
     beginError.value = ''
     quotaHit.value = false
     review.value = null
     completion = null
     resetActive()
     try {
-      const {data} = await beginVoicePracticeSession()
+      const {data} = await beginVoicePracticeSession(materials)
       activeId.value = data.id
       grantedSeconds.value = data.grantedSeconds
       startedAtMs = Date.now()

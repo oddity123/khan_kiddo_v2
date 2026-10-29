@@ -59,6 +59,36 @@ class VoicePracticeSessionControllerTest {
     }
 
     @Test
+    void beginRejectsForeignGrowthCard() throws Exception {
+        String token = login("picker");
+        mockMvc.perform(post("/api/voice/practice/sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"cardIds":["missing-card"],"analysisIds":[]}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void beginPersistsEmptyMaterialSnapshot() throws Exception {
+        String token = login("empty-mat");
+        MvcResult result = mockMvc.perform(post("/api/voice/practice/sessions")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.materials.cardIds").isArray())
+                .andReturn();
+        long id = objectMapper.readTree(result.getResponse().getContentAsString()).path("id").asLong();
+        String snap = jdbcTemplate.queryForObject(
+                "select material_snapshot from voice_practice_session where id = ?",
+                String.class,
+                id);
+        assertThat(snap).contains("cardIds");
+    }
+
+    @Test
     void savesCompletedCaptionsAndListsThemAfterRefresh() throws Exception {
         String token = login("speaker");
         long id = begin(token);

@@ -15,6 +15,11 @@ import {
 } from '@/utils/voiceRealtimeAudio'
 import {VOICE_QUOTA_EXHAUSTED_MESSAGE} from '@/constants/voicePractice'
 import {formatRealtimeError} from '@/utils/voiceRealtimeError'
+import {
+  mergeLearningInstructions,
+  VOICE_REALTIME_TOOLS,
+} from '@/utils/voiceRealtimeFunctionCall'
+import {parseLearningPanelEvent, type VoiceLearningPanelEvent} from '@/utils/voiceLearningPanel'
 import {mergeStreamingText, pickAsrStreamingPreview} from '@/utils/voiceRealtimeText'
 
 export type VoiceSessionStatus =
@@ -35,6 +40,8 @@ export interface VoiceRealtimeStartOptions {
   practiceSessionId: number
   onLive?: () => void
   onQuotaExhausted?: () => void
+  /** 后端代理在学习工具落库后推送的面板事件（focus / attempt / note）。 */
+  onLearningEvent?: (event: VoiceLearningPanelEvent) => void
   onClosed?: (unexpected: boolean) => void
 }
 
@@ -207,6 +214,19 @@ export function useVoiceRealtime() {
       // MVP：不在 session.created 后发 speech_text_buffer.commit（可选问候且 schema 易错）
       return
     }
+    // 工具生命周期帧（proxy.learning.tool）仅供调试，面板只消费 focus / attempt / note
+    if (type === 'proxy.learning.tool') {
+      return
+    }
+    const learning = parseLearningPanelEvent(event)
+    if (learning) {
+      startHooks?.onLearningEvent?.(learning)
+      return
+    }
+    // FC 原帧仍会到达；执行与回传由后端代理完成，前端忽略以免双回传
+    if (type === 'response.function_call_arguments.done') {
+      return
+    }
     // 用户侧 ASR 开始：若正在播 assistant，自动 barge-in（与手动按钮共用 interrupt）
     if (type === 'conversation.item.input_audio_transcription.started') {
       if (assistantAudioPlaying || assistantPartial.value) {
@@ -267,11 +287,14 @@ export function useVoiceRealtime() {
       statusDetail.value = '服务端未返回实时语音 model，无法创建会话'
       return
     }
+    const baseInstructions =
+      pendingInstructions?.trim() || config.value!.defaultInstructions
     sendEvent({
       type: 'session.create',
       session: {
         model,
-        instructions: pendingInstructions?.trim() || config.value!.defaultInstructions,
+        instructions: mergeLearningInstructions(baseInstructions),
+        tools: VOICE_REALTIME_TOOLS,
         audio: {
           input: {format: {type: 'pcm', rate: inputRate()}},
           output: {

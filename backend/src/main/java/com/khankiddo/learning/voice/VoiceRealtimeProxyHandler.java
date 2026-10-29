@@ -2,6 +2,7 @@ package com.khankiddo.learning.voice;
 
 import com.khankiddo.learning.config.VoiceRealtimeProperties;
 import com.khankiddo.learning.security.AuthenticatedUser;
+import com.khankiddo.learning.voice.tool.VoiceRealtimeToolContext;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +35,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * 客户端帧在上游未 attach 前一律入队，就绪后按序 flush；并向浏览器发送 {@code proxy.ready}。
  * 绝不因「上游未就绪」向客户端回 error（避免 session.create 被误杀）。
+ * <p>
+ * 上游 Function Calling：先把原帧转给浏览器，再委托 {@link VoiceRealtimeToolGateway} 执行并回传上游。
  */
 @Slf4j
 @Component
@@ -49,6 +52,8 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
 
     private final VoiceRealtimeProperties properties;
     private final VoicePracticeLiveGuard liveGuard;
+    private final VoiceRealtimeFunctionCallSupport functionCallSupport;
+    private final VoiceRealtimeToolGateway toolGateway;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
             .build();
@@ -350,6 +355,92 @@ public class VoiceRealtimeProxyHandler extends TextWebSocketHandler {
                 }
             } catch (IOException e) {
                 log.debug("forward upstream→client failed: {}", e.toString());
+            }
+            if (functionCallSupport.looksLikeFunctionCallArgumentsDone(payload)) {
+                handleUpstreamFunctionCalls(payload);
+            }
+        }
+
+        private void handleUpstreamFunctionCalls(String payload) {
+            AuthenticatedUser user = (AuthenticatedUser) clientSession.getAttributes()
+                    .get(VoiceRealtimeHandshakeInterceptor.ATTR_USER);
+            Long practiceSessionId = (Long) clientSession.getAttributes()
+                    .get(VoiceRealtimeHandshakeInterceptor.ATTR_PRACTICE_SESSION_ID);
+            if (ObjectUtils.isEmpty(user) || practiceSessionId == null) {
+                log.warn("skip FC: missing user or practiceSessionId session={}", clientSession.getId());
+                return;
+            }
+            WebSocket upstream;
+            synchronized (clientSession) {
+                upstream = (WebSocket) clientSession.getAttributes().get(ATTR_UPSTREAM);
+            }
+            if (upstream == null) {
+                log.warn("skip FC: upstream missing session={}", clientSession.getId());
+                return;
+            }
+            List<VoiceRealtimeFunctionCallSupport.FunctionCall> calls;
+            try {
+                calls = functionCallSupport.parseFunctionCalls(payload);
+            } catch (Exception e) {
+                log.warn("parse FC failed session={}: {}", clientSession.getId(), e.toString());
+                return;
+            }
+            if (CollectionUtils.isEmpty(calls)) {
+                return;
+            }
+            VoiceRealtimeToolContext ctx = new VoiceRealtimeToolContext(user.id(), practiceSessionId);
+            for (VoiceRealtimeFunctionCallSupport.FunctionCall call : calls) {
+                dispatchOneFunctionCall(upstream, ctx, call);
+            }
+        }
+
+        private void dispatchOneFunctionCall(
+                WebSocket upstream,
+                VoiceRealtimeToolContext ctx,
+                VoiceRealtimeFunctionCallSupport.FunctionCall call) {
+            try {
+                notifyClientLearning(call.callId(), call.name(), "received", call.argumentsJson());
+                VoiceRealtimeToolGateway.ToolExecution exec =
+                        toolGateway.execute(ctx, call.name(), call.argumentsJson());
+                String resultPayload = functionCallSupport.buildToolResultPayload(
+                        call.callId(), exec.outputJson());
+                upstream.sendText(resultPayload, true);
+                String phase = exec.known() ? "replied" : "ignored";
+                notifyClientLearning(call.callId(), call.name(), phase, exec.outputJson());
+                notifyClientLearningPanel(call.callId(), exec.learningEvent());
+                log.info("voice FC {} name={} callId={} practiceSessionId={}",
+                        phase, call.name(), call.callId(), ctx.practiceSessionId());
+            } catch (Exception e) {
+                log.warn("voice FC dispatch failed name={} callId={}: {}",
+                        call.name(), call.callId(), e.toString());
+            }
+        }
+
+        private void notifyClientLearningPanel(String callId, VoiceLearningEvent event) {
+            if (event == null || !clientSession.isOpen()) {
+                return;
+            }
+            try {
+                String payload = functionCallSupport.buildLearningPanelEvent(callId, event);
+                synchronized (clientSession) {
+                    clientSession.sendMessage(new TextMessage(payload));
+                }
+            } catch (Exception e) {
+                log.debug("send {} failed: {}", event.type(), e.toString());
+            }
+        }
+
+        private void notifyClientLearning(String callId, String name, String phase, String detail) {
+            if (!clientSession.isOpen()) {
+                return;
+            }
+            try {
+                String event = functionCallSupport.buildLearningToolEvent(callId, name, phase, detail);
+                synchronized (clientSession) {
+                    clientSession.sendMessage(new TextMessage(event));
+                }
+            } catch (Exception e) {
+                log.debug("send proxy.learning.tool failed: {}", e.toString());
             }
         }
     }

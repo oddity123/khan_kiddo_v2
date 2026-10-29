@@ -137,9 +137,12 @@ app:
       app-id: ${DOUBAO_SPEECH_APP_ID:}
       access-key: ${DOUBAO_SPEECH_ACCESS_KEY:}
       resource-id: ${DOUBAO_SPEECH_RESOURCE_ID:volc.speech.dialog}
+      # 默认教练人设（材料驱动）；多行默认值在 VoiceRealtimeProperties.defaultInstructions。
+      # 工具调用协议（先取材料 / 聚焦 / 记录）仍由前端 voiceRealtimeFunctionCall.ts 追加（已知债）。
+      # default-instructions: |
     # 练习费用硬停（墙钟）。数字只在这里和 Properties；分析 token 不计入金额帽。
     practice:
-      user-daily-minutes: ${VOICE_PRACTICE_USER_DAILY_MINUTES:8}
+      user-daily-minutes: ${VOICE_PRACTICE_USER_DAILY_MINUTES:30}
       user-monthly-minutes: ${VOICE_PRACTICE_USER_MONTHLY_MINUTES:30}
       site-daily-minutes: ${VOICE_PRACTICE_SITE_DAILY_MINUTES:40}
       site-monthly-yuan: ${VOICE_PRACTICE_SITE_MONTHLY_YUAN:150}
