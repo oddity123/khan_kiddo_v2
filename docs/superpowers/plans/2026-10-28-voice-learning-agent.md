@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status（2026-10-29）：** Task 1–3 与口语页去拥挤已完成并合入分支 `feature/voice-learning-agent`。Task 4（语音制卡）按计划后置，本轮关闭跟踪。
+
 **Goal:** 把口语陪练从「纯通话 demo」做成「勾选成长卡/分析材料 → 豆包全双工练习 → 后端工具更新进度/笔记/新卡 → 右侧学习面板实时反映」。
 
 **Architecture:** 沿用现有浏览器 ↔ `VoiceRealtimeProxyHandler` ↔ openspeech 全双工链路。工具在**后端**执行：代理拦截上游 `response.function_call_arguments.done`，委托 `VoiceRealtimeToolGateway`（按 tool name 分发到 Step/Handler），回传 `conversation.item.create`（`type=message`），并向浏览器推送 `proxy.learning.*` 业务事件。材料范围在 `voice_practice_session` 快照里，工具只读写本场允许集合。UI 为 Editorial Calm 双栏（左通话/字幕，右学习旁注），不继续加厚 `VoicePracticeView` / 代理上帝类。
@@ -48,7 +50,7 @@
 - [x] 1.4 实现 Gateway + `PingPracticeLabToolHandler`
 - [x] 1.5 改 `VoiceRealtimeProxyHandler.forwardToClient`：检测 FC → 执行 → `upstream.sendText(toolResult)`；仍把原 FC 帧转给客户端；另发 `proxy.learning.tool`
 - [x] 1.6 前端：去掉本地 tool 回传；听 `proxy.learning.tool` 记日志；仍由前端 `session.create` 声明 tools
-- [ ] 1.7 人工说「测试工具」验收（需重启后端后通话）
+- [x] 1.7 人工说「测试工具」验收（需重启后端后通话）
 
 **Done when:** 真人通话仍出现 received→replied（来自 `proxy.learning.tool`），且回传不依赖前端 `conversation.item.create`。
 
@@ -81,15 +83,15 @@
 
 ---
 
-## Task 4: 语音来源制卡（可后置同一 PR 序列）
+## Task 4: 语音来源制卡（可后置同一 PR 序列）— 本轮关闭
 
 **Goal:** `create_learning_card` 不伪造 analysisId；扩展 sourceRef / 表约束。
 
-- [ ] 4.1 source 形态设计 + DDL/UK
-- [ ] 4.2 Handler + 去重
-- [ ] 4.3 面板「新增」区展示
+- [x] 4.1 source 形态设计 + DDL/UK（后置，未实现）
+- [x] 4.2 Handler + 去重（后置，未实现）
+- [x] 4.3 面板「新增」区展示（后置，未实现）
 
-**Done when:** 对话中可出现可删、可追溯原话的新卡。
+**Done when:** 对话中可出现可删、可追溯原话的新卡。（另开任务再做）
 
 ---
 
