@@ -98,12 +98,10 @@ const router = createRouter({
       {
           path: '/practice/voice',
           name: 'practice-voice',
-          component: () => import('@/views/practice/VoicePracticeView.vue'),
+          redirect: '/conversation/analyses',
           meta: {
-            title: '口语陪练',
             requiresAuth: true,
             robots: 'noindex, nofollow',
-            immersive: true,
           },
       },
       {
