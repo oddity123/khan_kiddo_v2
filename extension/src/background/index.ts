@@ -12,6 +12,9 @@ import type {
   SettingsResponse,
 } from '../shared/protocol'
 import {parseChatGptShareId} from '../shared/shareUrl'
+import {registerConnectionProbe} from '../connection/background'
+
+if (import.meta.env.MODE !== 'production') registerConnectionProbe()
 
 async function getWebOrigin(): Promise<string> {
   if (!ALLOW_WEB_ORIGIN_OVERRIDE) {
@@ -146,6 +149,7 @@ async function importShareToAnalyzePage(shareUrl: string): Promise<ImportConvers
 }
 
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendResponse) => {
+  if (!['GET_SETTINGS', 'SAVE_SETTINGS', 'IMPORT_SHARE'].includes(message.type)) return
   const respond = async () => {
     if (message.type === 'GET_SETTINGS') {
       const webOrigin = await getWebOrigin()

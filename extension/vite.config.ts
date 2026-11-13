@@ -1,6 +1,7 @@
 import {readFileSync, writeFileSync} from 'node:fs'
 import {resolve} from 'node:path'
 import {defineConfig, loadEnv} from 'vite'
+import {installResponseCapture} from './src/connection/capture'
 
 function mergeWebOriginHostPermission(
     manifest: Record<string, unknown>,
@@ -79,6 +80,8 @@ export default defineConfig(({mode}) => {
             mergeWebOriginHostPermission(manifest, webOrigin)
           } else {
             configureDevelopmentPermissions(manifest)
+            writeFileSync(resolve(__dirname, 'dist/connection-capture.js'), `(${installResponseCapture.toString()})();`, 'utf8')
+            ;(manifest.content_scripts as unknown[]).push({matches: ['https://chatgpt.com/*'], js: ['connection-capture.js'], run_at: 'document_start', world: 'MAIN'})
           }
           writeFileSync(
               resolve(__dirname, 'dist/manifest.json'),

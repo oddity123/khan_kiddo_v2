@@ -1,5 +1,8 @@
 import type {ImportShareResult, SettingsResponse} from '../shared/protocol'
 import {PRIVACY_CONSENT_STORAGE_KEY} from '../shared/constants'
+import {mountConnectionProbe} from '../connection/popup'
+
+if (import.meta.env.MODE !== 'production') mountConnectionProbe()
 
 const originRow = document.getElementById('originRow') as HTMLDivElement
 const webOriginInput = document.getElementById('webOrigin') as HTMLInputElement
