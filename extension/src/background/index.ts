@@ -12,10 +12,6 @@ import type {
   SettingsResponse,
 } from '../shared/protocol'
 import {parseChatGptShareId} from '../shared/shareUrl'
-import {registerConnectionProbe} from '../connection/background'
-
-if (import.meta.env.MODE !== 'production') registerConnectionProbe()
-
 async function getWebOrigin(): Promise<string> {
   if (!ALLOW_WEB_ORIGIN_OVERRIDE) {
     return DEFAULT_WEB_ORIGIN

@@ -11,6 +11,10 @@ frontend/.env.local
 extension/node_modules/
 extension/dist/
 
+# Python 缓存
+__pycache__/
+*.py[cod]
+
 # IDE
 .idea/
 *.iws

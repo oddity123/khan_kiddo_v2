@@ -1,10 +1,16 @@
 import type {ImportShareResult, SettingsResponse} from '../shared/protocol'
 import {PRIVACY_CONSENT_STORAGE_KEY} from '../shared/constants'
 import {mountConnectionProbe} from '../connection/popup'
+import {mountInjectionExample} from '../connection/injectionPopup'
 
-if (import.meta.env.MODE !== 'production') mountConnectionProbe()
+if (import.meta.env.MODE !== 'production') {
+  mountConnectionProbe()
+  mountInjectionExample()
+} else {
+  document.querySelector<HTMLDetailsElement>('#shareSection')!.open = true
+}
 
-const originRow = document.getElementById('originRow') as HTMLDivElement
+const originRow = document.getElementById('originRow') as HTMLDetailsElement
 const webOriginInput = document.getElementById('webOrigin') as HTMLInputElement
 const shareUrlInput = document.getElementById('shareUrl') as HTMLTextAreaElement
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement

@@ -5,147 +5,98 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Khan Kiddo</title>
   <style>
-    :root {
-      color-scheme: light;
-      font-family: "DM Sans", system-ui, -apple-system, sans-serif;
-      color: #0f172a;
-    }
-    body {
-      margin: 0;
-      width: 320px;
-      padding: 14px 14px 16px;
-      background: #f4f7fb;
-    }
-    h1 {
-      margin: 0 0 4px;
-      font-size: 15px;
-      font-weight: 700;
-    }
-    p {
-      margin: 0 0 12px;
-      font-size: 12px;
-      line-height: 1.45;
-      color: #64748b;
-    }
-    label {
-      display: block;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-    input, textarea {
-      width: 100%;
-      box-sizing: border-box;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font: inherit;
-      font-size: 12px;
-      background: #fff;
-    }
-    textarea {
-      min-height: 64px;
-      resize: vertical;
-    }
-    .row {
-      margin-bottom: 10px;
-    }
-    .row.hidden {
-      display: none;
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-    }
-    button {
-      flex: 1;
-      border: none;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font: inherit;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button.primary {
-      background: #0b1a7d;
-      color: #fff;
-    }
-    button.secondary {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-    button:disabled {
-      opacity: 0.65;
-      cursor: wait;
-    }
-    button.hidden {
-      display: none;
-    }
-    .status {
-      margin-top: 10px;
-      font-size: 12px;
-      line-height: 1.4;
-      color: #334155;
-      min-height: 1.2em;
-    }
-    .status.error { color: #9f1239; }
-    .status.ok { color: #166534; }
-    .privacy-consent {
-      display: grid;
-      grid-template-columns: 16px 1fr;
-      gap: 8px;
-      align-items: start;
-      margin-top: 10px;
-      padding: 10px;
-      border: 1px solid rgba(11, 26, 125, 0.12);
-      border-radius: 9px;
-      background: #fff;
-      color: #475569;
-      font-size: 11px;
-      line-height: 1.45;
-    }
-    .privacy-consent input {
-      width: 14px;
-      height: 14px;
-      margin: 1px 0 0;
-      accent-color: #0b1a7d;
-    }
-    .privacy-consent a {
-      color: #0b1a7d;
-      font-weight: 600;
-    }
+    :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; color: #18243b; background: #f5f7fc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; width: 372px; padding: 20px; }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+    .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #172a70; color: white; font-size: 14px; font-weight: 750; }
+    h1 { margin: 0; font-size: 16px; letter-spacing: -.3px; }
+    .tagline { margin: 3px 0 0; font-size: 11px; color: #728097; }
+    h2 { margin: 5px 0 8px; font-size: 19px; letter-spacing: -.5px; }
+    p { margin: 0; font-size: 12px; line-height: 1.65; color: #647189; }
+    .card { background: white; border: 1px solid #e1e6f0; border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+    .history-card { border-color: #d7def4; box-shadow: 0 5px 18px #1e327008; }
+    .eyebrow { font-size: 10px; color: #5064a6; font-weight: 700; letter-spacing: 1px; }
+    .hint { margin-top: 10px; font-size: 11px; color: #7b8598; }
+    .actions { display: flex; gap: 8px; margin-top: 14px; }
+    button { border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+    button.primary { background: #223b91; color: white; flex: 1; }
+    button.primary:hover { background: #172b75; }
+    button.secondary { background: #f1f4fa; color: #42516c; border-color: #e5eaf3; }
+    button:disabled { opacity: .45; cursor: default; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid #6685df; outline-offset: 3px; }
+    .hidden { display: none !important; }
+    .status { font-size: 12px; line-height: 1.6; color: #53617b; overflow-wrap: anywhere; }
+    .status:not(:empty) { margin-top: 12px; }
+    .status.error { color: #ad3152; }
+    .status.ok { color: #26704c; }
+    .transcript { margin: 12px 0 0; padding: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; user-select: text; overflow-wrap: anywhere; background: #f7f9fd; border: 1px solid #e8edf5; border-radius: 10px; font: 12px/1.7 system-ui, sans-serif; }
+    .transcript:empty { display: none; }
+    details.card { padding: 0; }
+    summary { padding: 15px 18px; cursor: pointer; font-size: 12px; font-weight: 600; color: #53617b; }
+    .details-body { padding: 0 18px 18px; }
+    label { display: block; margin-bottom: 7px; font-size: 12px; color: #53617b; }
+    input[type="url"], textarea { width: 100%; border: 1px solid #dce3ef; border-radius: 9px; padding: 10px; font: inherit; font-size: 12px; line-height: 1.5; background: #fafbfe; color: #18243b; }
+    textarea { min-height: 72px; resize: vertical; font: 12px/1.5 system-ui, sans-serif; }
+    .privacy-consent { display: flex; align-items: center; gap: 7px; margin: 12px 0 0; font-size: 11px; line-height: 1.5; }
+    .privacy-consent input { margin: 0; accent-color: #223b91; }
+    a { color: #5064a6; text-underline-offset: 3px; }
+    .settings { margin-top: 14px; }
+    .settings summary { padding: 5px 0; font-size: 11px; font-weight: 400; }
+    .settings .row { margin-top: 10px; }
+    footer { display: flex; justify-content: space-between; align-items: center; padding: 3px 3px 0; font-size: 10px; color: #7b8598; }
   </style>
 </head>
 <body>
-  <h1>Khan Kiddo</h1>
-  <p>从 ChatGPT 公开分享链接导入字幕到分析页。</p>
+  <header>
+    <span class="brand-mark" aria-hidden="true">Kk</span>
+    <div><h1>Khan Kiddo</h1><p class="tagline">让每次对话，都成为学习素材</p></div>
+  </header>
 
-  <div id="originRow" class="row hidden">
-    <label for="webOrigin">站点地址（仅本地调试）</label>
-    <input id="webOrigin" type="url" placeholder="http://localhost:5173" spellcheck="false"/>
-  </div>
+  <section id="historySection" class="card history-card hidden" aria-labelledby="historyTitle">
+    <span class="eyebrow">当前对话</span>
+    <h2 id="historyTitle">自动读取 ChatGPT</h2>
+    <p>打开一段历史对话，一键读取并复制内容。</p>
+    <div class="actions">
+      <button id="readHistory" class="primary" type="button">自动读取</button>
+      <button id="copyHistory" class="secondary" type="button" disabled>复制对话</button>
+    </div>
+    <p class="hint">读取会刷新当前页面，请先保存草稿。内容仅在浏览器内查看和复制。</p>
+    <p id="historyStatus" class="status" role="status" aria-live="polite"></p>
+    <pre id="historyText" class="transcript" aria-label="读取的对话内容"></pre>
+  </section>
 
-  <div class="row">
-    <label for="shareUrl">分享链接（可选）</label>
-    <textarea id="shareUrl" placeholder="https://chatgpt.com/share/..."></textarea>
-  </div>
+  <section id="injectionSection" class="card hidden" aria-labelledby="injectionTitle">
+    <span class="eyebrow">注入验证</span>
+    <h2 id="injectionTitle">试一句练习指令</h2>
+    <p id="injectionExample"></p>
+    <div class="actions"><button id="injectExample" class="secondary" type="button">注入示例句子</button></div>
+    <p class="hint">填入当前 ChatGPT 输入框，由你发送；已有草稿会保留。</p>
+    <p id="injectionStatus" class="status" role="status" aria-live="polite"></p>
+  </section>
 
-  <label class="privacy-consent" for="privacyConsent">
-    <input id="privacyConsent" type="checkbox"/>
-    <span>
-      我已了解：扩展会读取该公开分享页的标题、链接和对话正文，并将内容临时传递到 Khan Kiddo 分析页；扩展不会读取 ChatGPT 登录凭据。查看
-      <a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">扩展隐私政策</a>。
-    </span>
-  </label>
-
-  <div class="actions">
-    <button id="saveBtn" class="secondary hidden" type="button">保存设置</button>
-    <button id="importBtn" class="primary" type="button">导入并打开</button>
-  </div>
-  <div id="status" class="status"></div>
-
+  <details id="shareSection" class="card">
+    <summary>通过分享链接导入</summary>
+    <div class="details-body">
+      <p>也可以粘贴公开分享链接，将对话导入分析页。</p>
+      <div style="margin-top:12px">
+        <label for="shareUrl">ChatGPT 分享链接</label>
+        <textarea id="shareUrl" placeholder="https://chatgpt.com/share/..." spellcheck="false"></textarea>
+      </div>
+      <label class="privacy-consent" for="privacyConsent">
+        <input id="privacyConsent" type="checkbox"/>
+        <span>我已阅读并同意<a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">隐私政策与数据使用说明</a></span>
+      </label>
+      <div class="actions"><button id="importBtn" class="secondary" type="button">导入并打开分析页</button></div>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <details id="originRow" class="settings hidden">
+        <summary>开发设置</summary>
+        <div class="row"><label for="webOrigin">分析站点地址</label><input id="webOrigin" type="url" placeholder="http://localhost:5173" spellcheck="false"/></div>
+        <div class="actions"><button id="saveBtn" class="secondary hidden" type="button">保存设置</button></div>
+      </details>
+    </div>
+  </details>
+  <footer><span>你的对话，你的学习素材</span><a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">隐私政策</a></footer>
   <script type="module" src="/src/popup/main.ts"></script>
 </body>
 </html>
