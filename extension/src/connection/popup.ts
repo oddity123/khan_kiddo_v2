@@ -24,7 +24,6 @@ export function mountConnectionProbe() {
   const read = section.querySelector<HTMLButtonElement>('#readHistory')!
   let timer: number | undefined
   let generation = 0
-  let reloadDeadline = 0
   let readingTarget: {tabId: number; conversationId: string} | undefined
   let analyzing = false
 
@@ -41,15 +40,19 @@ export function mountConnectionProbe() {
     preview.textContent = transcript
     copy.disabled = !transcript
     if (result.status === 'waiting' || result.status === 'reading') {
-      readingTarget = readingTarget
-    } else if (result.status === 'finished' || result.error || result.completeness) {
+      // keep readingTarget
+    } else {
       readingTarget = undefined
     }
     updateAnalyzeEnabled()
     if (result.error) status.textContent = result.error
-    else if (result.status === 'waiting') status.textContent = '等待对话加载…'
+    else if (result.status === 'waiting') status.textContent = '正在读取对话…'
     else if (result.status === 'reading') status.textContent = `已读取 ${result.pages ?? 0} 页…`
     else if (result.status && result.status !== 'finished') status.textContent = result.status
+    else if ((result.messageCount ?? 0) === 0) {
+      const reason = result.stopReason ? `（${result.stopReason}）` : ''
+      status.textContent = `未读到消息${reason}。可刷新 ChatGPT 后重试，或用分享链接导入。`
+    }
     else if (result.completeness === 'partial') status.textContent = `读到 ${result.messageCount ?? 0} 条，历史可能不完整，可通过分享链接导入。`
     else status.textContent = `读到 ${result.messageCount ?? 0} 条，请核对对话开头后可一键分析。`
   }
@@ -71,7 +74,6 @@ export function mountConnectionProbe() {
       const target = await activeTab()
       if (run !== generation) return
       if (readingTarget && (readingTarget.tabId !== target.tabId || readingTarget.conversationId !== target.conversationId)) {
-        reloadDeadline = 0
         throw new Error('当前对话已切换，请重新点击自动读取')
       }
       const [frame] = await chrome.scripting.executeScript({
@@ -81,22 +83,15 @@ export function mountConnectionProbe() {
       if (run !== generation) return
       const result = frame?.result
       if (result?.conversationId === target.conversationId) {
-        reloadDeadline = 0
         show(result)
         if (result.status === 'waiting' || result.status === 'reading') scheduleRefresh(run)
-      } else if (reloadDeadline) {
-        if (Date.now() >= reloadDeadline) throw new Error('未能启动读取，请等待页面加载完成后重试')
+      } else if (readingTarget) {
         scheduleRefresh(run)
       }
     } catch (error) {
       if (run !== generation) return
-      if (reloadDeadline && Date.now() < reloadDeadline) {
-        scheduleRefresh(run)
-      } else {
-        reloadDeadline = 0
-        readingTarget = undefined
-        show({error: error instanceof Error ? error.message : String(error)})
-      }
+      readingTarget = undefined
+      show({error: error instanceof Error ? error.message : String(error)})
     }
   }
 
@@ -105,33 +100,41 @@ export function mountConnectionProbe() {
   read.addEventListener('click', async () => {
     const run = ++generation
     window.clearTimeout(timer)
-    reloadDeadline = 0
     readingTarget = undefined
     show({status: 'waiting'})
-    status.textContent = '正在刷新页面，随后自动更新读取进度…'
+    status.textContent = '正在读取，无需刷新页面…'
     try {
       const target = await activeTab()
       if (run !== generation) return
-      const [frame] = await chrome.scripting.executeScript({target: {tabId: target.tabId}, world: 'MAIN', func: () => {
-        const id = location.pathname.match(/(?:^|\/)c\/([\w-]+)\/?$/)?.[1]
-        if (!id) return false
-        sessionStorage.setItem('kk.connection.capture', id)
-        delete (window as unknown as {__kkCapture?: unknown}).__kkCapture
-        return true
-      }})
+      // Ensure MAIN-world capture helper is present, then start without reload.
+      await chrome.scripting.executeScript({
+        target: {tabId: target.tabId},
+        world: 'MAIN',
+        files: ['connection-capture.js'],
+      })
       if (run !== generation) return
-      if (!frame?.result) throw new Error('请先打开已有对话')
+      const [started] = await chrome.scripting.executeScript({
+        target: {tabId: target.tabId},
+        world: 'MAIN',
+        func: (conversationId: string) => {
+          const start = (window as unknown as {
+            __kkStartHistoryCapture?: (id: string) => void
+          }).__kkStartHistoryCapture
+          if (typeof start !== 'function') return false
+          start(conversationId)
+          return true
+        },
+        args: [target.conversationId],
+      })
+      if (run !== generation) return
+      if (!started?.result) throw new Error('未能启动读取，请刷新 ChatGPT 页面后重试')
       readingTarget = target
       sourceConversationId = target.conversationId
       updateAnalyzeEnabled()
-      await chrome.tabs.reload(target.tabId)
-      if (run !== generation) return
-      reloadDeadline = Date.now() + 15000
       scheduleRefresh(run)
     } catch (error) {
       if (run !== generation) return
       readingTarget = undefined
-      reloadDeadline = 0
       show({error: error instanceof Error ? error.message : String(error)})
     }
   })

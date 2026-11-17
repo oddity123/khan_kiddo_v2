@@ -3,10 +3,13 @@ import assert from 'node:assert/strict'
 import {mountConnectionProbe} from '../src/connection/popup.ts'
 
 function setup() {
-  const nodes = Object.fromEntries(['historyStatus', 'historyText', 'copyHistory', 'readHistory'].map(id => [id, {
-    textContent: '', disabled: false,
-    addEventListener(_name, callback) { this.click = callback },
-  }]))
+  const nodes = Object.fromEntries(
+    ['historyStatus', 'historyText', 'copyHistory', 'readHistory', 'analyzeHistory'].map(id => [id, {
+      textContent: '', disabled: id === 'copyHistory' || id === 'analyzeHistory',
+      addEventListener(_name, callback) { this.click = callback },
+      classList: {add() {}, remove() {}, toggle() {}},
+    }]),
+  )
   const timers = new Map()
   let nextTimer = 0
   let result
@@ -19,9 +22,14 @@ function setup() {
     clearTimeout(id) { timers.delete(id) }, addEventListener() {},
   }
   globalThis.chrome = {
-    tabs: {query: async () => [tab], reload: async id => { calls.push(['reload', id]) }},
-    scripting: {executeScript: async ({func}) => {
-      if (func.toString().includes('sessionStorage')) { calls.push(['marker']); return [{result: true}] }
+    tabs: {query: async () => [tab]},
+    runtime: {sendMessage: async () => ({type: 'ANALYSIS_TASK_STATUS', running: false})},
+    scripting: {executeScript: async ({files, func, args}) => {
+      if (files) { calls.push(['inject-capture']); return [{}] }
+      if (func && func.toString().includes('__kkStartHistoryCapture')) {
+        calls.push(['start', args?.[0]])
+        return [{result: true}]
+      }
       if (failure) throw new Error(failure)
       return [{result}]
     }},
@@ -40,21 +48,25 @@ function setup() {
   }
 }
 
-test('click resumes polling through navigation, then shows progress and result without reopening', async () => {
+test('click starts capture without reload, then shows progress and result', async () => {
   const ui = setup()
   mountConnectionProbe()
   await new Promise(resolve => setImmediate(resolve))
   await ui.nodes.readHistory.click()
-  assert.deepEqual(ui.calls, [['marker'], ['reload', 7]])
+  assert.deepEqual(ui.calls, [['inject-capture'], ['start', 'example']])
   assert.equal(ui.nodes.readHistory.disabled, true)
   assert.equal(ui.timers.size, 1)
   ui.setFailure('Frame was removed')
   await ui.tick()
-  assert.equal(ui.timers.size, 1)
-  assert.equal(ui.nodes.readHistory.disabled, true)
-  ui.setFailure(undefined)
-  await ui.tick() // Capture not installed yet after navigation.
-  assert.equal(ui.timers.size, 1)
+  assert.match(ui.nodes.historyStatus.textContent, /Frame was removed|失败|Error/i)
+  assert.equal(ui.nodes.readHistory.disabled, false)
+})
+
+test('successful poll shows reading progress then finished transcript', async () => {
+  const ui = setup()
+  mountConnectionProbe()
+  await new Promise(resolve => setImmediate(resolve))
+  await ui.nodes.readHistory.click()
   ui.setResult({conversationId: 'example', status: 'reading', pages: 2})
   await ui.tick()
   assert.equal(ui.nodes.historyStatus.textContent, '已读取 2 页…')
@@ -76,20 +88,4 @@ test('navigation to another conversation stops polling and permits retry', async
   assert.match(ui.nodes.historyStatus.textContent, /对话已切换/)
   assert.equal(ui.nodes.readHistory.disabled, false)
   assert.equal(ui.timers.size, 0)
-})
-
-test('capture startup timeout stops polling and permits retry', async () => {
-  const ui = setup()
-  const originalNow = Date.now
-  try {
-    Date.now = () => 1000
-    mountConnectionProbe()
-    await new Promise(resolve => setImmediate(resolve))
-    await ui.nodes.readHistory.click()
-    Date.now = () => 17000
-    await ui.tick()
-    assert.match(ui.nodes.historyStatus.textContent, /未能启动读取/)
-    assert.equal(ui.nodes.readHistory.disabled, false)
-    assert.equal(ui.timers.size, 0)
-  } finally { Date.now = originalNow }
 })
