@@ -6,6 +6,8 @@ export type ExtensionMessageType =
     | 'START_CONNECT'
     | 'GET_CONNECTION'
     | 'REVOKE_CONNECTION'
+    | 'SUBMIT_ANALYSIS'
+    | 'GET_ANALYSIS_TASK'
 
 export interface ImportConversationPayload {
   source: 'chatgpt_share'
@@ -65,6 +67,35 @@ export interface ConnectionStatusResponse {
   error?: string | null
 }
 
+export interface SubmitAnalysisRequest {
+  type: 'SUBMIT_ANALYSIS'
+  conversationContent: string
+  sourceType: 'chatgpt_history' | 'chatgpt_share'
+  sourceConversationId?: string | null
+}
+
+export interface SubmitAnalysisResult {
+  type: 'SUBMIT_ANALYSIS_RESULT'
+  ok: boolean
+  error?: string
+  taskId?: string
+  status?: string
+  analysisId?: string
+}
+
+export interface GetAnalysisTaskRequest {
+  type: 'GET_ANALYSIS_TASK'
+}
+
+export interface AnalysisTaskStatusResponse {
+  type: 'ANALYSIS_TASK_STATUS'
+  running: boolean
+  taskId?: string
+  status?: string
+  analysisId?: string
+  error?: string | null
+}
+
 export type ExtensionRequest =
     | ImportShareRequest
     | GetSettingsRequest
@@ -72,3 +103,5 @@ export type ExtensionRequest =
     | StartConnectRequest
     | GetConnectionRequest
     | RevokeConnectionRequest
+    | SubmitAnalysisRequest
+    | GetAnalysisTaskRequest

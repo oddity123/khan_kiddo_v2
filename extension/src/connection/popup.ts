@@ -1,4 +1,5 @@
 import {requireActiveChatGptTab} from '../shared/chatgptTab.ts'
+import type {AnalysisTaskStatusResponse, SubmitAnalysisResult} from '../shared/protocol'
 
 interface HistoryResult {
   status?: string
@@ -17,33 +18,53 @@ export function mountConnectionProbe() {
   const status = section.querySelector('#historyStatus')!
   const preview = section.querySelector('#historyText')!
   const copy = section.querySelector<HTMLButtonElement>('#copyHistory')!
+  const analyze = section.querySelector<HTMLButtonElement>('#analyzeHistory')!
   let transcript = ''
+  let sourceConversationId: string | undefined
   const read = section.querySelector<HTMLButtonElement>('#readHistory')!
   let timer: number | undefined
   let generation = 0
   let reloadDeadline = 0
   let readingTarget: {tabId: number; conversationId: string} | undefined
+  let analyzing = false
+
+  const updateAnalyzeEnabled = () => {
+    analyze.disabled = analyzing || !transcript || !!readingTarget
+  }
+
   const show = (result: HistoryResult) => {
     read.disabled = result.status === 'waiting' || result.status === 'reading'
     transcript = result.messages?.map(message => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.text}`).join('\n\n') ?? ''
+    if (result.conversationId) {
+      sourceConversationId = result.conversationId
+    }
     preview.textContent = transcript
     copy.disabled = !transcript
+    if (result.status === 'waiting' || result.status === 'reading') {
+      readingTarget = readingTarget
+    } else if (result.status === 'finished' || result.error || result.completeness) {
+      readingTarget = undefined
+    }
+    updateAnalyzeEnabled()
     if (result.error) status.textContent = result.error
     else if (result.status === 'waiting') status.textContent = '等待对话加载…'
     else if (result.status === 'reading') status.textContent = `已读取 ${result.pages ?? 0} 页…`
     else if (result.status && result.status !== 'finished') status.textContent = result.status
     else if (result.completeness === 'partial') status.textContent = `读到 ${result.messageCount ?? 0} 条，历史可能不完整，可通过分享链接导入。`
-    else status.textContent = `读到 ${result.messageCount ?? 0} 条，请核对对话开头。`
+    else status.textContent = `读到 ${result.messageCount ?? 0} 条，请核对对话开头后可一键分析。`
   }
+
   const activeTab = async () => {
     const {tabId, url} = await requireActiveChatGptTab()
     const conversationId = url.pathname.match(/(?:^|\/)c\/([\w-]+)\/?$/)?.[1]
     if (!conversationId) throw new Error('请先打开已有对话')
     return {tabId, conversationId}
   }
+
   const scheduleRefresh = (run: number) => {
     timer = window.setTimeout(() => { void refresh(run) }, 1000)
   }
+
   const refresh = async (run: number) => {
     window.clearTimeout(timer)
     try {
@@ -78,7 +99,9 @@ export function mountConnectionProbe() {
       }
     }
   }
+
   void refresh(generation)
+
   read.addEventListener('click', async () => {
     const run = ++generation
     window.clearTimeout(timer)
@@ -99,7 +122,8 @@ export function mountConnectionProbe() {
       if (run !== generation) return
       if (!frame?.result) throw new Error('请先打开已有对话')
       readingTarget = target
-      // Acknowledge the marker before navigation can destroy the injected context.
+      sourceConversationId = target.conversationId
+      updateAnalyzeEnabled()
       await chrome.tabs.reload(target.tabId)
       if (run !== generation) return
       reloadDeadline = Date.now() + 15000
@@ -111,10 +135,12 @@ export function mountConnectionProbe() {
       show({error: error instanceof Error ? error.message : String(error)})
     }
   })
+
   window.addEventListener('pagehide', () => {
     generation++
     window.clearTimeout(timer)
   }, {once: true})
+
   copy.onclick = async () => {
     try {
       await navigator.clipboard.writeText(transcript)
@@ -123,4 +149,44 @@ export function mountConnectionProbe() {
       status.textContent = '复制失败，请选中下方文本手动复制'
     }
   }
+
+  analyze.onclick = async () => {
+    if (!transcript || analyzing) return
+    analyzing = true
+    updateAnalyzeEnabled()
+    status.textContent = '正在提交分析…'
+    try {
+      const result = (await chrome.runtime.sendMessage({
+        type: 'SUBMIT_ANALYSIS',
+        conversationContent: transcript,
+        sourceType: 'chatgpt_history',
+        sourceConversationId: sourceConversationId ?? null,
+      })) as SubmitAnalysisResult
+      if (!result.ok) {
+        status.textContent = result.error || '提交失败'
+        return
+      }
+      if (result.status === 'SUCCEEDED' && result.analysisId) {
+        status.textContent = '分析已完成，已打开报告页'
+        return
+      }
+      status.textContent = '已提交，分析进行中；可关闭弹窗，完成后会打开报告'
+    } catch (error) {
+      status.textContent = error instanceof Error ? error.message : '提交失败'
+    } finally {
+      analyzing = false
+      updateAnalyzeEnabled()
+    }
+  }
+
+  void (async () => {
+    const task = (await chrome.runtime.sendMessage({
+      type: 'GET_ANALYSIS_TASK',
+    })) as AnalysisTaskStatusResponse
+    if (task.running) {
+      status.textContent = '有分析任务进行中；完成后会打开报告页'
+    } else if (task.status === 'FAILED' && task.error) {
+      status.textContent = `上次分析失败：${task.error}`
+    }
+  })()
 }

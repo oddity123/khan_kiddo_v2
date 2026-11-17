@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.analysistask.ConversationAnalysisTaskMapper">
+
+    <resultMap id="TaskMap" type="com.khankiddo.learning.analysistask.ConversationAnalysisTask">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="user_id" property="userId"/>
+        <result column="status" property="status"/>
+        <result column="conversation_content" property="conversationContent"/>
+        <result column="content_fingerprint" property="contentFingerprint"/>
+        <result column="source_type" property="sourceType"/>
+        <result column="source_conversation_id" property="sourceConversationId"/>
+        <result column="model_id" property="modelId"/>
+        <result column="analysis_id" property="analysisId"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="started_at" property="startedAt"/>
+        <result column="finished_at" property="finishedAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, task_id, user_id, status, conversation_content, content_fingerprint,
+        source_type, source_conversation_id, model_id, analysis_id, error_message,
+        created_at, started_at, finished_at, updated_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO conversation_analysis_task
+            (task_id, user_id, status, conversation_content, content_fingerprint,
+             source_type, source_conversation_id, model_id, created_at, updated_at)
+        VALUES
+            (#{taskId}, #{userId}, #{status}, #{conversationContent}, #{contentFingerprint},
+             #{sourceType}, #{sourceConversationId}, #{modelId}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <select id="findByTaskId" resultMap="TaskMap">
+        SELECT <include refid="Columns"/>
+        FROM conversation_analysis_task
+        WHERE task_id = #{taskId}
+    </select>
+
+    <select id="findReusable" resultMap="TaskMap">
+        SELECT <include refid="Columns"/>
+        FROM conversation_analysis_task
+        WHERE user_id = #{userId}
+          AND content_fingerprint = #{contentFingerprint}
+          AND status IN ('QUEUED', 'RUNNING', 'SUCCEEDED')
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <update id="markRunning">
+        UPDATE conversation_analysis_task
+        SET status = 'RUNNING',
+            started_at = #{startedAt},
+            updated_at = #{startedAt}
+        WHERE task_id = #{taskId}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markSucceeded">
+        UPDATE conversation_analysis_task
+        SET status = 'SUCCEEDED',
+            analysis_id = #{analysisId},
+            finished_at = #{finishedAt},
+            updated_at = #{finishedAt}
+        WHERE task_id = #{taskId}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markFailed">
+        UPDATE conversation_analysis_task
+        SET status = 'FAILED',
+            error_message = #{errorMessage},
+            finished_at = #{finishedAt},
+            updated_at = #{finishedAt}
+        WHERE task_id = #{taskId}
+          AND status = #{expectedStatus}
+    </update>
+</mapper>

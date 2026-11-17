@@ -56,7 +56,7 @@
   <section id="accountSection" class="card" aria-labelledby="accountTitle">
     <span class="eyebrow">账号</span>
     <h2 id="accountTitle">连接 Khan Kiddo</h2>
-    <p id="accountHint">登录并授权后，扩展可代表你提交分析（后续能力）。</p>
+    <p id="accountHint">登录并授权后，扩展可代表你提交对话分析。</p>
     <p id="accountStatus" class="status" role="status" aria-live="polite"></p>
     <div class="actions">
       <button id="connectBtn" class="primary hidden" type="button">连接账号</button>
@@ -67,12 +67,13 @@
   <section id="historySection" class="card history-card hidden" aria-labelledby="historyTitle">
     <span class="eyebrow">当前对话</span>
     <h2 id="historyTitle">自动读取 ChatGPT</h2>
-    <p>打开一段历史对话，一键读取并复制内容。</p>
+    <p>打开一段历史对话，读取后可一键提交到 Khan Kiddo 分析。</p>
     <div class="actions">
       <button id="readHistory" class="primary" type="button">自动读取</button>
-      <button id="copyHistory" class="secondary" type="button" disabled>复制对话</button>
+      <button id="analyzeHistory" class="secondary" type="button" disabled>一键分析</button>
+      <button id="copyHistory" class="secondary" type="button" disabled>复制</button>
     </div>
-    <p class="hint">读取会刷新当前页面，请先保存草稿。内容仅在浏览器内查看和复制。</p>
+    <p class="hint">读取会刷新当前页面，请先保存草稿。分析需先连接账号；提交后可关闭弹窗，完成后会打开报告页。</p>
     <p id="historyStatus" class="status" role="status" aria-live="polite"></p>
     <pre id="historyText" class="transcript" aria-label="读取的对话内容"></pre>
   </section>

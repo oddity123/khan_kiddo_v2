@@ -52,7 +52,7 @@ function applyConnectionUi(status: ConnectionStatusResponse): void {
   }
   connectBtn.classList.remove('hidden')
   disconnectBtn.classList.add('hidden')
-  accountHintEl.textContent = '登录并授权后，扩展可代表你提交分析（后续能力）。'
+  accountHintEl.textContent = '登录并授权后，扩展可代表你提交对话分析。'
   if (status.error) {
     setAccountStatus(status.error, 'error')
   } else {

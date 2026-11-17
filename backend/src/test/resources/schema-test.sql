@@ -135,3 +135,22 @@ CREATE TABLE IF NOT EXISTS extension_credential
     last_used_at TIMESTAMP,
     created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS conversation_analysis_task
+(
+    id                     BIGINT AUTO_INCREMENT PRIMARY KEY,
+    task_id                VARCHAR(36)  NOT NULL,
+    user_id                BIGINT       NOT NULL,
+    status                 VARCHAR(20)  NOT NULL DEFAULT 'QUEUED',
+    conversation_content   CLOB         NOT NULL,
+    content_fingerprint    CHAR(64)     NOT NULL,
+    source_type            VARCHAR(32)  NOT NULL,
+    source_conversation_id VARCHAR(64),
+    model_id               VARCHAR(100),
+    analysis_id            VARCHAR(64),
+    error_message          CLOB,
+    created_at             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    started_at             TIMESTAMP,
+    finished_at            TIMESTAMP,
+    updated_at             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

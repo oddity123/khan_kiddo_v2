@@ -66,6 +66,11 @@ app:
     credential-ttl-days: ${EXTENSION_CONNECT_CREDENTIAL_TTL_DAYS:30}
     poll-interval-ms: ${EXTENSION_CONNECT_POLL_INTERVAL_MS:1500}
     poll-timeout-ms: ${EXTENSION_CONNECT_POLL_TIMEOUT_MS:600000}
+  # 异步分析任务（扩展一键分析；先落库再跑流水线）
+  analysis-task:
+    enabled: ${ANALYSIS_TASK_ENABLED:true}
+    poll-interval-ms: ${ANALYSIS_TASK_POLL_INTERVAL_MS:2000}
+    poll-timeout-ms: ${ANALYSIS_TASK_POLL_TIMEOUT_MS:900000}
   conversation-analysis:
     min-content-length: 10
     max-content-length: 20000

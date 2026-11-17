@@ -5,7 +5,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-@MapperScan({"com.khankiddo.learning.mapper", "com.khankiddo.learning.extensionconnect"})
+@MapperScan({
+        "com.khankiddo.learning.mapper",
+        "com.khankiddo.learning.extensionconnect",
+        "com.khankiddo.learning.analysistask"
+})
 public class KhanKiddoLearningApplication {
 
     public static void main(String[] args) {

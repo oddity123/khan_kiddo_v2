@@ -187,5 +187,25 @@ CREATE TABLE IF NOT EXISTS `extension_credential`
     INDEX `idx_ext_cred_user_active` (`user_id`, `revoked_at`, `expires_at`)
 ) ENGINE = InnoDB COMMENT ='扩展专用凭证';
 
--- 已有库升级（新建库已通过 CREATE TABLE 包含）：
--- （无 ALTER：两表均为新增 IF NOT EXISTS）
+-- 扩展/异步对话分析任务（先落库再跑流水线）
+CREATE TABLE IF NOT EXISTS `conversation_analysis_task`
+(
+    `id`                       BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键',
+    `task_id`                  VARCHAR(36)  NOT NULL COMMENT '对外任务 UUID',
+    `user_id`                  BIGINT       NOT NULL COMMENT '发起用户',
+    `status`                   VARCHAR(20)  NOT NULL DEFAULT 'QUEUED' COMMENT 'QUEUED/RUNNING/SUCCEEDED/FAILED',
+    `conversation_content`     MEDIUMTEXT   NOT NULL COMMENT '完整对话原文',
+    `content_fingerprint`      CHAR(64)     NOT NULL COMMENT '内容 SHA-256 hex',
+    `source_type`              VARCHAR(32)  NOT NULL COMMENT 'chatgpt_history / chatgpt_share 等',
+    `source_conversation_id`   VARCHAR(64)           DEFAULT NULL COMMENT '来源会话标识',
+    `model_id`                 VARCHAR(100)          DEFAULT NULL COMMENT '可选分析模型配置 ID',
+    `analysis_id`              VARCHAR(64)           DEFAULT NULL COMMENT '成功后的 analysisId',
+    `error_message`            TEXT                  DEFAULT NULL COMMENT '失败原因',
+    `created_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `started_at`               DATETIME              DEFAULT NULL COMMENT '开始执行',
+    `finished_at`              DATETIME              DEFAULT NULL COMMENT '结束时间',
+    `updated_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY `uk_analysis_task_id` (`task_id`),
+    INDEX `idx_analysis_task_user_fp` (`user_id`, `content_fingerprint`, `status`),
+    INDEX `idx_analysis_task_user_created` (`user_id`, `created_at`)
+) ENGINE = InnoDB COMMENT ='对话分析异步任务';

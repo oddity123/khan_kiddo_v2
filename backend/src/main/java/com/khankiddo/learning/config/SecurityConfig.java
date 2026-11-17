@@ -57,6 +57,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/extension/connect/sessions").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/extension/connect/sessions/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/extension/connect/exchange").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/conversation/analysis-tasks/config").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated())

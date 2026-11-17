@@ -40,12 +40,13 @@ Chrome → 扩展程序 → 开发者模式 → **加载已解压的扩展程序
 
 正式版仅提供分享链接导入，目标固定为生产站。
 
-## 账号连接（P1 底座）
+## 账号连接与一键分析（P1）
 
 1. 弹窗点击「连接账号」→ 打开站点 `/extension/connect?session=…`（未登录先登录）。
 2. 在授权页点「允许」；扩展 background 轮询兑换，将 `kk_ext_*` 凭证存入 `chrome.storage.local`。
-3. 「断开」会调用撤销接口并清除本地凭证。凭证不进入 ChatGPT 内容脚本。
-4. 已有生产库需执行 `backend/src/main/resources/sql/extension_connect.sql`。
+3. 开发版：打开 ChatGPT 历史对话 →「自动读取」→「一键分析」；任务先落库再跑流水线，完成后打开报告页。
+4. 「断开」会调用撤销接口并清除本地凭证。凭证不进入 ChatGPT 内容脚本。
+5. 库表以 `backend/src/main/resources/sql/DDL.sql` 为准（`IF NOT EXISTS`，可幂等重跑）。
 
 ## 说明
 

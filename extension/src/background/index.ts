@@ -12,6 +12,7 @@ import type {
   SettingsResponse,
 } from '../shared/protocol'
 import {parseChatGptShareId} from '../shared/shareUrl'
+import {getAnalysisTaskStatus, submitAnalysis} from './analyzeTask'
 import {getConnectionStatus, revokeConnection, startConnect} from './connect'
 
 async function getWebOrigin(): Promise<string> {
@@ -153,6 +154,8 @@ const HANDLED_TYPES = new Set([
   'START_CONNECT',
   'GET_CONNECTION',
   'REVOKE_CONNECTION',
+  'SUBMIT_ANALYSIS',
+  'GET_ANALYSIS_TASK',
 ])
 
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendResponse) => {
@@ -195,6 +198,20 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendRe
     }
     if (message.type === 'REVOKE_CONNECTION') {
       sendResponse(await revokeConnection(webOrigin))
+      return
+    }
+    if (message.type === 'SUBMIT_ANALYSIS') {
+      sendResponse(
+        await submitAnalysis(webOrigin, ensureHostPermission, {
+          conversationContent: message.conversationContent,
+          sourceType: message.sourceType,
+          sourceConversationId: message.sourceConversationId,
+        }),
+      )
+      return
+    }
+    if (message.type === 'GET_ANALYSIS_TASK') {
+      sendResponse(await getAnalysisTaskStatus(webOrigin))
     }
   }
 
