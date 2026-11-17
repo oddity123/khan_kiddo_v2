@@ -3,6 +3,9 @@ export type ExtensionMessageType =
     | 'IMPORT_SHARE_RESULT'
     | 'GET_SETTINGS'
     | 'SAVE_SETTINGS'
+    | 'START_CONNECT'
+    | 'GET_CONNECTION'
+    | 'REVOKE_CONNECTION'
 
 export interface ImportConversationPayload {
   source: 'chatgpt_share'
@@ -41,7 +44,31 @@ export interface SettingsResponse {
   allowOriginOverride: boolean
 }
 
+export interface StartConnectRequest {
+  type: 'START_CONNECT'
+}
+
+export interface GetConnectionRequest {
+  type: 'GET_CONNECTION'
+}
+
+export interface RevokeConnectionRequest {
+  type: 'REVOKE_CONNECTION'
+}
+
+export interface ConnectionStatusResponse {
+  type: 'CONNECTION_STATUS'
+  connected: boolean
+  connecting?: boolean
+  username?: string | null
+  expiresAt?: string | null
+  error?: string | null
+}
+
 export type ExtensionRequest =
     | ImportShareRequest
     | GetSettingsRequest
     | SaveSettingsRequest
+    | StartConnectRequest
+    | GetConnectionRequest
+    | RevokeConnectionRequest

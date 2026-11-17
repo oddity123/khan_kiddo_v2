@@ -111,3 +111,27 @@ CREATE TABLE IF NOT EXISTS product_funnel_event
     voice_session_id BIGINT,
     created_at       TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS extension_connect_session
+(
+    id             VARCHAR(36)  NOT NULL PRIMARY KEY,
+    code_challenge VARCHAR(128) NOT NULL,
+    status         VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    user_id        BIGINT,
+    expires_at     TIMESTAMP    NOT NULL,
+    authorized_at  TIMESTAMP,
+    exchanged_at   TIMESTAMP,
+    created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS extension_credential
+(
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id      BIGINT       NOT NULL,
+    token_hash   CHAR(64)     NOT NULL,
+    label        VARCHAR(64),
+    expires_at   TIMESTAMP    NOT NULL,
+    revoked_at   TIMESTAMP,
+    last_used_at TIMESTAMP,
+    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

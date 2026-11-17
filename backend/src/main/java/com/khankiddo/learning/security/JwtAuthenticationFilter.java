@@ -1,5 +1,6 @@
 package com.khankiddo.learning.security;
 
+import com.khankiddo.learning.extensionconnect.ExtensionConnectTokenSupport;
 import com.khankiddo.learning.model.UserRole;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -48,7 +49,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
             String token = header.substring(7).trim();
-            if (StringUtils.hasText(token)) {
+            // 扩展 opaque 凭证由 ExtensionCredentialAuthenticationFilter 处理
+            if (StringUtils.hasText(token) && !ExtensionConnectTokenSupport.isExtensionToken(token)) {
                 return jwtService.parseToken(token);
             }
         }

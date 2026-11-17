@@ -6,6 +6,12 @@ export const WEB_ORIGIN_STORAGE_KEY = 'kk.extension.webOrigin'
 /** Bump the suffix whenever the disclosed data practices materially change. */
 export const PRIVACY_CONSENT_STORAGE_KEY = 'kk.extension.privacyConsent.v1'
 
+/** Opaque extension credential (`kk_ext_…`) and metadata. */
+export const CREDENTIAL_STORAGE_KEY = 'kk.extension.credential'
+
+/** In-flight connect session (sessionId + PKCE verifier) until exchange completes. */
+export const CONNECT_PENDING_STORAGE_KEY = 'kk.extension.connect.pending'
+
 export const PRIVACY_POLICY_URL = 'https://khankiddo.top/privacy/extension'
 
 const envOrigin = (import.meta.env.VITE_KK_WEB_ORIGIN as string | undefined)?.trim()

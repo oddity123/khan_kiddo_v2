@@ -96,6 +96,17 @@ const router = createRouter({
           },
       },
       {
+          path: '/extension/connect',
+          name: 'extension-connect',
+          component: () => import('@/views/extension/ExtensionConnectView.vue'),
+          meta: {
+            title: '连接浏览器扩展',
+            requiresAuth: true,
+            robots: 'noindex, nofollow',
+          },
+      },
+
+      {
           path: '/practice/voice',
           name: 'practice-voice',
           redirect: '/conversation/analyses',

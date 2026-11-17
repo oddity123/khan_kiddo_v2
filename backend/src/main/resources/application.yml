@@ -59,6 +59,13 @@ app:
     # 生产环境务必通过环境变量 JWT_SECRET 覆盖（至少 32 字符）
     jwt-secret: ${JWT_SECRET:khankiddo-v2-dev-jwt-secret-change-me-in-production}
     jwt-expiration-hours: ${JWT_EXPIRATION_HOURS:168}
+  # 浏览器扩展账号连接（配对会话 + 可撤销 opaque 凭证；与网站 JWT 分离）
+  extension-connect:
+    enabled: ${EXTENSION_CONNECT_ENABLED:true}
+    session-ttl-minutes: ${EXTENSION_CONNECT_SESSION_TTL_MINUTES:10}
+    credential-ttl-days: ${EXTENSION_CONNECT_CREDENTIAL_TTL_DAYS:30}
+    poll-interval-ms: ${EXTENSION_CONNECT_POLL_INTERVAL_MS:1500}
+    poll-timeout-ms: ${EXTENSION_CONNECT_POLL_TIMEOUT_MS:600000}
   conversation-analysis:
     min-content-length: 10
     max-content-length: 20000

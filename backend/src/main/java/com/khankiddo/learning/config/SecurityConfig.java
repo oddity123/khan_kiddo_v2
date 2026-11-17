@@ -1,5 +1,6 @@
 package com.khankiddo.learning.config;
 
+import com.khankiddo.learning.extensionconnect.ExtensionCredentialAuthenticationFilter;
 import com.khankiddo.learning.security.JwtAuthenticationFilter;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ExtensionCredentialAuthenticationFilter extensionCredentialAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -51,6 +53,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/conversation/analyze/stream").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/conversation/practice-prompt").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/funnel/events").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/extension/connect/config").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/extension/connect/sessions").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/extension/connect/sessions/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/extension/connect/exchange").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated())
@@ -67,7 +73,8 @@ public class SecurityConfig {
                             response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=UTF-8");
                             response.getWriter().write("{\"message\":\"无管理员权限\"}");
                         }))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(extensionCredentialAuthenticationFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }

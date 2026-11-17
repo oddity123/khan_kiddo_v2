@@ -40,10 +40,17 @@ Chrome → 扩展程序 → 开发者模式 → **加载已解压的扩展程序
 
 正式版仅提供分享链接导入，目标固定为生产站。
 
+## 账号连接（P1 底座）
+
+1. 弹窗点击「连接账号」→ 打开站点 `/extension/connect?session=…`（未登录先登录）。
+2. 在授权页点「允许」；扩展 background 轮询兑换，将 `kk_ext_*` 凭证存入 `chrome.storage.local`。
+3. 「断开」会调用撤销接口并清除本地凭证。凭证不进入 ChatGPT 内容脚本。
+4. 已有生产库需执行 `backend/src/main/resources/sql/extension_connect.sql`。
+
 ## 说明
 
 - 拉取：`GET https://chatgpt.com/backend-api/share/{id}`（走用户本机网络）。
 - Voice 字幕取自 `parts[].content_type === "audio_transcription"`。
-- 本阶段不在扩展内跑分析 SSE；只负责导入文本。
+- 本阶段不在扩展内跑分析 SSE；分享导入仍打开分析页填入文本。
 - 生产域名通过 `extension/.env.production` 的 `VITE_KK_WEB_ORIGIN` 配置。
 - 扩展隐私政策：`https://khankiddo.top/privacy/extension`。

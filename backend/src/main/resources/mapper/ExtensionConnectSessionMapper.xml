@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.extensionconnect.ExtensionConnectSessionMapper">
+
+    <resultMap id="SessionMap" type="com.khankiddo.learning.extensionconnect.ExtensionConnectSession">
+        <id column="id" property="id"/>
+        <result column="code_challenge" property="codeChallenge"/>
+        <result column="status" property="status"/>
+        <result column="user_id" property="userId"/>
+        <result column="expires_at" property="expiresAt"/>
+        <result column="authorized_at" property="authorizedAt"/>
+        <result column="exchanged_at" property="exchangedAt"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, code_challenge, status, user_id, expires_at, authorized_at, exchanged_at, created_at
+    </sql>
+
+    <insert id="insert">
+        INSERT INTO extension_connect_session
+            (id, code_challenge, status, user_id, expires_at, created_at)
+        VALUES
+            (#{id}, #{codeChallenge}, #{status}, #{userId}, #{expiresAt}, #{createdAt})
+    </insert>
+
+    <select id="findById" resultMap="SessionMap">
+        SELECT <include refid="Columns"/>
+        FROM extension_connect_session
+        WHERE id = #{id}
+    </select>
+
+    <update id="markAuthorized">
+        UPDATE extension_connect_session
+        SET status = 'AUTHORIZED',
+            user_id = #{userId},
+            authorized_at = #{authorizedAt}
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markDenied">
+        UPDATE extension_connect_session
+        SET status = 'DENIED'
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markExchanged">
+        UPDATE extension_connect_session
+        SET status = 'EXCHANGED',
+            exchanged_at = #{exchangedAt}
+        WHERE id = #{id}
+          AND status = #{expectedStatus}
+    </update>
+</mapper>

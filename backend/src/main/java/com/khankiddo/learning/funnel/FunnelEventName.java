@@ -16,7 +16,12 @@ public enum FunnelEventName {
     voice_start,
     voice_end,
     voice_saved,
-    voice_to_analyze;
+    voice_to_analyze,
+    ext_connect_started,
+    ext_connect_authorized,
+    ext_connect_exchanged,
+    ext_connect_revoked,
+    ext_connect_failed;
 
     public static FunnelEventName parse(String raw) {
         if (!StringUtils.hasText(raw)) {

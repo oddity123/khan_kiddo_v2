@@ -45,4 +45,15 @@ public class FunnelEventService {
                 .voiceSessionId(voiceSessionId)
                 .build());
     }
+
+    /** 服务端内部记账；不经客户端白名单校验以外的名字。 */
+    public void recordInternal(Long userId, FunnelEventName name) {
+        if (name == null) {
+            return;
+        }
+        mapper.insert(FunnelEvent.builder()
+                .userId(userId)
+                .eventName(name.name())
+                .build());
+    }
 }

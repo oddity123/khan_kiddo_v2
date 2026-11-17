@@ -12,6 +12,8 @@ import type {
   SettingsResponse,
 } from '../shared/protocol'
 import {parseChatGptShareId} from '../shared/shareUrl'
+import {getConnectionStatus, revokeConnection, startConnect} from './connect'
+
 async function getWebOrigin(): Promise<string> {
   if (!ALLOW_WEB_ORIGIN_OVERRIDE) {
     return DEFAULT_WEB_ORIGIN
@@ -144,8 +146,17 @@ async function importShareToAnalyzePage(shareUrl: string): Promise<ImportConvers
   return payload
 }
 
+const HANDLED_TYPES = new Set([
+  'GET_SETTINGS',
+  'SAVE_SETTINGS',
+  'IMPORT_SHARE',
+  'START_CONNECT',
+  'GET_CONNECTION',
+  'REVOKE_CONNECTION',
+])
+
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendResponse) => {
-  if (!['GET_SETTINGS', 'SAVE_SETTINGS', 'IMPORT_SHARE'].includes(message.type)) return
+  if (!HANDLED_TYPES.has(message.type)) return
   const respond = async () => {
     if (message.type === 'GET_SETTINGS') {
       const webOrigin = await getWebOrigin()
@@ -171,6 +182,19 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendRe
         }
         sendResponse(result)
       }
+      return
+    }
+    const webOrigin = await getWebOrigin()
+    if (message.type === 'GET_CONNECTION') {
+      sendResponse(await getConnectionStatus(webOrigin))
+      return
+    }
+    if (message.type === 'START_CONNECT') {
+      sendResponse(await startConnect(webOrigin, ensureHostPermission))
+      return
+    }
+    if (message.type === 'REVOKE_CONNECTION') {
+      sendResponse(await revokeConnection(webOrigin))
     }
   }
 
