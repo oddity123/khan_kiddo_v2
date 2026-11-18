@@ -1,6 +1,7 @@
 package com.khankiddo.learning.analysistask;
 
 import com.khankiddo.learning.analysistask.dto.AnalysisTaskConfigResponse;
+import com.khankiddo.learning.analysistask.dto.AnalysisTaskLookupResponse;
 import com.khankiddo.learning.analysistask.dto.AnalysisTaskResponse;
 import com.khankiddo.learning.analysistask.dto.CreateAnalysisTaskRequest;
 import com.khankiddo.learning.config.AnalysisTaskProperties;
@@ -11,12 +12,14 @@ import com.khankiddo.learning.dto.conversation.ConversationAnalysisRequest;
 import com.khankiddo.learning.dto.conversation.ConversationAnalysisResultDto;
 import com.khankiddo.learning.exception.BadRequestException;
 import com.khankiddo.learning.exception.ForbiddenException;
+import com.khankiddo.learning.extensionconnect.ExtensionConnectTokenSupport;
 import com.khankiddo.learning.funnel.FunnelEventName;
 import com.khankiddo.learning.funnel.FunnelEventService;
 import com.khankiddo.learning.model.UserRole;
 import com.khankiddo.learning.security.AuthenticatedUser;
 import com.khankiddo.learning.security.SecurityUtils;
 import com.khankiddo.learning.service.conversation.ConversationAnalysisService;
+import com.khankiddo.learning.util.TextSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
@@ -27,14 +30,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -72,11 +73,14 @@ public class AnalysisTaskService {
         String content = normalizeContent(request.getConversationContent());
         validateContentLength(content);
         String sourceType = normalizeSourceType(request.getSourceType());
-        String sourceConversationId = trimToNull(request.getSourceConversationId());
-        String modelId = trimToNull(request.getModelId());
-        String fingerprint = sha256Hex(content);
+        String sourceConversationId = TextSupport.trimToNull(request.getSourceConversationId());
+        String modelId = TextSupport.trimToNull(request.getModelId());
+        String fingerprint = ExtensionConnectTokenSupport.sha256Hex(content);
 
-        var reusable = taskMapper.findReusable(user.id(), fingerprint);
+        Optional<ConversationAnalysisTask> reusable = StringUtils.hasText(sourceConversationId)
+                ? taskMapper.findReusableBySourceAndFingerprint(
+                        user.id(), sourceType, sourceConversationId, fingerprint)
+                : taskMapper.findReusableByFingerprint(user.id(), fingerprint);
         if (reusable.isPresent()) {
             return toResponse(reusable.get());
         }
@@ -110,6 +114,27 @@ public class AnalysisTaskService {
             throw new ForbiddenException("无权查看该分析任务");
         }
         return toResponse(task);
+    }
+
+    /**
+     * 按来源对话查询最新任务状态（含 FAILED）；无记录时 {@code found=false}。
+     */
+    public AnalysisTaskLookupResponse findLatestBySource(String sourceTypeRaw, String sourceConversationIdRaw) {
+        requireEnabled();
+        Long userId = SecurityUtils.requireUserId();
+        String sourceType = normalizeSourceType(sourceTypeRaw);
+        String sourceConversationId = TextSupport.trimToNull(sourceConversationIdRaw);
+        if (!StringUtils.hasText(sourceConversationId)) {
+            throw new BadRequestException("来源对话 id 不能为空");
+        }
+        return taskMapper.findLatestBySource(userId, sourceType, sourceConversationId)
+                .map(task -> AnalysisTaskLookupResponse.builder()
+                        .found(true)
+                        .task(toResponse(task))
+                        .build())
+                .orElseGet(() -> AnalysisTaskLookupResponse.builder()
+                        .found(false)
+                        .build());
     }
 
     private void scheduleExecution(String taskId, AuthenticatedUser user) {
@@ -195,23 +220,6 @@ public class AnalysisTaskService {
             throw new BadRequestException("不支持的来源类型");
         }
         return type;
-    }
-
-    private static String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
-    }
-
-    private static String sha256Hex(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash);
-        } catch (Exception e) {
-            throw new IllegalStateException("SHA-256 unavailable", e);
-        }
     }
 
     private static AnalysisTaskResponse toResponse(ConversationAnalysisTask task) {

@@ -207,5 +207,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_task`
     `updated_at`               DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY `uk_analysis_task_id` (`task_id`),
     INDEX `idx_analysis_task_user_fp` (`user_id`, `content_fingerprint`, `status`),
+    INDEX `idx_analysis_task_user_source` (`user_id`, `source_type`, `source_conversation_id`, `created_at`),
     INDEX `idx_analysis_task_user_created` (`user_id`, `created_at`)
 ) ENGINE = InnoDB COMMENT ='对话分析异步任务';
+-- 已有库：ALTER TABLE conversation_analysis_task ADD INDEX idx_analysis_task_user_source (user_id, source_type, source_conversation_id, created_at);

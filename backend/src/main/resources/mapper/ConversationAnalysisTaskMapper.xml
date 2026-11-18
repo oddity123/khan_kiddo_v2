@@ -41,12 +41,35 @@
         WHERE task_id = #{taskId}
     </select>
 
-    <select id="findReusable" resultMap="TaskMap">
+    <select id="findReusableBySourceAndFingerprint" resultMap="TaskMap">
+        SELECT <include refid="Columns"/>
+        FROM conversation_analysis_task
+        WHERE user_id = #{userId}
+          AND source_type = #{sourceType}
+          AND source_conversation_id = #{sourceConversationId}
+          AND content_fingerprint = #{contentFingerprint}
+          AND status IN ('QUEUED', 'RUNNING', 'SUCCEEDED')
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findReusableByFingerprint" resultMap="TaskMap">
         SELECT <include refid="Columns"/>
         FROM conversation_analysis_task
         WHERE user_id = #{userId}
           AND content_fingerprint = #{contentFingerprint}
+          AND (source_conversation_id IS NULL OR source_conversation_id = '')
           AND status IN ('QUEUED', 'RUNNING', 'SUCCEEDED')
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="findLatestBySource" resultMap="TaskMap">
+        SELECT <include refid="Columns"/>
+        FROM conversation_analysis_task
+        WHERE user_id = #{userId}
+          AND source_type = #{sourceType}
+          AND source_conversation_id = #{sourceConversationId}
         ORDER BY created_at DESC
         LIMIT 1
     </select>

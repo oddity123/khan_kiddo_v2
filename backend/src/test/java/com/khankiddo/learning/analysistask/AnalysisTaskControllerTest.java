@@ -123,15 +123,7 @@ class AnalysisTaskControllerTest {
 
     @Test
     void otherUserCannotReadTask() throws Exception {
-        doAnswer(invocation -> {
-            ConversationAnalysisResultDto result = ConversationAnalysisResultDto.builder()
-                    .analysisId(UUID.randomUUID().toString())
-                    .build();
-            @SuppressWarnings("unchecked")
-            Consumer<ConversationAnalysisProgress> onProgress = invocation.getArgument(2);
-            onProgress.accept(ConversationAnalysisProgress.complete(result));
-            return result;
-        }).when(conversationAnalysisService).analyzeAndPersist(any(), anyString(), any());
+        stubAnalyzeSuccess();
 
         String alice = registerAndLogin("alice_task");
         String bob = registerAndLogin("bob_task");
@@ -146,6 +138,94 @@ class AnalysisTaskControllerTest {
         mockMvc.perform(get("/api/conversation/analysis-tasks/" + taskId)
                         .header("Authorization", "Bearer " + bob))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void bySourceReturnsLatestAndCreateReusesOnlySameFingerprint() throws Exception {
+        stubAnalyzeSuccess();
+
+        String token = registerAndLogin("source_user");
+        mockMvc.perform(get("/api/conversation/analysis-tasks/by-source")
+                        .param("sourceType", "chatgpt_history")
+                        .param("sourceConversationId", "conv-b")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.found").value(false));
+
+        MvcResult first = mockMvc.perform(post("/api/conversation/analysis-tasks")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(SAMPLE, "chatgpt_history", "conv-b")))
+                .andExpect(status().isOk())
+                .andReturn();
+        String firstTaskId = objectMapper.readTree(first.getResponse().getContentAsString()).path("taskId").asText();
+
+        mockMvc.perform(get("/api/conversation/analysis-tasks/by-source")
+                        .param("sourceType", "chatgpt_history")
+                        .param("sourceConversationId", "conv-b")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.found").value(true))
+                .andExpect(jsonPath("$.task.taskId").value(firstTaskId));
+
+        mockMvc.perform(post("/api/conversation/analysis-tasks")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(SAMPLE, "chatgpt_history", "conv-b")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.taskId").value(firstTaskId));
+
+        String updated = SAMPLE + "\nUser: More turns later.\n";
+        MvcResult second = mockMvc.perform(post("/api/conversation/analysis-tasks")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(updated, "chatgpt_history", "conv-b")))
+                .andExpect(status().isOk())
+                .andReturn();
+        String secondTaskId = objectMapper.readTree(second.getResponse().getContentAsString()).path("taskId").asText();
+        assertThat(secondTaskId).isNotEqualTo(firstTaskId);
+
+        mockMvc.perform(get("/api/conversation/analysis-tasks/by-source")
+                        .param("sourceType", "chatgpt_history")
+                        .param("sourceConversationId", "conv-b")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.found").value(true))
+                .andExpect(jsonPath("$.task.taskId").value(secondTaskId));
+    }
+
+    @Test
+    void sameFingerprintDifferentConversationCreatesSeparateTasks() throws Exception {
+        stubAnalyzeSuccess();
+
+        String token = registerAndLogin("multi_conv");
+        MvcResult a = mockMvc.perform(post("/api/conversation/analysis-tasks")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(SAMPLE, "chatgpt_history", "conv-x")))
+                .andExpect(status().isOk())
+                .andReturn();
+        MvcResult b = mockMvc.perform(post("/api/conversation/analysis-tasks")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(SAMPLE, "chatgpt_history", "conv-y")))
+                .andExpect(status().isOk())
+                .andReturn();
+        String taskA = objectMapper.readTree(a.getResponse().getContentAsString()).path("taskId").asText();
+        String taskB = objectMapper.readTree(b.getResponse().getContentAsString()).path("taskId").asText();
+        assertThat(taskA).isNotEqualTo(taskB);
+    }
+
+    private void stubAnalyzeSuccess() {
+        doAnswer(invocation -> {
+            ConversationAnalysisResultDto result = ConversationAnalysisResultDto.builder()
+                    .analysisId(UUID.randomUUID().toString())
+                    .build();
+            @SuppressWarnings("unchecked")
+            Consumer<ConversationAnalysisProgress> onProgress = invocation.getArgument(2);
+            onProgress.accept(ConversationAnalysisProgress.complete(result));
+            return result;
+        }).when(conversationAnalysisService).analyzeAndPersist(any(), anyString(), any());
     }
 
     private void awaitStatus(String token, String taskId, String expected) throws Exception {

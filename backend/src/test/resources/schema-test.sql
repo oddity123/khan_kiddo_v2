@@ -154,3 +154,6 @@ CREATE TABLE IF NOT EXISTS conversation_analysis_task
     finished_at            TIMESTAMP,
     updated_at             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_analysis_task_user_source
+    ON conversation_analysis_task (user_id, source_type, source_conversation_id, created_at);

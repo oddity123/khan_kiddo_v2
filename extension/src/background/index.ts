@@ -211,7 +211,12 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendRe
       return
     }
     if (message.type === 'GET_ANALYSIS_TASK') {
-      sendResponse(await getAnalysisTaskStatus(webOrigin))
+      sendResponse(
+        await getAnalysisTaskStatus(webOrigin, {
+          sourceType: message.sourceType,
+          sourceConversationId: message.sourceConversationId,
+        }),
+      )
     }
   }
 

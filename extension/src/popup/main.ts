@@ -18,45 +18,57 @@ const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement
 const importBtn = document.getElementById('importBtn') as HTMLButtonElement
 const statusEl = document.getElementById('status') as HTMLDivElement
 const privacyConsentInput = document.getElementById('privacyConsent') as HTMLInputElement
+const accountSection = document.getElementById('accountSection') as HTMLElement
 const connectBtn = document.getElementById('connectBtn') as HTMLButtonElement
 const disconnectBtn = document.getElementById('disconnectBtn') as HTMLButtonElement
-const accountStatusEl = document.getElementById('accountStatus') as HTMLParagraphElement
+const accountStatusEl = document.getElementById('accountStatus') as HTMLElement
+const accountStatusHeroEl = document.getElementById('accountStatusHero') as HTMLParagraphElement
 const accountHintEl = document.getElementById('accountHint') as HTMLParagraphElement
 
 let allowOriginOverride = false
 
-function setAccountStatus(text: string, kind: '' | 'ok' | 'error' = ''): void {
-  accountStatusEl.textContent = text
-  accountStatusEl.className = kind ? `status ${kind}` : 'status'
+function setHeroStatus(text: string, kind: '' | 'ok' | 'error' = ''): void {
+  accountStatusHeroEl.textContent = text
+  accountStatusHeroEl.className = kind ? `status ${kind}` : 'status'
 }
 
 function applyConnectionUi(status: ConnectionStatusResponse): void {
+  const connected = Boolean(status.connected) && !status.connecting
+
   if (status.connecting) {
-    setAccountStatus('等待你在网站完成授权…')
-    connectBtn.disabled = true
+    accountSection.classList.remove('hidden')
+    accountStatusEl.textContent = ''
     disconnectBtn.classList.add('hidden')
-    accountHintEl.textContent = '请在打开的授权页登录并点「允许」，完成后会自动回到这里。'
+    setHeroStatus('请在打开的页面完成授权…')
+    accountHintEl.textContent = '连接后可将 ChatGPT 对话提交到 Khan Kiddo 分析。'
+    connectBtn.classList.remove('hidden')
+    connectBtn.disabled = true
     return
   }
+
   connectBtn.disabled = false
-  if (status.connected) {
-    const who = status.username ? `已连接：${status.username}` : '已连接 Khan Kiddo 账号'
-    setAccountStatus(who, 'ok')
+  if (connected) {
+    accountSection.classList.add('hidden')
+    const who = status.username ? status.username : '已连接'
+    accountStatusEl.textContent = who
+    accountStatusEl.className = status.error ? 'chip error' : 'chip'
+    accountStatusEl.title = status.error ? `${who}（${status.error}）` : who
+    setHeroStatus('')
     connectBtn.classList.add('hidden')
     disconnectBtn.classList.remove('hidden')
-    accountHintEl.textContent = '可随时断开。断开后需重新授权才能使用登录态能力。'
-    if (status.error) {
-      setAccountStatus(`${who}（${status.error}）`, 'error')
-    }
     return
   }
+
+  accountSection.classList.remove('hidden')
+  accountStatusEl.textContent = ''
+  accountStatusEl.removeAttribute('title')
   connectBtn.classList.remove('hidden')
   disconnectBtn.classList.add('hidden')
-  accountHintEl.textContent = '登录并授权后，扩展可代表你提交对话分析。'
+  accountHintEl.textContent = '连接后可将 ChatGPT 对话提交到 Khan Kiddo 分析。'
   if (status.error) {
-    setAccountStatus(status.error, 'error')
+    setHeroStatus(status.error, 'error')
   } else {
-    setAccountStatus('')
+    setHeroStatus('')
   }
 }
 
@@ -176,7 +188,7 @@ importBtn.addEventListener('click', () => {
 connectBtn.addEventListener('click', () => {
   void (async () => {
     connectBtn.disabled = true
-    setAccountStatus('正在打开授权页…')
+    setHeroStatus('正在打开授权页…')
     try {
       if (allowOriginOverride) {
         await chrome.runtime.sendMessage({
@@ -189,7 +201,7 @@ connectBtn.addEventListener('click', () => {
       })) as ConnectionStatusResponse
       applyConnectionUi(status)
     } catch (error) {
-      setAccountStatus(error instanceof Error ? error.message : '连接失败', 'error')
+      setHeroStatus(error instanceof Error ? error.message : '连接失败', 'error')
       connectBtn.disabled = false
     }
   })()
@@ -204,7 +216,8 @@ disconnectBtn.addEventListener('click', () => {
       })) as ConnectionStatusResponse
       applyConnectionUi(status)
     } catch (error) {
-      setAccountStatus(error instanceof Error ? error.message : '断开失败', 'error')
+      accountStatusEl.textContent = error instanceof Error ? error.message : '断开失败'
+      accountStatusEl.className = 'chip error'
     } finally {
       disconnectBtn.disabled = false
     }

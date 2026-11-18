@@ -85,15 +85,19 @@ export interface SubmitAnalysisResult {
 
 export interface GetAnalysisTaskRequest {
   type: 'GET_ANALYSIS_TASK'
+  sourceType?: 'chatgpt_history' | 'chatgpt_share'
+  sourceConversationId?: string | null
 }
 
 export interface AnalysisTaskStatusResponse {
   type: 'ANALYSIS_TASK_STATUS'
   running: boolean
+  found?: boolean
   taskId?: string
   status?: string
   analysisId?: string
   error?: string | null
+  sourceConversationId?: string | null
 }
 
 export type ExtensionRequest =

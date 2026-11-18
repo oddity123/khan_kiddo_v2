@@ -7,7 +7,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "dev": "vite build --watch --mode development",
-    "build": "vite build"
+    "build": "vite build",
+    "build:dev": "vite build --mode development"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

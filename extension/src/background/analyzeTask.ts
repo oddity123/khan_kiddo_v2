@@ -209,7 +209,65 @@ export async function submitAnalysis(
   }
 }
 
-export async function getAnalysisTaskStatus(webOrigin: string): Promise<AnalysisTaskStatusResponse> {
+interface TaskBody {
+  taskId: string
+  status: string
+  analysisId?: string
+  errorMessage?: string
+  sourceConversationId?: string | null
+}
+
+function toStatusResponse(task: TaskBody, running: boolean): AnalysisTaskStatusResponse {
+  return {
+    type: 'ANALYSIS_TASK_STATUS',
+    running,
+    found: true,
+    taskId: task.taskId,
+    status: task.status,
+    analysisId: task.analysisId,
+    error: task.errorMessage,
+    sourceConversationId: task.sourceConversationId,
+  }
+}
+
+async function lookupBySource(
+  webOrigin: string,
+  token: string,
+  sourceType: string,
+  sourceConversationId: string,
+): Promise<AnalysisTaskStatusResponse> {
+  const params = new URLSearchParams({
+    sourceType,
+    sourceConversationId,
+  })
+  const lookup = await apiFetch<{found: boolean; task?: TaskBody}>(
+    webOrigin,
+    `/api/conversation/analysis-tasks/by-source?${params}`,
+    {},
+    token,
+  )
+  if (!lookup.found || !lookup.task) {
+    return {
+      type: 'ANALYSIS_TASK_STATUS',
+      running: false,
+      found: false,
+      sourceConversationId,
+    }
+  }
+  const running = lookup.task.status === 'QUEUED' || lookup.task.status === 'RUNNING'
+  return toStatusResponse(lookup.task, running)
+}
+
+export async function getAnalysisTaskStatus(
+  webOrigin: string,
+  opts?: {
+    sourceType?: string | null
+    sourceConversationId?: string | null
+  },
+): Promise<AnalysisTaskStatusResponse> {
+  const sourceType = opts?.sourceType?.trim() || 'chatgpt_history'
+  const sourceConversationId = opts?.sourceConversationId?.trim() || ''
+
   const pending = await loadPending()
   if (pending) {
     ensurePollRunning()
@@ -218,39 +276,52 @@ export async function getAnalysisTaskStatus(webOrigin: string): Promise<Analysis
       if (!cred) {
         return {type: 'ANALYSIS_TASK_STATUS', running: false}
       }
-      const task = await apiFetch<{
-        taskId: string
-        status: string
-        analysisId?: string
-        errorMessage?: string
-      }>(webOrigin, `/api/conversation/analysis-tasks/${encodeURIComponent(pending.taskId)}`, {}, cred.token)
+      const task = await apiFetch<TaskBody>(
+        webOrigin,
+        `/api/conversation/analysis-tasks/${encodeURIComponent(pending.taskId)}`,
+        {},
+        cred.token,
+      )
+      if (
+        sourceConversationId &&
+        task.sourceConversationId &&
+        task.sourceConversationId !== sourceConversationId
+      ) {
+        // 本地 pending 属于另一对话：仍继续轮询，但对本对话改查 by-source
+        return await lookupBySource(webOrigin, cred.token, sourceType, sourceConversationId)
+      }
       if (task.status === 'SUCCEEDED' || task.status === 'FAILED') {
-        if (task.status === 'SUCCEEDED' && task.analysisId) {
-          // poll loop will open tab; still clear here if poll already finished
-        }
-        return {
-          type: 'ANALYSIS_TASK_STATUS',
-          running: false,
-          taskId: task.taskId,
-          status: task.status,
-          analysisId: task.analysisId,
-          error: task.errorMessage,
-        }
+        return toStatusResponse(task, false)
       }
-      return {
-        type: 'ANALYSIS_TASK_STATUS',
-        running: true,
-        taskId: task.taskId,
-        status: task.status,
-      }
+      return toStatusResponse(task, true)
     } catch (error) {
       return {
         type: 'ANALYSIS_TASK_STATUS',
         running: true,
+        found: true,
         taskId: pending.taskId,
         error: error instanceof Error ? error.message : '查询失败',
       }
     }
   }
-  return {type: 'ANALYSIS_TASK_STATUS', running: false}
+
+  if (!sourceConversationId) {
+    return {type: 'ANALYSIS_TASK_STATUS', running: false, found: false}
+  }
+
+  try {
+    const cred = await loadCredential()
+    if (!cred) {
+      return {type: 'ANALYSIS_TASK_STATUS', running: false, found: false, sourceConversationId}
+    }
+    return await lookupBySource(webOrigin, cred.token, sourceType, sourceConversationId)
+  } catch (error) {
+    return {
+      type: 'ANALYSIS_TASK_STATUS',
+      running: false,
+      found: false,
+      sourceConversationId,
+      error: error instanceof Error ? error.message : '查询失败',
+    }
+  }
 }

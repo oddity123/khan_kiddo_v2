@@ -7,97 +7,110 @@
   <style>
     :root { color-scheme: light; font-family: system-ui, -apple-system, sans-serif; color: #18243b; background: #f5f7fc; }
     * { box-sizing: border-box; }
-    body { margin: 0; width: 372px; padding: 20px; }
-    header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-    .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: #172a70; color: white; font-size: 14px; font-weight: 750; }
-    h1 { margin: 0; font-size: 16px; letter-spacing: -.3px; }
-    .tagline { margin: 3px 0 0; font-size: 11px; color: #728097; }
-    h2 { margin: 5px 0 8px; font-size: 19px; letter-spacing: -.5px; }
-    p { margin: 0; font-size: 12px; line-height: 1.65; color: #647189; }
-    .card { background: white; border: 1px solid #e1e6f0; border-radius: 16px; padding: 18px; margin-bottom: 12px; }
-    .history-card { border-color: #d7def4; box-shadow: 0 5px 18px #1e327008; }
-    .eyebrow { font-size: 10px; color: #5064a6; font-weight: 700; letter-spacing: 1px; }
-    .hint { margin-top: 10px; font-size: 11px; color: #7b8598; }
-    .actions { display: flex; gap: 8px; margin-top: 14px; }
-    button { border: 1px solid transparent; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+    body { margin: 0; width: 372px; padding: 16px 16px 12px; }
+    h2 { margin: 0; font-size: 17px; letter-spacing: -.4px; }
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .task-badge {
+      margin: 0; flex-shrink: 0; font-size: 11px; font-weight: 650; line-height: 1.3;
+      color: #647189; max-width: 46%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .task-badge:empty { display: none; }
+    .task-badge.is-done { color: #26704c; }
+    .task-badge.is-running { color: #9a6b12; }
+    .task-badge.is-failed { color: #ad3152; }
+    p { margin: 0; font-size: 12px; line-height: 1.55; color: #647189; }
+    .card { background: white; border: 1px solid #e1e6f0; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+    .history-card { border-color: #d7def4; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    button { border: 1px solid transparent; border-radius: 10px; padding: 9px 12px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
     button.primary { background: #223b91; color: white; flex: 1; }
     button.primary:hover { background: #172b75; }
     button.secondary { background: #f1f4fa; color: #42516c; border-color: #e5eaf3; }
+    button.ghost { background: transparent; color: #53617b; border-color: transparent; padding: 6px 8px; font-weight: 600; font-size: 11px; }
     button:disabled { opacity: .45; cursor: default; }
     button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 2px solid #6685df; outline-offset: 3px; }
     .hidden { display: none !important; }
-    .status { font-size: 12px; line-height: 1.6; color: #53617b; overflow-wrap: anywhere; }
-    .status:not(:empty) { margin-top: 12px; }
+    .status { font-size: 12px; line-height: 1.55; color: #53617b; overflow-wrap: anywhere; }
+    .status:not(:empty) { margin-top: 10px; }
     .status.error { color: #ad3152; }
     .status.ok { color: #26704c; }
-    .transcript { margin: 12px 0 0; padding: 12px; max-height: 240px; overflow: auto; white-space: pre-wrap; user-select: text; overflow-wrap: anywhere; background: #f7f9fd; border: 1px solid #e8edf5; border-radius: 10px; font: 12px/1.7 system-ui, sans-serif; }
+    .transcript {
+      margin: 10px 0 0; padding: 10px; max-height: 220px; overflow: auto; white-space: pre-wrap;
+      user-select: text; overflow-wrap: anywhere; background: #f7f9fd; border: 1px solid #e8edf5;
+      border-radius: 10px; font: 12px/1.65 system-ui, sans-serif;
+    }
     .transcript:empty { display: none; }
     details.card { padding: 0; }
-    summary { padding: 15px 18px; cursor: pointer; font-size: 12px; font-weight: 600; color: #53617b; }
-    .details-body { padding: 0 18px 18px; }
-    label { display: block; margin-bottom: 7px; font-size: 12px; color: #53617b; }
-    input[type="url"], textarea { width: 100%; border: 1px solid #dce3ef; border-radius: 9px; padding: 10px; font: inherit; font-size: 12px; line-height: 1.5; background: #fafbfe; color: #18243b; }
-    textarea { min-height: 72px; resize: vertical; font: 12px/1.5 system-ui, sans-serif; }
-    .privacy-consent { display: flex; align-items: center; gap: 7px; margin: 12px 0 0; font-size: 11px; line-height: 1.5; }
+    summary { padding: 12px 14px; cursor: pointer; font-size: 12px; font-weight: 600; color: #53617b; }
+    .details-body { padding: 0 14px 14px; }
+    label { display: block; margin-bottom: 6px; font-size: 12px; color: #53617b; }
+    input[type="url"], textarea {
+      width: 100%; border: 1px solid #dce3ef; border-radius: 9px; padding: 9px;
+      font: inherit; font-size: 12px; line-height: 1.5; background: #fafbfe; color: #18243b;
+    }
+    textarea { min-height: 64px; resize: vertical; }
+    .privacy-consent { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: 11px; line-height: 1.45; }
     .privacy-consent input { margin: 0; accent-color: #223b91; }
     a { color: #5064a6; text-underline-offset: 3px; }
-    .settings { margin-top: 14px; }
-    .settings summary { padding: 5px 0; font-size: 11px; font-weight: 400; }
-    .settings .row { margin-top: 10px; }
-    footer { display: flex; justify-content: space-between; align-items: center; padding: 3px 3px 0; font-size: 10px; color: #7b8598; }
+    .settings { margin-top: 12px; }
+    .settings summary { padding: 4px 0; font-size: 11px; font-weight: 400; }
+    .settings .row { margin-top: 8px; }
+    footer {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 2px 0; font-size: 11px; color: #7b8598;
+    }
+    .footer-account {
+      display: flex; align-items: center; gap: 4px; min-width: 0; justify-content: flex-end;
+    }
+    .footer-account .chip {
+      margin: 0; font-size: 11px; line-height: 1.3; color: #26704c; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap; max-width: 120px;
+    }
+    .footer-account .chip.error { color: #ad3152; }
+    .footer-account .chip:empty { display: none; }
   </style>
 </head>
 <body>
-  <header>
-    <span class="brand-mark" aria-hidden="true">Kk</span>
-    <div><h1>Khan Kiddo</h1><p class="tagline">让每次对话，都成为学习素材</p></div>
-  </header>
-
   <section id="accountSection" class="card" aria-labelledby="accountTitle">
-    <span class="eyebrow">账号</span>
-    <h2 id="accountTitle">连接 Khan Kiddo</h2>
-    <p id="accountHint">登录并授权后，扩展可代表你提交对话分析。</p>
-    <p id="accountStatus" class="status" role="status" aria-live="polite"></p>
+    <h2 id="accountTitle">连接账号</h2>
+    <p id="accountHint">连接后可将 ChatGPT 对话提交到 Khan Kiddo 分析。</p>
+    <p id="accountStatusHero" class="status" role="status" aria-live="polite"></p>
     <div class="actions">
       <button id="connectBtn" class="primary hidden" type="button">连接账号</button>
-      <button id="disconnectBtn" class="secondary hidden" type="button">断开</button>
     </div>
   </section>
 
   <section id="historySection" class="card history-card hidden" aria-labelledby="historyTitle">
-    <span class="eyebrow">当前对话</span>
-    <h2 id="historyTitle">自动读取 ChatGPT</h2>
-    <p>打开一段历史对话，读取后可一键提交到 Khan Kiddo 分析。</p>
+    <div class="section-head">
+      <h2 id="historyTitle">当前对话</h2>
+      <p id="historyTaskBadge" class="task-badge" role="status" aria-live="polite"></p>
+    </div>
     <div class="actions">
-      <button id="readHistory" class="primary" type="button">自动读取</button>
-      <button id="analyzeHistory" class="secondary" type="button" disabled>一键分析</button>
+      <button id="analyzeHistory" class="primary" type="button">一键分析</button>
       <button id="copyHistory" class="secondary" type="button" disabled>复制</button>
     </div>
-    <p class="hint">无需刷新页面。分析需先连接账号；提交后可关闭弹窗，完成后会打开报告页。</p>
     <p id="historyStatus" class="status" role="status" aria-live="polite"></p>
     <pre id="historyText" class="transcript" aria-label="读取的对话内容"></pre>
   </section>
 
   <section id="injectionSection" class="card hidden" aria-labelledby="injectionTitle">
-    <span class="eyebrow">注入验证</span>
-    <h2 id="injectionTitle">试一句练习指令</h2>
+    <h2 id="injectionTitle">注入示例</h2>
     <p id="injectionExample"></p>
-    <div class="actions"><button id="injectExample" class="secondary" type="button">注入示例句子</button></div>
-    <p class="hint">填入当前 ChatGPT 输入框，由你发送；已有草稿会保留。</p>
+    <div class="actions"><button id="injectExample" class="secondary" type="button">注入到输入框</button></div>
     <p id="injectionStatus" class="status" role="status" aria-live="polite"></p>
   </section>
 
   <details id="shareSection" class="card">
-    <summary>通过分享链接导入</summary>
+    <summary>分享链接导入</summary>
     <div class="details-body">
-      <p>也可以粘贴公开分享链接，将对话导入分析页。</p>
-      <div style="margin-top:12px">
-        <label for="shareUrl">ChatGPT 分享链接</label>
-        <textarea id="shareUrl" placeholder="https://chatgpt.com/share/..." spellcheck="false"></textarea>
-      </div>
+      <label for="shareUrl">ChatGPT 分享链接</label>
+      <textarea id="shareUrl" placeholder="https://chatgpt.com/share/..." spellcheck="false"></textarea>
       <label class="privacy-consent" for="privacyConsent">
         <input id="privacyConsent" type="checkbox"/>
-        <span>我已阅读并同意<a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">隐私政策与数据使用说明</a></span>
+        <span>同意<a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">隐私政策</a></span>
       </label>
       <div class="actions"><button id="importBtn" class="secondary" type="button">导入并打开分析页</button></div>
       <div id="status" class="status" role="status" aria-live="polite"></div>
@@ -108,7 +121,13 @@
       </details>
     </div>
   </details>
-  <footer><span>你的对话，你的学习素材</span><a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">隐私政策</a></footer>
+  <footer>
+    <a href="https://khankiddo.top/privacy/extension" target="_blank" rel="noreferrer">隐私政策</a>
+    <div id="footerAccount" class="footer-account" aria-live="polite">
+      <span id="accountStatus" class="chip"></span>
+      <button id="disconnectBtn" class="ghost hidden" type="button">断开</button>
+    </div>
+  </footer>
   <script type="module" src="/src/popup/main.ts"></script>
 </body>
 </html>
