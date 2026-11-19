@@ -59,7 +59,7 @@ class GrammarLearningDbServiceTest {
 
     @Test
     void buildErrorExamples_shouldFormatItemsAndClampLimit() {
-        when(itemMapper.findErrorExamplesByUserId(eq(1L), isNull(), isNull(), eq(10)))
+        when(itemMapper.findErrorExamplesByUserId(eq(1L), isNull(), isNull(), eq(10), isNull()))
                 .thenReturn(List.of(ConversationAnalysisItem.builder()
                         .analysisId("a1")
                         .pointId("PAST_SIMPLE_DONE")
@@ -70,7 +70,7 @@ class GrammarLearningDbServiceTest {
 
         String text = service.buildErrorExamples(1L, List.of(), List.of(), null, 99);
 
-        verify(itemMapper).findErrorExamplesByUserId(1L, null, null, 10);
+        verify(itemMapper).findErrorExamplesByUserId(1L, null, null, 10, null);
         assertTrue(text.contains("He go"));
         assertTrue(text.contains("go → goes"));
         assertTrue(text.contains("PAST_SIMPLE_DONE"));

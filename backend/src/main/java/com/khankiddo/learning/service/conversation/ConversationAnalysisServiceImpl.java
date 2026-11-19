@@ -27,6 +27,8 @@ import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
 import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
 import com.khankiddo.learning.rag.grammar.GrammarErrorIndexedEvent;
+import com.khankiddo.learning.weaknessmemory.WeaknessMemoryCleanupRequestedEvent;
+import com.khankiddo.learning.weaknessmemory.WeaknessMemoryConsolidationRequestedEvent;
 import com.khankiddo.learning.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -221,6 +223,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         }
 
         eventPublisher.publishEvent(new GrowthCardMintRequestedEvent(userId, analysisId));
+        eventPublisher.publishEvent(new WeaknessMemoryConsolidationRequestedEvent(userId, analysisId));
 
         return ConversationAnalysisResultDto.builder()
                 .analysisId(analysisId)
@@ -586,6 +589,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         if (!CollectionUtils.isEmpty(sentenceIds)) {
             eventPublisher.publishEvent(new GrammarErrorDeletedEvent(userId, analysisId, sentenceIds));
         }
+        eventPublisher.publishEvent(new WeaknessMemoryCleanupRequestedEvent(userId, analysisId));
     }
 
     private String buildPreview(String content) {

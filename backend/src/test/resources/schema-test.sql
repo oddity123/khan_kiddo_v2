@@ -157,3 +157,24 @@ CREATE TABLE IF NOT EXISTS conversation_analysis_task
 
 CREATE INDEX IF NOT EXISTS idx_analysis_task_user_source
     ON conversation_analysis_task (user_id, source_type, source_conversation_id, created_at);
+
+CREATE TABLE IF NOT EXISTS user_weakness_memory
+(
+    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id            BIGINT       NOT NULL,
+    title              VARCHAR(120) NOT NULL,
+    diagnosis          VARCHAR(500) NOT NULL,
+    coaching           VARCHAR(500) NOT NULL,
+    anchor_habit_key   VARCHAR(64),
+    anchor_point_id    VARCHAR(64),
+    bad_example        CLOB         NOT NULL,
+    target_rewrite     CLOB         NOT NULL,
+    source_analysis_id VARCHAR(64)  NOT NULL,
+    hit_count          INT          NOT NULL DEFAULT 1,
+    practiced_count    INT          NOT NULL DEFAULT 0,
+    status             VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    last_seen_at       TIMESTAMP    NOT NULL,
+    last_practiced_at  TIMESTAMP,
+    created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

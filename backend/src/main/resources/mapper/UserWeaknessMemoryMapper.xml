@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.mapper.UserWeaknessMemoryMapper">
+
+    <resultMap id="UserWeaknessMemoryResultMap" type="com.khankiddo.learning.model.UserWeaknessMemory">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="diagnosis" property="diagnosis"/>
+        <result column="coaching" property="coaching"/>
+        <result column="anchor_habit_key" property="anchorHabitKey"/>
+        <result column="anchor_point_id" property="anchorPointId"/>
+        <result column="bad_example" property="badExample"/>
+        <result column="target_rewrite" property="targetRewrite"/>
+        <result column="source_analysis_id" property="sourceAnalysisId"/>
+        <result column="hit_count" property="hitCount"/>
+        <result column="practiced_count" property="practicedCount"/>
+        <result column="status" property="status"/>
+        <result column="last_seen_at" property="lastSeenAt"/>
+        <result column="last_practiced_at" property="lastPracticedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="UserWeaknessMemoryColumns">
+        id, user_id, title, diagnosis, coaching, anchor_habit_key, anchor_point_id,
+        bad_example, target_rewrite, source_analysis_id, hit_count, practiced_count,
+        status, last_seen_at, last_practiced_at, created_at, updated_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_weakness_memory (
+            user_id, title, diagnosis, coaching, anchor_habit_key, anchor_point_id,
+            bad_example, target_rewrite, source_analysis_id, hit_count, practiced_count,
+            status, last_seen_at, last_practiced_at
+        ) VALUES (
+            #{userId}, #{title}, #{diagnosis}, #{coaching}, #{anchorHabitKey}, #{anchorPointId},
+            #{badExample}, #{targetRewrite}, #{sourceAnalysisId}, #{hitCount}, #{practicedCount},
+            #{status}, #{lastSeenAt}, #{lastPracticedAt}
+        )
+    </insert>
+
+    <update id="updateMerged">
+        UPDATE user_weakness_memory
+        SET title = #{title},
+            diagnosis = #{diagnosis},
+            coaching = #{coaching},
+            anchor_habit_key = #{anchorHabitKey},
+            anchor_point_id = #{anchorPointId},
+            bad_example = #{badExample},
+            target_rewrite = #{targetRewrite},
+            source_analysis_id = #{sourceAnalysisId},
+            hit_count = #{hitCount},
+            last_seen_at = #{lastSeenAt},
+            status = #{status}
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </update>
+
+    <update id="archiveById">
+        UPDATE user_weakness_memory
+        SET status = 'ARCHIVED'
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND status = 'ACTIVE'
+    </update>
+
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM user_weakness_memory
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </delete>
+
+    <delete id="deleteByUserIdAndSourceAnalysisId">
+        DELETE FROM user_weakness_memory
+        WHERE user_id = #{userId}
+          AND source_analysis_id = #{sourceAnalysisId}
+    </delete>
+
+    <select id="findByIdAndUserId" resultMap="UserWeaknessMemoryResultMap">
+        SELECT
+        <include refid="UserWeaknessMemoryColumns"/>
+        FROM user_weakness_memory
+        WHERE id = #{id}
+          AND user_id = #{userId}
+    </select>
+
+    <select id="findActiveByUserId" resultMap="UserWeaknessMemoryResultMap">
+        SELECT
+        <include refid="UserWeaknessMemoryColumns"/>
+        FROM user_weakness_memory
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+        ORDER BY last_seen_at DESC, id DESC
+    </select>
+
+    <select id="countActiveByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM user_weakness_memory
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+    </select>
+
+    <select id="findActiveForEviction" resultMap="UserWeaknessMemoryResultMap">
+        SELECT
+        <include refid="UserWeaknessMemoryColumns"/>
+        FROM user_weakness_memory
+        WHERE user_id = #{userId}
+          AND status = 'ACTIVE'
+        ORDER BY hit_count ASC, last_seen_at ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="existsOriginalSentenceByUserId" resultType="boolean">
+        SELECT COUNT(*) &gt; 0
+        FROM conversation_analysis_item cai
+        INNER JOIN conversation_analysis ca ON cai.analysis_id = ca.analysis_id
+        WHERE ca.user_id = #{userId}
+          AND ca.status = 'success'
+          AND TRIM(cai.original_sentence) = TRIM(#{originalSentence})
+    </select>
+</mapper>

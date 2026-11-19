@@ -77,7 +77,7 @@ public class GrammarLearningDbService {
                 pointDictionary, pointIds, familyIds);
         List<String> types = CollectionUtils.isEmpty(filterPointIds) ? null : filterPointIds;
         List<ConversationAnalysisItem> items = itemMapper.findErrorExamplesByUserId(
-                userId, types, effectiveDays, effectiveLimit);
+                userId, types, effectiveDays, effectiveLimit, null);
         if (CollectionUtils.isEmpty(items)) {
             return "（" + timeScopeLabel(effectiveDays) + "暂无匹配的错句样例）";
         }

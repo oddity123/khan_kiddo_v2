@@ -4,6 +4,7 @@ import com.khankiddo.learning.config.AiLlmProperties;
 import com.khankiddo.learning.config.ConversationAnalysisProperties;
 import com.khankiddo.learning.config.LlmModelProperties;
 import com.khankiddo.learning.util.SchemaLoader;
+import com.khankiddo.learning.weaknessmemory.WeaknessMemoryOutputPolicy;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.spring.restclient.SpringRestClientBuilder;
 import dev.langchain4j.model.chat.ChatModel;
@@ -29,6 +30,7 @@ public class LlmChatModelFactory {
     private final SchemaLoader schemaLoader;
     private final List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies;
     private final PhraseCardReviewOutputPolicy phraseCardReviewOutputPolicy;
+    private final WeaknessMemoryOutputPolicy weaknessMemoryOutputPolicy;
     private final HttpClientBuilder httpClientBuilder;
     private final Duration defaultChatTimeout;
     private final Duration defaultStreamingTimeout;
@@ -43,6 +45,7 @@ public class LlmChatModelFactory {
             SchemaLoader schemaLoader,
             List<GrammarStructuredOutputPolicy> grammarStructuredOutputPolicies,
             PhraseCardReviewOutputPolicy phraseCardReviewOutputPolicy,
+            WeaknessMemoryOutputPolicy weaknessMemoryOutputPolicy,
             @Qualifier("openAiChatModelHttpClientBuilder") HttpClientBuilder httpClientBuilder,
             @Value("${langchain4j.open-ai.chat-model.max-retries:1}") Integer defaultMaxRetries,
             @Value("${langchain4j.open-ai.chat-model.log-requests:true}") boolean defaultLogRequests,
@@ -52,6 +55,7 @@ public class LlmChatModelFactory {
         this.schemaLoader = schemaLoader;
         this.grammarStructuredOutputPolicies = grammarStructuredOutputPolicies;
         this.phraseCardReviewOutputPolicy = phraseCardReviewOutputPolicy;
+        this.weaknessMemoryOutputPolicy = weaknessMemoryOutputPolicy;
         this.httpClientBuilder = httpClientBuilder;
         this.defaultChatTimeout = conversationAnalysisProperties.getChatTimeout();
         this.defaultStreamingTimeout = conversationAnalysisProperties.getHttpReadTimeout();
@@ -83,6 +87,15 @@ public class LlmChatModelFactory {
     public ChatModel chatForPhraseCardReview(ResolvedLlmModel model) {
         GrammarStreamingModelSpec spec = phraseCardReviewOutputPolicy.buildSpec(model);
         String cacheKey = cacheKey(model) + "|phrase-review" + spec.getCacheSuffix() + "|chat";
+        return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
+    }
+
+    /**
+     * 薄弱点记忆归并：按模型选择 json_schema 或 json_object。
+     */
+    public ChatModel chatForWeaknessMemoryConsolidation(ResolvedLlmModel model) {
+        GrammarStreamingModelSpec spec = weaknessMemoryOutputPolicy.buildSpec(model);
+        String cacheKey = cacheKey(model) + "|weakness-memory" + spec.getCacheSuffix() + "|chat";
         return chatCache.computeIfAbsent(cacheKey, key -> buildChatModel(model.getConfig(), spec));
     }
 

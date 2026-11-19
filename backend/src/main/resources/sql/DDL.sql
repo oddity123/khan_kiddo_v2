@@ -211,3 +211,28 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_task`
     INDEX `idx_analysis_task_user_created` (`user_id`, `created_at`)
 ) ENGINE = InnoDB COMMENT ='对话分析异步任务';
 -- 已有库：ALTER TABLE conversation_analysis_task ADD INDEX idx_analysis_task_user_source (user_id, source_type, source_conversation_id, created_at);
+
+-- 用户口语薄弱点长期记忆（左脑）
+CREATE TABLE IF NOT EXISTS `user_weakness_memory`
+(
+    `id`                 BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`            BIGINT       NOT NULL COMMENT '所属用户 ID',
+    `title`              VARCHAR(120) NOT NULL COMMENT '具体微习惯短标题，供扩展预览与教练目标使用',
+    `diagnosis`          VARCHAR(500) NOT NULL COMMENT '成因诊断（为什么总这样说）',
+    `coaching`           VARCHAR(500) NOT NULL COMMENT '开口前自检提示（怎么改）',
+    `anchor_habit_key`   VARCHAR(64)           DEFAULT NULL COMMENT '关联字典 habitKey（如 FAM_TENSE 或叶子 pointId）',
+    `anchor_point_id`    VARCHAR(64)           DEFAULT NULL COMMENT '代表知识点叶子 pointId',
+    `bad_example`        TEXT         NOT NULL COMMENT '真实用户原错句（必须经历史记录核验）',
+    `target_rewrite`     TEXT         NOT NULL COMMENT '对应自然改写句',
+    `source_analysis_id` VARCHAR(64)  NOT NULL COMMENT '最新一次更新该记忆的分析 ID',
+    `hit_count`          INT          NOT NULL DEFAULT 1 COMMENT '累计归并/复发次数',
+    `practiced_count`    INT          NOT NULL DEFAULT 0 COMMENT '被选入今日练习注入的次数',
+    `status`             VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE | ARCHIVED',
+    `last_seen_at`       DATETIME     NOT NULL COMMENT '最近一次在分析中出现的时间',
+    `last_practiced_at`  DATETIME              DEFAULT NULL COMMENT '最近一次注入练习的时间（用于冷却轮换）',
+    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_weakness_mem_user_status` (`user_id`, `status`, `last_seen_at`),
+    INDEX `idx_weakness_mem_source_analysis` (`user_id`, `source_analysis_id`)
+) ENGINE = InnoDB COMMENT ='用户口语薄弱点长期记忆';
+-- 已有库：直接重跑上表 IF NOT EXISTS 即可；无额外 ALTER。

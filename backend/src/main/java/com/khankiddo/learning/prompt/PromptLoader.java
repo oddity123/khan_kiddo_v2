@@ -60,6 +60,14 @@ public class PromptLoader {
         return readPrompt("practice-recap/template.txt");
     }
 
+    public String getSystemPromptWeaknessMemory() {
+        return readPrompt("weakness-memory/system.txt");
+    }
+
+    public String getWeaknessMemoryTemplate() {
+        return readPrompt("weakness-memory/user.txt");
+    }
+
     public String fillTemplate(String template, String placeholder, String value) {
         return template.replace("{" + placeholder + "}", value);
     }

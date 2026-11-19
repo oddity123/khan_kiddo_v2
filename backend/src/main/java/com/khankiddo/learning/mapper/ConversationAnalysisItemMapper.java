@@ -45,7 +45,8 @@ public interface ConversationAnalysisItemMapper {
     List<ConversationAnalysisItem> findErrorExamplesByUserId(@Param("userId") Long userId,
                                                              @Param("pointIds") List<String> pointIds,
                                                              @Param("days") Integer days,
-                                                             @Param("limit") int limit);
+                                                             @Param("limit") int limit,
+                                                             @Param("excludeAnalysisId") String excludeAnalysisId);
 
     long countDistinctErrorSentencesByUserIdAndDays(@Param("userId") Long userId,
                                                     @Param("days") Integer days);

@@ -181,6 +181,9 @@
         <if test="days != null and days > 0">
             AND cai.created_at &gt;= DATE_SUB(NOW(), INTERVAL #{days} DAY)
         </if>
+        <if test="excludeAnalysisId != null and excludeAnalysisId != ''">
+            AND cai.analysis_id &lt;&gt; #{excludeAnalysisId}
+        </if>
         ORDER BY cai.created_at DESC, cai.id DESC
         LIMIT #{limit}
     </select>
