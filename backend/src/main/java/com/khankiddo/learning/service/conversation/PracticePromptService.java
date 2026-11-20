@@ -119,7 +119,6 @@ public class PracticePromptService {
         }
         StringBuilder block = new StringBuilder();
         block.append("## Weak points\n");
-        block.append("Required. Go in numbered order. Finish every item before Extra vocabulary.");
         for (PracticePromptRequest.Goal goal : goals) {
             block.append("\n\n### ").append(goal.getRank()).append(". ").append(goal.getTitle());
             if (StringUtils.hasText(goal.getDiagnosis())) {
@@ -143,7 +142,6 @@ public class PracticePromptService {
         }
         StringBuilder block = new StringBuilder();
         block.append("## Extra vocabulary\n");
-        block.append("Required after Weak points. Recap every item before Phase 2.");
         for (PracticePromptRequest.Vocabulary item : vocabulary) {
             block.append("\n- **")
                     .append(item.getFront())

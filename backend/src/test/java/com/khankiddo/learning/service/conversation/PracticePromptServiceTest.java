@@ -91,11 +91,10 @@ class PracticePromptServiceTest {
         String prompt = service.assemble(request).getPrompt();
 
         assertThat(prompt).contains("## Extra vocabulary");
-        assertThat(prompt).contains("Required after Weak points");
         assertThat(prompt).contains("**售后服务** → after-sales service");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("## Weak points");
-        assertThat(prompt).contains("If there are no weak points, recap vocabulary only.");
+        assertThat(prompt).contains("Phase 0");
         assertThat(prompt).doesNotContain("Add-ons only");
     }
 
@@ -202,9 +201,11 @@ class PracticePromptServiceTest {
 
         assertThat(response.getPrompt())
                 .contains("pre-conversation recap")
+                .contains("Phase 0")
                 .contains("Phase 1")
                 .contains("at most one")
-                .contains("Do **not** skip vocabulary when it is present");
+                .contains("开启语音练习");
+
     }
 
     @Test
