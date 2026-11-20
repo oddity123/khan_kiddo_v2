@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
+/**
+ * 口语薄弱点长期记忆（semantic）：只存宏观模式与轨迹，不存句子或教学文案。
+ */
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,12 +22,8 @@ public class UserWeaknessMemory {
     private Long id;
     private Long userId;
     private String title;
-    private String diagnosis;
-    private String coaching;
     private String anchorHabitKey;
     private String anchorPointId;
-    private String badExample;
-    private String targetRewrite;
     private String sourceAnalysisId;
     private Integer hitCount;
     private Integer practicedCount;

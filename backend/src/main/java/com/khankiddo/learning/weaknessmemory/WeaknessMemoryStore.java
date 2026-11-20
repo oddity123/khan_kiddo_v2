@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 薄弱点记忆事务落库：校验原句真实性与 memoryId 归属后执行 CREATE/MERGE，并做活跃池淘汰。
+ * 薄弱点记忆事务落库：校验 memoryId 归属后执行 CREATE/MERGE，并做活跃池淘汰。
+ * 不落句子或教学文案。
  */
 @Slf4j
 @Service
@@ -21,7 +22,6 @@ import java.util.List;
 public class WeaknessMemoryStore {
 
     private final UserWeaknessMemoryMapper memoryMapper;
-    private final WeaknessMemoryExampleSupport exampleSupport;
     private final WeaknessMemoryCapacitySupport capacitySupport;
 
     @Transactional
@@ -56,19 +56,15 @@ public class WeaknessMemoryStore {
     }
 
     private void applyCreate(Long userId, String analysisId, WeaknessMemoryOperation op, LocalDateTime now) {
-        if (!isCompletePayload(op) || !exampleSupport.isAuthenticBadExample(userId, op.badExample())) {
-            log.warn("weakness CREATE rejected: incomplete or forged example analysisId={}", analysisId);
+        if (!StringUtils.hasText(op.title())) {
+            log.warn("weakness CREATE rejected: missing title analysisId={}", analysisId);
             return;
         }
         UserWeaknessMemory row = UserWeaknessMemory.builder()
                 .userId(userId)
                 .title(op.title().trim())
-                .diagnosis(op.diagnosis().trim())
-                .coaching(op.coaching().trim())
                 .anchorHabitKey(trimToNull(op.anchorHabitKey()))
                 .anchorPointId(trimToNull(op.anchorPointId()))
-                .badExample(op.badExample().trim())
-                .targetRewrite(op.targetRewrite().trim())
                 .sourceAnalysisId(analysisId)
                 .hitCount(1)
                 .practicedCount(0)
@@ -83,8 +79,8 @@ public class WeaknessMemoryStore {
             log.warn("weakness MERGE rejected: missing memoryId analysisId={}", analysisId);
             return;
         }
-        if (!isCompletePayload(op) || !exampleSupport.isAuthenticBadExample(userId, op.badExample())) {
-            log.warn("weakness MERGE rejected: incomplete or forged example memoryId={} analysisId={}",
+        if (!StringUtils.hasText(op.title())) {
+            log.warn("weakness MERGE rejected: missing title memoryId={} analysisId={}",
                     op.memoryId(), analysisId);
             return;
         }
@@ -96,25 +92,13 @@ public class WeaknessMemoryStore {
         UserWeaknessMemory existing = existingOpt.get();
         int hits = existing.getHitCount() == null ? 1 : existing.getHitCount();
         existing.setTitle(op.title().trim());
-        existing.setDiagnosis(op.diagnosis().trim());
-        existing.setCoaching(op.coaching().trim());
         existing.setAnchorHabitKey(trimToNull(op.anchorHabitKey()));
         existing.setAnchorPointId(trimToNull(op.anchorPointId()));
-        existing.setBadExample(op.badExample().trim());
-        existing.setTargetRewrite(op.targetRewrite().trim());
         existing.setSourceAnalysisId(analysisId);
         existing.setHitCount(hits + 1);
         existing.setLastSeenAt(now);
         existing.setStatus(UserWeaknessMemory.STATUS_ACTIVE);
         memoryMapper.updateMerged(existing);
-    }
-
-    private static boolean isCompletePayload(WeaknessMemoryOperation op) {
-        return StringUtils.hasText(op.title())
-                && StringUtils.hasText(op.diagnosis())
-                && StringUtils.hasText(op.coaching())
-                && StringUtils.hasText(op.badExample())
-                && StringUtils.hasText(op.targetRewrite());
     }
 
     private static String trimToNull(String value) {

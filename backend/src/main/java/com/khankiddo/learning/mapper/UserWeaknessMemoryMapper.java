@@ -4,6 +4,7 @@ import com.khankiddo.learning.model.UserWeaknessMemory;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,10 @@ public interface UserWeaknessMemoryMapper {
     List<UserWeaknessMemory> findActiveForEviction(@Param("userId") Long userId,
                                                    @Param("limit") int limit);
 
-    boolean existsOriginalSentenceByUserId(@Param("userId") Long userId,
-                                           @Param("originalSentence") String originalSentence);
+    /**
+     * 仅更新归属当前用户的记忆：practiced_count + 1，写入 last_practiced_at。
+     */
+    int markPracticed(@Param("userId") Long userId,
+                      @Param("ids") List<Long> ids,
+                      @Param("practicedAt") LocalDateTime practicedAt);
 }

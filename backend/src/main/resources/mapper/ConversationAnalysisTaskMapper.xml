@@ -87,6 +87,7 @@
         UPDATE conversation_analysis_task
         SET status = 'SUCCEEDED',
             analysis_id = #{analysisId},
+            conversation_content = NULL,
             finished_at = #{finishedAt},
             updated_at = #{finishedAt}
         WHERE task_id = #{taskId}

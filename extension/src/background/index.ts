@@ -14,6 +14,7 @@ import type {
 import {parseChatGptShareId} from '../shared/shareUrl'
 import {getAnalysisTaskStatus, submitAnalysis} from './analyzeTask'
 import {getConnectionStatus, revokeConnection, startConnect} from './connect'
+import {fetchDailyPractice, markDailyPracticed} from './dailyPractice'
 
 async function getWebOrigin(): Promise<string> {
   if (!ALLOW_WEB_ORIGIN_OVERRIDE) {
@@ -156,6 +157,8 @@ const HANDLED_TYPES = new Set([
   'REVOKE_CONNECTION',
   'SUBMIT_ANALYSIS',
   'GET_ANALYSIS_TASK',
+  'GET_DAILY_PRACTICE',
+  'MARK_DAILY_PRACTICED',
 ])
 
 chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendResponse) => {
@@ -217,6 +220,19 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendRe
           sourceConversationId: message.sourceConversationId,
         }),
       )
+      return
+    }
+    if (message.type === 'GET_DAILY_PRACTICE') {
+      sendResponse(
+        await fetchDailyPractice(webOrigin, {
+          excludeMemoryIds: message.excludeMemoryIds,
+          excludeCardIds: message.excludeCardIds,
+        }),
+      )
+      return
+    }
+    if (message.type === 'MARK_DAILY_PRACTICED') {
+      sendResponse(await markDailyPracticed(webOrigin, message.memoryIds))
     }
   }
 

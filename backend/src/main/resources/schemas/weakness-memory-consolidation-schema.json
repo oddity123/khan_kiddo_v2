@@ -9,23 +9,15 @@
           "op": {
             "type": "string",
             "enum": ["CREATE", "MERGE", "SKIP"],
-            "description": "CREATE=新建微习惯；MERGE=归并已有 memoryId；SKIP=本场该项不写入长期记忆"
+            "description": "CREATE=新建微习惯模式；MERGE=归并已有 memoryId；SKIP=本场该项不写入长期记忆"
           },
           "memoryId": {
             "type": ["integer", "null"],
-            "description": "MERGE 时必填，对应输入 ACTIVE 记忆 id；CREATE/SKIP 可为 null"
+            "description": "MERGE 时必填；CREATE/SKIP 可为 null"
           },
           "title": {
             "type": "string",
-            "description": "具体微习惯短标题（CREATE/MERGE 必填）"
-          },
-          "diagnosis": {
-            "type": "string",
-            "description": "成因诊断（CREATE/MERGE 必填）"
-          },
-          "coaching": {
-            "type": "string",
-            "description": "开口前自检提示（CREATE/MERGE 必填）"
+            "description": "具体微习惯模式短名（表现描述，如 spend + 时间后漏 -ing）；禁止开口前教条；CREATE/MERGE 必填"
           },
           "anchorHabitKey": {
             "type": "string",
@@ -34,14 +26,6 @@
           "anchorPointId": {
             "type": "string",
             "description": "代表叶子 pointId，可空"
-          },
-          "badExample": {
-            "type": "string",
-            "description": "必须来自输入中的真实用户原句（CREATE/MERGE 必填）"
-          },
-          "targetRewrite": {
-            "type": "string",
-            "description": "对应自然改写（CREATE/MERGE 必填）"
           }
         },
         "required": ["op"]

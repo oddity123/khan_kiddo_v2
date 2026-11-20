@@ -93,6 +93,14 @@
         </if>
     </select>
 
+    <select id="countByUserIdAndStatusCreatedAfter" resultType="long">
+        SELECT COUNT(*)
+        FROM conversation_analysis
+        WHERE user_id = #{userId}
+          AND status = #{status}
+          AND created_at &gt; #{createdAfter}
+    </select>
+
     <select id="findByConditions" resultMap="ConversationAnalysisResultMap">
         SELECT id, user_id, analysis_id, conversation_content, status, error_message, processing_time_ms,
         educational_summary, llm_model_id, llm_model_name, llm_provider, point_dictionary_version,

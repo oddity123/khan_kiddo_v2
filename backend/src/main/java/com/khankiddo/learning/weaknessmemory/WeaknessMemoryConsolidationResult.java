@@ -18,11 +18,7 @@ public class WeaknessMemoryConsolidationResult {
         private String op;
         private Long memoryId;
         private String title;
-        private String diagnosis;
-        private String coaching;
         private String anchorHabitKey;
         private String anchorPointId;
-        private String badExample;
-        private String targetRewrite;
     }
 }

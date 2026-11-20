@@ -93,19 +93,18 @@ public class WeaknessMemoryLlmClient {
                 sb.append("- id=").append(memory.getId())
                         .append(" | title=").append(nullToEmpty(memory.getTitle()))
                         .append(" | habitKey=").append(nullToEmpty(memory.getAnchorHabitKey()))
+                        .append(" | pointId=").append(nullToEmpty(memory.getAnchorPointId()))
                         .append(" | hitCount=").append(memory.getHitCount())
-                        .append(" | badExample=").append(nullToEmpty(memory.getBadExample()))
                         .append('\n');
             }
         }
 
-        sb.append("\n## 本场行动卡 Top\n");
+        sb.append("\n## 本场行动卡 Top（下列错句仅供归并判断，禁止写入输出）\n");
         int exampleLimit = Math.max(1, properties.getActionCardExampleLimit());
         for (ActionCardDto card : context.actionCards()) {
             sb.append("- habitKey=").append(nullToEmpty(card.getHabitKey()))
                     .append(" | pointId=").append(nullToEmpty(card.getPointId()))
                     .append(" | title=").append(nullToEmpty(card.getTitleZh()))
-                    .append(" | diagnosis=").append(nullToEmpty(card.getDiagnosisZh()))
                     .append('\n');
             if (!CollectionUtils.isEmpty(card.getExamples())) {
                 int n = 0;
@@ -165,12 +164,8 @@ public class WeaknessMemoryLlmClient {
                     dto.getOp().trim(),
                     dto.getMemoryId(),
                     dto.getTitle(),
-                    dto.getDiagnosis(),
-                    dto.getCoaching(),
                     dto.getAnchorHabitKey(),
-                    dto.getAnchorPointId(),
-                    dto.getBadExample(),
-                    dto.getTargetRewrite()));
+                    dto.getAnchorPointId()));
         }
         return ops;
     }

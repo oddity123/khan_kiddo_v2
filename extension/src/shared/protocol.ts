@@ -8,6 +8,8 @@ export type ExtensionMessageType =
     | 'REVOKE_CONNECTION'
     | 'SUBMIT_ANALYSIS'
     | 'GET_ANALYSIS_TASK'
+    | 'GET_DAILY_PRACTICE'
+    | 'MARK_DAILY_PRACTICED'
 
 export interface ImportConversationPayload {
   source: 'chatgpt_share'
@@ -100,6 +102,50 @@ export interface AnalysisTaskStatusResponse {
   sourceConversationId?: string | null
 }
 
+export interface GetDailyPracticeRequest {
+  type: 'GET_DAILY_PRACTICE'
+  excludeMemoryIds?: number[]
+  excludeCardIds?: string[]
+}
+
+export interface DailyPracticeGoal {
+  memoryId?: number | null
+  title?: string
+  anchorHabitKey?: string
+  anchorPointId?: string
+  evidenceOriginal?: string
+  evidenceRewrite?: string
+}
+
+export interface DailyPracticeVocab {
+  cardId?: string
+  type?: string
+  front?: string
+  back?: string
+}
+
+export interface DailyPracticeResponse {
+  type: 'DAILY_PRACTICE'
+  ok: boolean
+  error?: string
+  empty?: boolean
+  summary?: string
+  prompt?: string
+  goals?: DailyPracticeGoal[]
+  vocabulary?: DailyPracticeVocab[]
+}
+
+export interface MarkDailyPracticedRequest {
+  type: 'MARK_DAILY_PRACTICED'
+  memoryIds: number[]
+}
+
+export interface MarkDailyPracticedResponse {
+  type: 'MARK_DAILY_PRACTICED_RESULT'
+  ok: boolean
+  error?: string
+}
+
 export type ExtensionRequest =
     | ImportShareRequest
     | GetSettingsRequest
@@ -109,3 +155,5 @@ export type ExtensionRequest =
     | RevokeConnectionRequest
     | SubmitAnalysisRequest
     | GetAnalysisTaskRequest
+    | GetDailyPracticeRequest
+    | MarkDailyPracticedRequest

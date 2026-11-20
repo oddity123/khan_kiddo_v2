@@ -65,7 +65,7 @@ class WeaknessMemoryConsolidatorTest {
                 List.of());
         when(prefetcher.prefetch(1L, "a-1")).thenReturn(Optional.of(context));
         List<WeaknessMemoryOperation> ops = List.of(new WeaknessMemoryOperation(
-                WeaknessMemoryOperation.OP_SKIP, null, null, null, null, null, null, null, null));
+                WeaknessMemoryOperation.OP_SKIP, null, null, null, null));
         when(llmClient.consolidate(context)).thenReturn(ops);
 
         consolidator.consolidateAfterAnalysis(1L, "a-1");

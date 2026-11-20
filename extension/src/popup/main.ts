@@ -2,11 +2,12 @@ import type {ConnectionStatusResponse, ImportShareResult, SettingsResponse} from
 import {PRIVACY_CONSENT_STORAGE_KEY} from '../shared/constants'
 import {loadCredential, loadPendingConnect} from '../shared/credentialStore'
 import {mountConnectionProbe} from '../connection/popup'
-import {mountInjectionExample} from '../connection/injectionPopup'
+import {mountDailyPractice} from '../connection/dailyPracticePopup'
+
+const dailyPractice = mountDailyPractice()
 
 if (import.meta.env.MODE !== 'production') {
   mountConnectionProbe()
-  mountInjectionExample()
 } else {
   document.querySelector<HTMLDetailsElement>('#shareSection')!.open = true
 }
@@ -43,6 +44,7 @@ function applyConnectionUi(status: ConnectionStatusResponse): void {
     accountHintEl.textContent = '连接后可将 ChatGPT 对话提交到 Khan Kiddo 分析。'
     connectBtn.classList.remove('hidden')
     connectBtn.disabled = true
+    dailyPractice?.hide()
     return
   }
 
@@ -56,6 +58,7 @@ function applyConnectionUi(status: ConnectionStatusResponse): void {
     setHeroStatus('')
     connectBtn.classList.add('hidden')
     disconnectBtn.classList.remove('hidden')
+    dailyPractice?.show()
     return
   }
 
@@ -65,6 +68,7 @@ function applyConnectionUi(status: ConnectionStatusResponse): void {
   connectBtn.classList.remove('hidden')
   disconnectBtn.classList.add('hidden')
   accountHintEl.textContent = '连接后可将 ChatGPT 对话提交到 Khan Kiddo 分析。'
+  dailyPractice?.hide()
   if (status.error) {
     setHeroStatus(status.error, 'error')
   } else {

@@ -13,9 +13,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,53 +26,37 @@ class WeaknessMemoryStoreTest {
     @Mock
     private UserWeaknessMemoryMapper memoryMapper;
     @Mock
-    private WeaknessMemoryExampleSupport exampleSupport;
-    @Mock
     private WeaknessMemoryCapacitySupport capacitySupport;
 
     private WeaknessMemoryStore store;
 
     @BeforeEach
     void setUp() {
-        store = new WeaknessMemoryStore(memoryMapper, exampleSupport, capacitySupport);
+        store = new WeaknessMemoryStore(memoryMapper, capacitySupport);
     }
 
     @Test
-    void createPersistsWhenExampleAuthentic() {
-        when(exampleSupport.isAuthenticBadExample(1L, "I spend 2 hours watch TV")).thenReturn(true);
-
+    void createPersistsTitleAndAnchorsOnly() {
         store.applyOperations(1L, "a-1", List.of(new WeaknessMemoryOperation(
                 WeaknessMemoryOperation.OP_CREATE,
                 null,
                 "spend + 时间后漏 -ing",
-                "把 spend time 当成 spend to",
-                "开口前自检 -ing",
                 "FAM_NONFINITE",
-                "NF_GERUND_OBJECT",
-                "I spend 2 hours watch TV",
-                "I spend 2 hours watching TV")));
+                "NF_GERUND_OBJECT")));
 
         ArgumentCaptor<UserWeaknessMemory> captor = ArgumentCaptor.forClass(UserWeaknessMemory.class);
         verify(memoryMapper).insert(captor.capture());
+        assertEquals("spend + 时间后漏 -ing", captor.getValue().getTitle());
+        assertEquals("FAM_NONFINITE", captor.getValue().getAnchorHabitKey());
         assertEquals(1, captor.getValue().getHitCount());
         assertEquals("a-1", captor.getValue().getSourceAnalysisId());
         verify(capacitySupport).enforceActivePoolLimit(1L);
     }
 
     @Test
-    void createRejectsForgedExample() {
-        when(exampleSupport.isAuthenticBadExample(1L, "made up")).thenReturn(false);
-
+    void createRejectsBlankTitle() {
         store.applyOperations(1L, "a-1", List.of(new WeaknessMemoryOperation(
-                WeaknessMemoryOperation.OP_CREATE,
-                null,
-                "title",
-                "diagnosis",
-                "coaching",
-                null,
-                null,
-                "made up",
-                "rewrite")));
+                WeaknessMemoryOperation.OP_CREATE, null, "  ", null, null)));
 
         verify(memoryMapper, never()).insert(any());
         verify(capacitySupport).enforceActivePoolLimit(1L);
@@ -81,7 +64,6 @@ class WeaknessMemoryStoreTest {
 
     @Test
     void mergeIncrementsHitCountForOwnedMemory() {
-        when(exampleSupport.isAuthenticBadExample(1L, "I spend 2 hours watch TV")).thenReturn(true);
         when(memoryMapper.findByIdAndUserId(9L, 1L)).thenReturn(Optional.of(
                 UserWeaknessMemory.builder()
                         .id(9L)
@@ -94,34 +76,26 @@ class WeaknessMemoryStoreTest {
                 WeaknessMemoryOperation.OP_MERGE,
                 9L,
                 "spend + 时间后漏 -ing",
-                "diagnosis",
-                "coaching",
                 "FAM_NONFINITE",
-                "NF_GERUND_OBJECT",
-                "I spend 2 hours watch TV",
-                "I spend 2 hours watching TV")));
+                "NF_GERUND_OBJECT")));
 
         ArgumentCaptor<UserWeaknessMemory> captor = ArgumentCaptor.forClass(UserWeaknessMemory.class);
         verify(memoryMapper).updateMerged(captor.capture());
         assertEquals(3, captor.getValue().getHitCount());
         assertEquals("a-2", captor.getValue().getSourceAnalysisId());
+        assertNull(captor.getValue().getLastPracticedAt());
     }
 
     @Test
     void mergeRejectsOtherUsersMemory() {
-        when(exampleSupport.isAuthenticBadExample(anyLong(), anyString())).thenReturn(true);
         when(memoryMapper.findByIdAndUserId(9L, 1L)).thenReturn(Optional.empty());
 
         store.applyOperations(1L, "a-2", List.of(new WeaknessMemoryOperation(
                 WeaknessMemoryOperation.OP_MERGE,
                 9L,
                 "title",
-                "diagnosis",
-                "coaching",
                 null,
-                null,
-                "I spend 2 hours watch TV",
-                "rewrite")));
+                null)));
 
         verify(memoryMapper, never()).updateMerged(any());
     }

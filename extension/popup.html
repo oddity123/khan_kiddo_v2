@@ -96,11 +96,14 @@
     <pre id="historyText" class="transcript" aria-label="读取的对话内容"></pre>
   </section>
 
-  <section id="injectionSection" class="card hidden" aria-labelledby="injectionTitle">
-    <h2 id="injectionTitle">注入示例</h2>
-    <p id="injectionExample"></p>
-    <div class="actions"><button id="injectExample" class="secondary" type="button">注入到输入框</button></div>
-    <p id="injectionStatus" class="status" role="status" aria-live="polite"></p>
+  <section id="dailyPracticeSection" class="card hidden" aria-labelledby="dailyPracticeTitle">
+    <h2 id="dailyPracticeTitle">今日练习</h2>
+    <p id="dailyPracticeSummary"></p>
+    <div class="actions">
+      <button id="dailyPracticeInject" class="primary" type="button" disabled>注入到输入框</button>
+      <button id="dailyPracticeRefresh" class="secondary" type="button">换一组</button>
+    </div>
+    <p id="dailyPracticeStatus" class="status" role="status" aria-live="polite"></p>
   </section>
 
   <details id="shareSection" class="card">

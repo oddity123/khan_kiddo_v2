@@ -119,6 +119,13 @@ class AnalysisTaskControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCEEDED"))
                 .andExpect(jsonPath("$.analysisId").value(analysisId));
+
+        // 成功后清空 task 正文，正本只留在 conversation_analysis
+        String leftover = jdbcTemplate.queryForObject(
+                "SELECT conversation_content FROM conversation_analysis_task WHERE task_id = ?",
+                String.class,
+                taskId);
+        assertThat(leftover).isNull();
     }
 
     @Test

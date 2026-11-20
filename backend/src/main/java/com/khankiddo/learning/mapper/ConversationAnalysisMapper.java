@@ -32,6 +32,13 @@ public interface ConversationAnalysisMapper {
                                        @Param("status") String status,
                                        @Param("days") Integer days);
 
+    /**
+     * 统计 {@code createdAfter} 之后（不含边界）的成功分析场次，用于带练冷却。
+     */
+    long countByUserIdAndStatusCreatedAfter(@Param("userId") Long userId,
+                                            @Param("status") String status,
+                                            @Param("createdAfter") LocalDateTime createdAfter);
+
     List<ConversationAnalysis> findByConditions(@Param("userId") Long userId,
                                                 @Param("status") String status,
                                                 @Param("startTime") LocalDateTime startTime,

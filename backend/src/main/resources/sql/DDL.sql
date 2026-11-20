@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_task`
     `task_id`                  VARCHAR(36)  NOT NULL COMMENT '对外任务 UUID',
     `user_id`                  BIGINT       NOT NULL COMMENT '发起用户',
     `status`                   VARCHAR(20)  NOT NULL DEFAULT 'QUEUED' COMMENT 'QUEUED/RUNNING/SUCCEEDED/FAILED',
-    `conversation_content`     MEDIUMTEXT   NOT NULL COMMENT '完整对话原文',
+    `conversation_content`     MEDIUMTEXT            DEFAULT NULL COMMENT '排队/执行中的对话原文；SUCCEEDED 后清空，正本在 conversation_analysis',
     `content_fingerprint`      CHAR(64)     NOT NULL COMMENT '内容 SHA-256 hex',
     `source_type`              VARCHAR(32)  NOT NULL COMMENT 'chatgpt_history / chatgpt_share 等',
     `source_conversation_id`   VARCHAR(64)           DEFAULT NULL COMMENT '来源会话标识',
@@ -211,19 +211,18 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_task`
     INDEX `idx_analysis_task_user_created` (`user_id`, `created_at`)
 ) ENGINE = InnoDB COMMENT ='对话分析异步任务';
 -- 已有库：ALTER TABLE conversation_analysis_task ADD INDEX idx_analysis_task_user_source (user_id, source_type, source_conversation_id, created_at);
+-- 已有库：ALTER TABLE conversation_analysis_task MODIFY COLUMN conversation_content MEDIUMTEXT NULL COMMENT '排队/执行中的对话原文；SUCCEEDED 后清空，正本在 conversation_analysis';
+-- 已有库（可选回收）：UPDATE conversation_analysis_task SET conversation_content = NULL WHERE status = 'SUCCEEDED' AND conversation_content IS NOT NULL;
 
--- 用户口语薄弱点长期记忆（左脑）
+-- 用户口语薄弱点长期记忆（左脑 / semantic）：只存宏观模式与轨迹，不存句子或教学文案。
+-- 具体错句证据读时从 conversation_analysis_item（及可选 Qdrant）按 anchor 取。
 CREATE TABLE IF NOT EXISTS `user_weakness_memory`
 (
     `id`                 BIGINT AUTO_INCREMENT PRIMARY KEY,
     `user_id`            BIGINT       NOT NULL COMMENT '所属用户 ID',
-    `title`              VARCHAR(120) NOT NULL COMMENT '具体微习惯短标题，供扩展预览与教练目标使用',
-    `diagnosis`          VARCHAR(500) NOT NULL COMMENT '成因诊断（为什么总这样说）',
-    `coaching`           VARCHAR(500) NOT NULL COMMENT '开口前自检提示（怎么改）',
+    `title`              VARCHAR(120) NOT NULL COMMENT '微习惯模式短名（表现描述，非开口前教条）',
     `anchor_habit_key`   VARCHAR(64)           DEFAULT NULL COMMENT '关联字典 habitKey（如 FAM_TENSE 或叶子 pointId）',
     `anchor_point_id`    VARCHAR(64)           DEFAULT NULL COMMENT '代表知识点叶子 pointId',
-    `bad_example`        TEXT         NOT NULL COMMENT '真实用户原错句（必须经历史记录核验）',
-    `target_rewrite`     TEXT         NOT NULL COMMENT '对应自然改写句',
     `source_analysis_id` VARCHAR(64)  NOT NULL COMMENT '最新一次更新该记忆的分析 ID',
     `hit_count`          INT          NOT NULL DEFAULT 1 COMMENT '累计归并/复发次数',
     `practiced_count`    INT          NOT NULL DEFAULT 0 COMMENT '被选入今日练习注入的次数',
@@ -234,5 +233,6 @@ CREATE TABLE IF NOT EXISTS `user_weakness_memory`
     `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_weakness_mem_user_status` (`user_id`, `status`, `last_seen_at`),
     INDEX `idx_weakness_mem_source_analysis` (`user_id`, `source_analysis_id`)
-) ENGINE = InnoDB COMMENT ='用户口语薄弱点长期记忆';
--- 已有库：直接重跑上表 IF NOT EXISTS 即可；无额外 ALTER。
+) ENGINE = InnoDB COMMENT ='用户口语薄弱点长期记忆（semantic，无句子正文）';
+-- 已有库（从含 diagnosis/coaching/例句 的旧表升级）：
+-- ALTER TABLE user_weakness_memory DROP COLUMN diagnosis, DROP COLUMN coaching, DROP COLUMN bad_example, DROP COLUMN target_rewrite;
