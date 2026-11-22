@@ -36,6 +36,11 @@ public class WeaknessMemoryProperties {
     /** Step2 选点用：带练冷却最短小时数。 */
     private int cooldownHours = 24;
 
+    /**
+     * Step2：FLUENCY_* 锚点在优先分上的乘数（&lt;1 压低流利度霸榜；不改 hit_count）。
+     */
+    private double fluencyRecurrenceScale = 0.55;
+
     /** Step2：每次推荐薄弱点上限。 */
     private int recommendGoalLimit = 2;
 

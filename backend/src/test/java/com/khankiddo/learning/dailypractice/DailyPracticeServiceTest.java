@@ -151,6 +151,42 @@ class DailyPracticeServiceTest {
     }
 
     @Test
+    void diversifiesGoalsToAtMostOneFluencyWhenGrammarAvailable() {
+        LocalDateTime seen = LocalDateTime.now().minusDays(1);
+        UserWeaknessMemory fluencyHigh = UserWeaknessMemory.builder()
+                .id(1L).userId(9L).title("口头重复")
+                .anchorHabitKey("FLUENCY_REDUNDANCY").anchorPointId("FLUENCY_REDUNDANCY")
+                .hitCount(6).lastSeenAt(seen)
+                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
+        UserWeaknessMemory fluencyLow = UserWeaknessMemory.builder()
+                .id(2L).userId(9L).title("说到一半中断")
+                .anchorHabitKey("FLUENCY_INCOMPLETE").anchorPointId("FLUENCY_INCOMPLETE")
+                .hitCount(5).lastSeenAt(seen)
+                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
+        UserWeaknessMemory grammar = UserWeaknessMemory.builder()
+                .id(3L).userId(9L).title("宾语从句疑问语序")
+                .anchorHabitKey("FAM_STRUCTURE").anchorPointId("NOUN_CLAUSE_ORDER")
+                .hitCount(2).lastSeenAt(seen)
+                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
+        when(memoryMapper.findActiveByUserId(9L)).thenReturn(List.of(fluencyHigh, fluencyLow, grammar));
+        when(growthCardStore.listDue(eq(9L), any(LocalDate.class))).thenReturn(List.of());
+        when(evidenceSupport.findLatestEvidence(eq(9L), any())).thenReturn(
+                WeaknessEvidenceSupport.EvidenceLine.empty());
+        when(practicePromptService.assemble(any())).thenAnswer(inv ->
+                com.khankiddo.learning.dto.conversation.PracticePromptResponse.builder()
+                        .prompt("PROMPT").build());
+
+        DailyPracticeRecommendResponse response = service.recommend(9L, null);
+
+        assertEquals(2, response.getGoals().size());
+        long fluencyCount = response.getGoals().stream()
+                .filter(g -> g.getMemoryId() == 1L || g.getMemoryId() == 2L)
+                .count();
+        assertEquals(1, fluencyCount);
+        assertTrue(response.getGoals().stream().anyMatch(g -> g.getMemoryId() == 3L));
+    }
+
+    @Test
     void selectsDueVocabAndExpressionOnly() {
         LocalDateTime seen = LocalDateTime.now().minusDays(1);
         when(memoryMapper.findActiveByUserId(1L)).thenReturn(List.of(

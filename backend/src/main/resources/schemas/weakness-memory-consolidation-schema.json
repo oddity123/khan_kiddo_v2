@@ -17,7 +17,7 @@
           },
           "title": {
             "type": "string",
-            "description": "具体微习惯模式短名（表现描述，如 spend + 时间后漏 -ing）；禁止开口前教条；CREATE/MERGE 必填"
+            "description": "单个病灶的微习惯标签：触发条件 + 可观察偏差（如 spend + 时间后漏 -ing）；一条 op 一个病灶，勿用分号粘合；禁止开口前教条；CREATE/MERGE 必填"
           },
           "anchorHabitKey": {
             "type": "string",

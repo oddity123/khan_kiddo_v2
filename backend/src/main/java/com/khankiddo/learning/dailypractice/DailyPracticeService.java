@@ -158,9 +158,13 @@ public class DailyPracticeService {
         int limit = Math.max(1, properties.getRecommendGoalLimit());
         int activeCount = active.size();
         List<ScoredMemory> scored = new ArrayList<>();
+        boolean poolHasNonFluency = false;
         for (UserWeaknessMemory memory : active) {
             if (memory.getId() != null && excludeMemoryIds.contains(memory.getId())) {
                 continue;
+            }
+            if (!DailyPracticeRankingSupport.isFluencyAnchor(memory)) {
+                poolHasNonFluency = true;
             }
             long analysesSince = 0L;
             if (memory.getLastPracticedAt() != null) {
@@ -178,18 +182,28 @@ public class DailyPracticeService {
                     now,
                     properties.getDecayHalfLifeDays(),
                     cooling,
-                    activeCount);
+                    activeCount,
+                    properties.getFluencyRecurrenceScale());
             scored.add(new ScoredMemory(memory, score));
         }
         scored.sort(Comparator.comparingDouble(ScoredMemory::score).reversed()
                 .thenComparing(s -> s.memory().getId(), Comparator.nullsLast(Long::compareTo)));
 
         List<DailyPracticeRecommendResponse.GoalSummary> selected = new ArrayList<>();
+        int fluencySelected = 0;
         for (ScoredMemory item : scored) {
             if (selected.size() >= limit) {
                 break;
             }
+            boolean fluency = DailyPracticeRankingSupport.isFluencyAnchor(item.memory());
+            // 池中仍有非流利度候选时，同批最多 1 条 FLUENCY_*
+            if (fluency && poolHasNonFluency && fluencySelected >= 1) {
+                continue;
+            }
             selected.add(toGoalSummary(userId, item.memory()));
+            if (fluency) {
+                fluencySelected++;
+            }
         }
         return selected;
     }

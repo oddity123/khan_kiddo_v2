@@ -64,6 +64,35 @@ class DailyPracticeRankingSupportTest {
                 DailyPracticeRankingSupport.buildSummary(0, null, 0));
     }
 
+    @Test
+    void fluencyAnchorScaledBelowSameHitGrammar() {
+        LocalDateTime now = LocalDateTime.of(2026, 11, 19, 12, 0);
+        UserWeaknessMemory fluency = UserWeaknessMemory.builder()
+                .id(1L)
+                .hitCount(4)
+                .lastSeenAt(now.minusDays(1))
+                .anchorHabitKey("FLUENCY_REDUNDANCY")
+                .anchorPointId("FLUENCY_REDUNDANCY")
+                .status(UserWeaknessMemory.STATUS_ACTIVE)
+                .build();
+        UserWeaknessMemory grammar = UserWeaknessMemory.builder()
+                .id(2L)
+                .hitCount(4)
+                .lastSeenAt(now.minusDays(1))
+                .anchorHabitKey("FAM_STRUCTURE")
+                .anchorPointId("NOUN_CLAUSE_ORDER")
+                .status(UserWeaknessMemory.STATUS_ACTIVE)
+                .build();
+
+        double fluencyScore = DailyPracticeRankingSupport.priorityScore(
+                fluency, now, 21, false, 2, 0.55);
+        double grammarScore = DailyPracticeRankingSupport.priorityScore(
+                grammar, now, 21, false, 2, 0.55);
+        assertTrue(grammarScore > fluencyScore);
+        assertTrue(DailyPracticeRankingSupport.isFluencyAnchor(fluency));
+        assertFalse(DailyPracticeRankingSupport.isFluencyAnchor(grammar));
+    }
+
     private static UserWeaknessMemory base(int hits, LocalDateTime lastSeen, LocalDateTime practiced) {
         return UserWeaknessMemory.builder()
                 .id(1L)

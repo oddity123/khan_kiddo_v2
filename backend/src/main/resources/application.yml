@@ -82,6 +82,8 @@ app:
     decay-half-life-days: 21
     cooldown-analyses: 2
     cooldown-hours: 24
+    # FLUENCY_* 锚点推荐分乘数（<1 压低流利度霸榜；不改 hit_count）
+    fluency-recurrence-scale: ${WEAKNESS_MEMORY_FLUENCY_RECURRENCE_SCALE:0.55}
     recommend-goal-limit: 2
     recommend-vocab-limit: 2
   conversation-analysis:

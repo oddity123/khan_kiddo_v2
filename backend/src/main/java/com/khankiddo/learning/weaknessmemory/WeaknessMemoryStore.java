@@ -56,13 +56,15 @@ public class WeaknessMemoryStore {
     }
 
     private void applyCreate(Long userId, String analysisId, WeaknessMemoryOperation op, LocalDateTime now) {
-        if (!StringUtils.hasText(op.title())) {
-            log.warn("weakness CREATE rejected: missing title analysisId={}", analysisId);
+        String title = WeaknessMemoryTitleSupport.sanitizeOrNull(op.title());
+        if (title == null) {
+            log.warn("weakness CREATE rejected: invalid title analysisId={} raw={}",
+                    analysisId, op.title());
             return;
         }
         UserWeaknessMemory row = UserWeaknessMemory.builder()
                 .userId(userId)
-                .title(op.title().trim())
+                .title(title)
                 .anchorHabitKey(trimToNull(op.anchorHabitKey()))
                 .anchorPointId(trimToNull(op.anchorPointId()))
                 .sourceAnalysisId(analysisId)
@@ -79,9 +81,10 @@ public class WeaknessMemoryStore {
             log.warn("weakness MERGE rejected: missing memoryId analysisId={}", analysisId);
             return;
         }
-        if (!StringUtils.hasText(op.title())) {
-            log.warn("weakness MERGE rejected: missing title memoryId={} analysisId={}",
-                    op.memoryId(), analysisId);
+        String title = WeaknessMemoryTitleSupport.sanitizeOrNull(op.title());
+        if (title == null) {
+            log.warn("weakness MERGE rejected: invalid title memoryId={} analysisId={} raw={}",
+                    op.memoryId(), analysisId, op.title());
             return;
         }
         var existingOpt = memoryMapper.findByIdAndUserId(op.memoryId(), userId);
@@ -91,7 +94,7 @@ public class WeaknessMemoryStore {
         }
         UserWeaknessMemory existing = existingOpt.get();
         int hits = existing.getHitCount() == null ? 1 : existing.getHitCount();
-        existing.setTitle(op.title().trim());
+        existing.setTitle(title);
         existing.setAnchorHabitKey(trimToNull(op.anchorHabitKey()));
         existing.setAnchorPointId(trimToNull(op.anchorPointId()));
         existing.setSourceAnalysisId(analysisId);

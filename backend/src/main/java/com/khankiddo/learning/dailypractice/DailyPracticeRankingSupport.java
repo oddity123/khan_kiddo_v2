@@ -8,12 +8,14 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * 薄弱点选点优先分：复发分 × 时间衰减 × 带练冷却惩罚。
+ * 薄弱点选点优先分：复发分 × 时间衰减 × 带练冷却惩罚 ×（可选）流利度降权。
  */
 public final class DailyPracticeRankingSupport {
 
     /** 冷却中显著减分系数（仅当活跃条数 &gt; 1 时生效）。 */
     public static final double COOLDOWN_PENALTY = 0.05;
+
+    private static final String FLUENCY_PREFIX = "FLUENCY_";
 
     private DailyPracticeRankingSupport() {
     }
@@ -24,6 +26,16 @@ public final class DailyPracticeRankingSupport {
             int decayHalfLifeDays,
             boolean coolingDown,
             int activeCount) {
+        return priorityScore(memory, now, decayHalfLifeDays, coolingDown, activeCount, 1.0);
+    }
+
+    public static double priorityScore(
+            UserWeaknessMemory memory,
+            LocalDateTime now,
+            int decayHalfLifeDays,
+            boolean coolingDown,
+            int activeCount,
+            double fluencyRecurrenceScale) {
         Objects.requireNonNull(memory, "memory");
         Objects.requireNonNull(now, "now");
         int hits = memory.getHitCount() == null || memory.getHitCount() < 1 ? 1 : memory.getHitCount();
@@ -33,7 +45,26 @@ public final class DailyPracticeRankingSupport {
         if (coolingDown && activeCount > 1) {
             score *= COOLDOWN_PENALTY;
         }
+        if (isFluencyAnchor(memory)) {
+            double scale = fluencyRecurrenceScale;
+            if (scale < 0.0) {
+                scale = 0.0;
+            }
+            score *= scale;
+        }
         return score;
+    }
+
+    public static boolean isFluencyAnchor(UserWeaknessMemory memory) {
+        if (memory == null) {
+            return false;
+        }
+        return startsWithFluency(memory.getAnchorHabitKey())
+                || startsWithFluency(memory.getAnchorPointId());
+    }
+
+    private static boolean startsWithFluency(String value) {
+        return StringUtils.hasText(value) && value.trim().regionMatches(true, 0, FLUENCY_PREFIX, 0, FLUENCY_PREFIX.length());
     }
 
     public static boolean isCoolingDown(

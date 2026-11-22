@@ -63,6 +63,19 @@ class WeaknessMemoryStoreTest {
     }
 
     @Test
+    void createRejectsCompoundTitle() {
+        store.applyOperations(1L, "a-1", List.of(new WeaknessMemoryOperation(
+                WeaknessMemoryOperation.OP_CREATE,
+                null,
+                "feel后误用-ing；be动词位置误用名词",
+                "FAM_WORD_FORM",
+                "WORD_FORM_POS")));
+
+        verify(memoryMapper, never()).insert(any());
+        verify(capacitySupport).enforceActivePoolLimit(1L);
+    }
+
+    @Test
     void mergeIncrementsHitCountForOwnedMemory() {
         when(memoryMapper.findByIdAndUserId(9L, 1L)).thenReturn(Optional.of(
                 UserWeaknessMemory.builder()
