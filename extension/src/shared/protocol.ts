@@ -74,6 +74,7 @@ export interface SubmitAnalysisRequest {
   conversationContent: string
   sourceType: 'chatgpt_history' | 'chatgpt_share'
   sourceConversationId?: string | null
+  tabId?: number
 }
 
 export interface SubmitAnalysisResult {
@@ -111,8 +112,12 @@ export interface GetDailyPracticeRequest {
 export interface DailyPracticeGoal {
   memoryId?: number | null
   title?: string
-  anchorHabitKey?: string
-  anchorPointId?: string
+  pointId?: string
+  familyId?: string
+  memoryType?: string
+  status?: string
+  masteryLevel?: number
+  priorityScore?: number
   evidenceOriginal?: string
   evidenceRewrite?: string
 }
@@ -138,12 +143,16 @@ export interface DailyPracticeResponse {
 export interface MarkDailyPracticedRequest {
   type: 'MARK_DAILY_PRACTICED'
   memoryIds: number[]
+  sourceConversationId?: string | null
+  tabId?: number
+  practiceType?: string
 }
 
 export interface MarkDailyPracticedResponse {
   type: 'MARK_DAILY_PRACTICED_RESULT'
   ok: boolean
   error?: string
+  sessionIds?: number[]
 }
 
 export type ExtensionRequest =

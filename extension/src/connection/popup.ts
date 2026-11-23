@@ -26,6 +26,7 @@ export function mountConnectionProbe() {
   const analyze = section.querySelector<HTMLButtonElement>('#analyzeHistory')!
   let transcript = ''
   let sourceConversationId: string | undefined
+  let activeTabId: number | undefined
   let reportAnalysisId: string | undefined
   let taskRunning = false
   let timer: number | undefined
@@ -148,6 +149,7 @@ export function mountConnectionProbe() {
         conversationContent: transcript,
         sourceType: 'chatgpt_history',
         sourceConversationId: sourceConversationId ?? null,
+        tabId: activeTabId,
       })) as SubmitAnalysisResult
       if (!result.ok) {
         taskRunning = false
@@ -222,6 +224,7 @@ export function mountConnectionProbe() {
     const {tabId, url} = await requireActiveChatGptTab()
     const conversationId = url.pathname.match(/(?:^|\/)c\/([\w-]+)\/?$/)?.[1]
     if (!conversationId) throw new Error('请先打开已有对话')
+    activeTabId = tabId
     return {tabId, conversationId}
   }
 

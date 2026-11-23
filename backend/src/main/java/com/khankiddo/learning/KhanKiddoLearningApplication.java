@@ -8,7 +8,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @MapperScan({
         "com.khankiddo.learning.mapper",
         "com.khankiddo.learning.extensionconnect",
-        "com.khankiddo.learning.analysistask"
+        "com.khankiddo.learning.analysistask",
+        "com.khankiddo.learning.memory.mapper"
 })
 public class KhanKiddoLearningApplication {
 

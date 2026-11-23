@@ -71,21 +71,36 @@ app:
     enabled: ${ANALYSIS_TASK_ENABLED:true}
     poll-interval-ms: ${ANALYSIS_TASK_POLL_INTERVAL_MS:2000}
     poll-timeout-ms: ${ANALYSIS_TASK_POLL_TIMEOUT_MS:900000}
-  # 口语薄弱点长期记忆（左脑）；沉淀引擎 + 今日练习选点参数单源
+  # 口语薄弱点长期记忆闭环（Analysis → Memory → Practice → Assessment → Review → Update）
   weakness-memory:
     enabled: ${WEAKNESS_MEMORY_ENABLED:true}
-    active-pool-limit: ${WEAKNESS_MEMORY_ACTIVE_POOL_LIMIT:12}
-    prefetch-history-days: 30
-    prefetch-example-limit: 3
-    prefetch-similar-limit: 3
-    action-card-example-limit: 3
-    decay-half-life-days: 21
-    cooldown-analyses: 2
-    cooldown-hours: 24
+    assessment-enabled: ${WEAKNESS_MEMORY_ASSESSMENT_ENABLED:true}
+    confirm-min-hits: 2
+    recent-window-days: 30
+    mastery-min-practices: 5
+    mastery-min-sessions: 2
+    mastery-min-consecutive-correct: 3
+    mastery-min-accuracy: 0.85
+    mastery-weight-practice: 0.4
+    mastery-weight-independent: 0.3
+    mastery-weight-transfer: 0.3
+    priority-weight-recent-freq: 0.35
+    priority-weight-severity: 0.25
+    priority-weight-mastery-gap: 0.25
+    priority-weight-forgetting: 0.15
     # FLUENCY_* 锚点推荐分乘数（<1 压低流利度霸榜；不改 hit_count）
     fluency-recurrence-scale: ${WEAKNESS_MEMORY_FLUENCY_RECURRENCE_SCALE:0.55}
+    cooldown-penalty: 0.05
+    cooldown-analyses: 2
+    cooldown-hours: 24
     recommend-goal-limit: 2
     recommend-vocab-limit: 2
+    review-interval-active-days: 1
+    review-interval-practicing-days: 2
+    review-interval-mastered-days: 14
+    assessment-max-targets: 3
+    assessment-session-window-hours: 24
+    assessment-max-transcript-chars: 8000
   conversation-analysis:
     min-content-length: 10
     max-content-length: 20000

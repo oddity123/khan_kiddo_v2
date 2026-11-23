@@ -88,7 +88,8 @@ export function mountDailyPractice() {
     refreshBtn.disabled = true
     setStatus('正在填入输入框…')
     try {
-      const {tabId} = await requireActiveChatGptTab()
+      const {tabId, url} = await requireActiveChatGptTab()
+      const sourceConversationId = url.pathname.match(/(?:^|\/)c\/([\w-]+)\/?$/)?.[1] ?? null
       const [frame] = await chrome.scripting.executeScript({
         target: {tabId},
         func: injectComposerText,
@@ -101,6 +102,9 @@ export function mountDailyPractice() {
         await chrome.runtime.sendMessage({
           type: 'MARK_DAILY_PRACTICED',
           memoryIds: current.memoryIds,
+          sourceConversationId,
+          tabId,
+          practiceType: 'SCENARIO',
         })
       }
       setStatus('已填入 ChatGPT 输入框，请检查后手动发送。', 'ok')

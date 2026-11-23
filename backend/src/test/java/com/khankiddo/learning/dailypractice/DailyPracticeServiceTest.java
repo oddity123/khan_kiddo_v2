@@ -1,31 +1,45 @@
 package com.khankiddo.learning.dailypractice;
 
 import com.khankiddo.learning.config.WeaknessMemoryProperties;
+import com.khankiddo.learning.dto.conversation.PracticePromptResponse;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeRecommendRequest;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeRecommendResponse;
 import com.khankiddo.learning.growth.GrowthCardAnalysisSupport;
 import com.khankiddo.learning.growth.GrowthCardStore;
+import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
-import com.khankiddo.learning.mapper.UserWeaknessMemoryMapper;
+import com.khankiddo.learning.memory.domain.MemoryEvidence;
+import com.khankiddo.learning.memory.domain.WeaknessMemory;
+import com.khankiddo.learning.memory.enums.MemoryStatus;
+import com.khankiddo.learning.memory.enums.MemoryType;
+import com.khankiddo.learning.memory.mapper.WeaknessMemoryMapper;
+import com.khankiddo.learning.memory.service.MemoryEvidenceService;
+import com.khankiddo.learning.memory.service.MemoryPracticeService;
+import com.khankiddo.learning.memory.service.MemoryPriorityService;
+import com.khankiddo.learning.memory.service.MemoryService;
 import com.khankiddo.learning.model.GrowthCard;
-import com.khankiddo.learning.model.UserWeaknessMemory;
 import com.khankiddo.learning.service.conversation.PracticePromptService;
-import com.khankiddo.learning.weaknessmemory.WeaknessMemoryConsolidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -36,7 +50,7 @@ import static org.mockito.Mockito.when;
 class DailyPracticeServiceTest {
 
     @Mock
-    private UserWeaknessMemoryMapper memoryMapper;
+    private WeaknessMemoryMapper memoryMapper;
     @Mock
     private ConversationAnalysisMapper analysisMapper;
     @Mock
@@ -48,12 +62,16 @@ class DailyPracticeServiceTest {
     @Mock
     private PracticePromptService practicePromptService;
     @Mock
-    private WeaknessMemoryConsolidator consolidator;
+    private MemoryService memoryService;
     @Mock
-    private WeaknessEvidenceSupport evidenceSupport;
+    private MemoryEvidenceService evidenceService;
+    @Mock
+    private MemoryPracticeService practiceService;
 
     private WeaknessMemoryProperties properties;
+    private MemoryPriorityService priorityService;
     private DailyPracticeService service;
+    private final Clock fixedClock = Clock.fixed(Instant.parse("2026-11-23T10:00:00Z"), ZoneOffset.UTC);
 
     @BeforeEach
     void setUp() {
@@ -62,7 +80,9 @@ class DailyPracticeServiceTest {
         properties.setRecommendVocabLimit(2);
         properties.setCooldownHours(24);
         properties.setCooldownAnalyses(2);
-        properties.setDecayHalfLifeDays(21);
+
+        PointDictionary dictionary = PointDictionary.loadFromClasspath("knowledge/point-dictionary-v1.json");
+        priorityService = new MemoryPriorityService(properties, memoryMapper, analysisMapper, dictionary);
         service = new DailyPracticeService(
                 properties,
                 memoryMapper,
@@ -71,40 +91,52 @@ class DailyPracticeServiceTest {
                 growthCardStore,
                 analysisSupport,
                 practicePromptService,
-                consolidator,
-                evidenceSupport);
+                memoryService,
+                priorityService,
+                evidenceService,
+                practiceService,
+                fixedClock);
     }
 
     @Test
     void prefersNonCoolingMemoryWhenMultipleActive() {
-        LocalDateTime nowish = LocalDateTime.now().minusDays(1);
-        UserWeaknessMemory cooling = UserWeaknessMemory.builder()
+        LocalDateTime now = LocalDateTime.now(fixedClock);
+        WeaknessMemory cooling = WeaknessMemory.builder()
                 .id(1L)
                 .userId(9L)
                 .title("冷却中病灶")
+                .memoryType(MemoryType.GRAMMAR.name())
+                .familyId("FAM_TENSE")
+                .pointId("PAST_SIMPLE_DONE")
                 .hitCount(10)
-                .lastSeenAt(nowish)
-                .lastPracticedAt(LocalDateTime.now().minusHours(1))
-                .status(UserWeaknessMemory.STATUS_ACTIVE)
+                .recentHitCount(5)
+                .masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(now.minusDays(1))
+                .lastPracticedAt(now.minusHours(1))
+                .status(MemoryStatus.ACTIVE.name())
                 .build();
-        UserWeaknessMemory ready = UserWeaknessMemory.builder()
+        WeaknessMemory ready = WeaknessMemory.builder()
                 .id(2L)
                 .userId(9L)
                 .title("可练病灶")
+                .memoryType(MemoryType.GRAMMAR.name())
+                .familyId("FAM_STRUCTURE")
+                .pointId("NOUN_CLAUSE_ORDER")
                 .hitCount(2)
-                .lastSeenAt(nowish)
-                .status(UserWeaknessMemory.STATUS_ACTIVE)
+                .recentHitCount(2)
+                .masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(now.minusDays(1))
+                .status(MemoryStatus.ACTIVE.name())
                 .build();
-        when(memoryMapper.findActiveByUserId(9L)).thenReturn(List.of(cooling, ready));
-        when(analysisMapper.countByUserIdAndStatusCreatedAfter(eq(9L), eq("success"), any()))
-                .thenReturn(0L);
+
+        when(memoryMapper.countAllByUserId(9L)).thenReturn(2L);
+        when(memoryMapper.findByUserId(eq(9L), any())).thenReturn(List.of(cooling, ready));
         when(growthCardStore.listDue(eq(9L), any(LocalDate.class))).thenReturn(List.of());
-        when(evidenceSupport.findLatestEvidence(eq(9L), any())).thenReturn(
-                WeaknessEvidenceSupport.EvidenceLine.empty());
-        when(practicePromptService.assemble(any())).thenAnswer(inv ->
-                com.khankiddo.learning.dto.conversation.PracticePromptResponse.builder()
-                        .prompt("PROMPT")
-                        .build());
+        when(evidenceService.findLatestHitOrEvidence(anyLong())).thenReturn(Optional.empty());
+        when(itemMapper.findErrorExamplesByUserId(eq(9L), any(), any(), anyInt(), any()))
+                .thenReturn(List.of());
+        when(practicePromptService.assemble(any())).thenReturn(
+                PracticePromptResponse.builder().prompt("PROMPT").build());
 
         DailyPracticeRecommendResponse response = service.recommend(9L, null);
 
@@ -115,66 +147,76 @@ class DailyPracticeServiceTest {
 
     @Test
     void excludeMemoryIdsRotatesToNext() {
-        LocalDateTime seen = LocalDateTime.now().minusDays(1);
-        UserWeaknessMemory first = UserWeaknessMemory.builder()
-                .id(1L).userId(1L).title("A").hitCount(5).lastSeenAt(seen)
-                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
-        UserWeaknessMemory second = UserWeaknessMemory.builder()
-                .id(2L).userId(1L).title("B").hitCount(4).lastSeenAt(seen)
-                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
-        when(memoryMapper.findActiveByUserId(1L)).thenReturn(List.of(first, second));
+        LocalDateTime seen = LocalDateTime.now(fixedClock).minusDays(1);
+        WeaknessMemory first = WeaknessMemory.builder()
+                .id(1L).userId(1L).title("A").memoryType("GRAMMAR")
+                .familyId("FAM_TENSE").pointId("PAST_SIMPLE_DONE")
+                .hitCount(5).recentHitCount(5).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+        WeaknessMemory second = WeaknessMemory.builder()
+                .id(2L).userId(1L).title("B").memoryType("GRAMMAR")
+                .familyId("FAM_ARTICLE").pointId("ARTICLE_A_AN")
+                .hitCount(4).recentHitCount(4).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+
+        when(memoryMapper.countAllByUserId(1L)).thenReturn(2L);
+        when(memoryMapper.findByUserId(eq(1L), any())).thenReturn(List.of(first, second));
         when(growthCardStore.listDue(eq(1L), any(LocalDate.class))).thenReturn(List.of());
-        when(evidenceSupport.findLatestEvidence(eq(1L), any())).thenReturn(
-                WeaknessEvidenceSupport.EvidenceLine.empty());
-        when(practicePromptService.assemble(any())).thenAnswer(inv ->
-                com.khankiddo.learning.dto.conversation.PracticePromptResponse.builder()
-                        .prompt("PROMPT").build());
+        when(evidenceService.findLatestHitOrEvidence(2L)).thenReturn(Optional.of(
+                MemoryEvidence.builder().originalText("orig").correctedText("corr").build()));
+        when(practicePromptService.assemble(any())).thenReturn(
+                PracticePromptResponse.builder().prompt("PROMPT").build());
 
         DailyPracticeRecommendResponse response = service.recommend(1L,
                 DailyPracticeRecommendRequest.builder().excludeMemoryIds(List.of(1L)).build());
 
         assertEquals(1, response.getGoals().size());
         assertEquals(2L, response.getGoals().get(0).getMemoryId());
+        assertEquals("orig", response.getGoals().get(0).getEvidenceOriginal());
     }
 
     @Test
-    void emptyUserGetsFallbackWithoutColdStartWhenNoHistory() {
-        when(memoryMapper.findActiveByUserId(3L)).thenReturn(List.of());
+    void emptyUserGetsFallbackWithoutSeedWhenNoHistory() {
+        when(memoryMapper.countAllByUserId(3L)).thenReturn(0L);
+        when(analysisMapper.findByUserId(3L, 3, 0)).thenReturn(List.of());
         when(analysisMapper.findByUserId(3L, 1, 0)).thenReturn(List.of());
+        when(memoryMapper.findByUserId(eq(3L), any())).thenReturn(List.of());
         when(growthCardStore.listDue(eq(3L), any(LocalDate.class))).thenReturn(List.of());
 
         DailyPracticeRecommendResponse response = service.recommend(3L, null);
 
         assertTrue(response.isEmpty());
         assertEquals(DailyPracticeService.EMPTY_FALLBACK_PROMPT, response.getPrompt());
-        verify(consolidator, never()).consolidateAfterAnalysis(anyLong(), any());
+        verify(memoryService, never()).recordAnalysisHits(anyLong(), any());
     }
 
     @Test
     void diversifiesGoalsToAtMostOneFluencyWhenGrammarAvailable() {
-        LocalDateTime seen = LocalDateTime.now().minusDays(1);
-        UserWeaknessMemory fluencyHigh = UserWeaknessMemory.builder()
+        LocalDateTime seen = LocalDateTime.now(fixedClock).minusDays(1);
+        WeaknessMemory fluencyHigh = WeaknessMemory.builder()
                 .id(1L).userId(9L).title("口头重复")
-                .anchorHabitKey("FLUENCY_REDUNDANCY").anchorPointId("FLUENCY_REDUNDANCY")
-                .hitCount(6).lastSeenAt(seen)
-                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
-        UserWeaknessMemory fluencyLow = UserWeaknessMemory.builder()
+                .memoryType("HABIT").familyId("FAM_FLUENCY").pointId("FLUENCY_REDUNDANCY")
+                .hitCount(6).recentHitCount(6).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+        WeaknessMemory fluencyLow = WeaknessMemory.builder()
                 .id(2L).userId(9L).title("说到一半中断")
-                .anchorHabitKey("FLUENCY_INCOMPLETE").anchorPointId("FLUENCY_INCOMPLETE")
-                .hitCount(5).lastSeenAt(seen)
-                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
-        UserWeaknessMemory grammar = UserWeaknessMemory.builder()
+                .memoryType("HABIT").familyId("FAM_FLUENCY").pointId("FLUENCY_INCOMPLETE")
+                .hitCount(5).recentHitCount(5).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+        WeaknessMemory grammar = WeaknessMemory.builder()
                 .id(3L).userId(9L).title("宾语从句疑问语序")
-                .anchorHabitKey("FAM_STRUCTURE").anchorPointId("NOUN_CLAUSE_ORDER")
-                .hitCount(2).lastSeenAt(seen)
-                .status(UserWeaknessMemory.STATUS_ACTIVE).build();
-        when(memoryMapper.findActiveByUserId(9L)).thenReturn(List.of(fluencyHigh, fluencyLow, grammar));
+                .memoryType("GRAMMAR").familyId("FAM_STRUCTURE").pointId("NOUN_CLAUSE_ORDER")
+                .hitCount(2).recentHitCount(2).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+
+        when(memoryMapper.countAllByUserId(9L)).thenReturn(3L);
+        when(memoryMapper.findByUserId(eq(9L), any())).thenReturn(List.of(fluencyHigh, fluencyLow, grammar));
         when(growthCardStore.listDue(eq(9L), any(LocalDate.class))).thenReturn(List.of());
-        when(evidenceSupport.findLatestEvidence(eq(9L), any())).thenReturn(
-                WeaknessEvidenceSupport.EvidenceLine.empty());
-        when(practicePromptService.assemble(any())).thenAnswer(inv ->
-                com.khankiddo.learning.dto.conversation.PracticePromptResponse.builder()
-                        .prompt("PROMPT").build());
+        when(evidenceService.findLatestHitOrEvidence(anyLong())).thenReturn(Optional.empty());
+        when(itemMapper.findErrorExamplesByUserId(eq(9L), any(), any(), anyInt(), any()))
+                .thenReturn(List.of());
+        when(practicePromptService.assemble(any())).thenReturn(
+                PracticePromptResponse.builder().prompt("PROMPT").build());
 
         DailyPracticeRecommendResponse response = service.recommend(9L, null);
 
@@ -188,20 +230,23 @@ class DailyPracticeServiceTest {
 
     @Test
     void selectsDueVocabAndExpressionOnly() {
-        LocalDateTime seen = LocalDateTime.now().minusDays(1);
-        when(memoryMapper.findActiveByUserId(1L)).thenReturn(List.of(
-                UserWeaknessMemory.builder()
-                        .id(1L).userId(1L).title("G").hitCount(1).lastSeenAt(seen)
-                        .status(UserWeaknessMemory.STATUS_ACTIVE).build()));
-        when(evidenceSupport.findLatestEvidence(eq(1L), any())).thenReturn(
-                WeaknessEvidenceSupport.EvidenceLine.empty());
+        LocalDateTime seen = LocalDateTime.now(fixedClock).minusDays(1);
+        when(memoryMapper.countAllByUserId(1L)).thenReturn(1L);
+        when(memoryMapper.findByUserId(eq(1L), any())).thenReturn(List.of(
+                WeaknessMemory.builder()
+                        .id(1L).userId(1L).title("G").memoryType("GRAMMAR")
+                        .familyId("FAM_TENSE").pointId("PAST_SIMPLE_DONE")
+                        .hitCount(2).recentHitCount(2).masteryLevel(BigDecimal.ZERO)
+                        .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build()));
+        when(evidenceService.findLatestHitOrEvidence(1L)).thenReturn(Optional.empty());
+        when(itemMapper.findErrorExamplesByUserId(eq(1L), any(), any(), anyInt(), any()))
+                .thenReturn(List.of());
         when(growthCardStore.listDue(eq(1L), any(LocalDate.class))).thenReturn(List.of(
                 GrowthCard.builder().cardId("h1").type("habit").front("h").back("h").build(),
                 GrowthCard.builder().cardId("v1").type("vocab").front("vf").back("vb").build(),
                 GrowthCard.builder().cardId("e1").type("expression").front("ef").back("eb").build()));
-        when(practicePromptService.assemble(any())).thenAnswer(inv ->
-                com.khankiddo.learning.dto.conversation.PracticePromptResponse.builder()
-                        .prompt("PROMPT").build());
+        when(practicePromptService.assemble(any())).thenReturn(
+                PracticePromptResponse.builder().prompt("PROMPT").build());
 
         DailyPracticeRecommendResponse response = service.recommend(1L, null);
 

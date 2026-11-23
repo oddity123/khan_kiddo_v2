@@ -158,19 +158,103 @@ CREATE TABLE IF NOT EXISTS conversation_analysis_task
 CREATE INDEX IF NOT EXISTS idx_analysis_task_user_source
     ON conversation_analysis_task (user_id, source_type, source_conversation_id, created_at);
 
-CREATE TABLE IF NOT EXISTS user_weakness_memory
+CREATE TABLE IF NOT EXISTS weakness_memory
 (
-    id                 BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id            BIGINT       NOT NULL,
-    title              VARCHAR(120) NOT NULL,
-    anchor_habit_key   VARCHAR(64),
-    anchor_point_id    VARCHAR(64),
-    source_analysis_id VARCHAR(64)  NOT NULL,
-    hit_count          INT          NOT NULL DEFAULT 1,
-    practiced_count    INT          NOT NULL DEFAULT 0,
-    status             VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    last_seen_at       TIMESTAMP    NOT NULL,
-    last_practiced_at  TIMESTAMP,
-    created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id             BIGINT        NOT NULL,
+    title               VARCHAR(255)  NOT NULL,
+    memory_type         VARCHAR(32)   NOT NULL,
+    family_id           VARCHAR(100)  NOT NULL,
+    point_id            VARCHAR(100)  NOT NULL,
+    status              VARCHAR(32)   NOT NULL DEFAULT 'NEW',
+    hit_count           INT           NOT NULL DEFAULT 0,
+    recent_hit_count    INT           NOT NULL DEFAULT 0,
+    practiced_count     INT           NOT NULL DEFAULT 0,
+    correct_count       INT           NOT NULL DEFAULT 0,
+    mastery_level       DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+    consecutive_correct INT           NOT NULL DEFAULT 0,
+    first_seen_at       TIMESTAMP     NOT NULL,
+    last_seen_at        TIMESTAMP     NOT NULL,
+    last_practiced_at   TIMESTAMP,
+    next_review_at      TIMESTAMP,
+    created_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id, point_id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_weakness_memory_user_status
+    ON weakness_memory (user_id, status, last_seen_at);
+
+CREATE INDEX IF NOT EXISTS idx_weakness_memory_user_review
+    ON weakness_memory (user_id, status, next_review_at);
+
+CREATE TABLE IF NOT EXISTS memory_evidence
+(
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    memory_id      BIGINT       NOT NULL,
+    user_id        BIGINT       NOT NULL,
+    analysis_id    VARCHAR(64),
+    sentence_id    VARCHAR(64),
+    evidence_type  VARCHAR(32)  NOT NULL,
+    dedup_key      VARCHAR(160) NOT NULL,
+    original_text  TEXT,
+    corrected_text TEXT,
+    confidence     DECIMAL(5, 4),
+    created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (memory_id, dedup_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_evidence_memory_time
+    ON memory_evidence (memory_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_memory_evidence_user_analysis
+    ON memory_evidence (user_id, analysis_id);
+
+CREATE TABLE IF NOT EXISTS practice_session
+(
+    id                     BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id                BIGINT       NOT NULL,
+    memory_id              BIGINT       NOT NULL,
+    practice_type          VARCHAR(32)  NOT NULL,
+    target_point_id        VARCHAR(100) NOT NULL,
+    status                 VARCHAR(32)  NOT NULL DEFAULT 'IN_PROGRESS',
+    source_conversation_id VARCHAR(64),
+    analysis_id            VARCHAR(64),
+    total_attempts         INT          NOT NULL DEFAULT 0,
+    correct_attempts       INT          NOT NULL DEFAULT 0,
+    started_at             TIMESTAMP    NOT NULL,
+    completed_at           TIMESTAMP,
+    created_at             TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_practice_session_user_memory
+    ON practice_session (user_id, memory_id);
+
+CREATE INDEX IF NOT EXISTS idx_practice_session_user_status
+    ON practice_session (user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_practice_session_user_conv
+    ON practice_session (user_id, source_conversation_id);
+
+CREATE INDEX IF NOT EXISTS idx_practice_session_analysis
+    ON practice_session (user_id, analysis_id);
+
+CREATE TABLE IF NOT EXISTS practice_attempt
+(
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    session_id        BIGINT        NOT NULL,
+    attempt_no        INT           NOT NULL,
+    user_response     TEXT,
+    expected_response TEXT,
+    is_correct        TINYINT(1)    NOT NULL DEFAULT 0,
+    independent       TINYINT(1)    NOT NULL DEFAULT 0,
+    hint_used         TINYINT(1)    NOT NULL DEFAULT 0,
+    score             DECIMAL(5, 2) NOT NULL DEFAULT 0.00,
+    feedback          TEXT,
+    evaluation_json   TEXT,
+    created_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (session_id, attempt_no)
+);
+
+CREATE INDEX IF NOT EXISTS idx_practice_attempt_session
+    ON practice_attempt (session_id);

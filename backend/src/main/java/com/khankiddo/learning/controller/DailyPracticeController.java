@@ -2,6 +2,7 @@ package com.khankiddo.learning.controller;
 
 import com.khankiddo.learning.dailypractice.DailyPracticeService;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeMarkPracticedRequest;
+import com.khankiddo.learning.dto.dailypractice.DailyPracticeMarkPracticedResponse;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeRecommendRequest;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeRecommendResponse;
 import com.khankiddo.learning.security.SecurityUtils;
@@ -26,7 +27,8 @@ public class DailyPracticeController {
     }
 
     @PostMapping("/mark-practiced")
-    public void markPracticed(@Valid @RequestBody DailyPracticeMarkPracticedRequest request) {
-        dailyPracticeService.markPracticed(SecurityUtils.requireUserId(), request);
+    public DailyPracticeMarkPracticedResponse markPracticed(
+            @Valid @RequestBody DailyPracticeMarkPracticedRequest request) {
+        return dailyPracticeService.markPracticed(SecurityUtils.requireUserId(), request);
     }
 }

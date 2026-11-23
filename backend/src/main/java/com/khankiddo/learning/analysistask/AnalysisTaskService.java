@@ -164,6 +164,7 @@ public class AnalysisTaskService {
             ConversationAnalysisRequest analysisRequest = new ConversationAnalysisRequest();
             analysisRequest.setConversationContent(task.getConversationContent());
             analysisRequest.setModelId(task.getModelId());
+            analysisRequest.setSourceConversationId(task.getSourceConversationId());
             ConversationAnalysisResultDto result = conversationAnalysisService.analyzeAndPersist(
                     analysisRequest, analysisId, progress -> {
                     });

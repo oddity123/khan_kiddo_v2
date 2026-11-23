@@ -17,13 +17,13 @@ public class SchemaLoader {
     private static final String CONVERSATION_ANALYSIS_SCHEMA_PATH = "schemas/conversation-analysis-schema.json";
     private static final String CONVERSATION_SEPARATION_SCHEMA_PATH = "schemas/conversation-separation-schema.json";
     private static final String PHRASE_CARD_REVIEW_SCHEMA_PATH = "schemas/phrase-card-review-schema.json";
-    private static final String WEAKNESS_MEMORY_CONSOLIDATION_SCHEMA_PATH =
-            "schemas/weakness-memory-consolidation-schema.json";
+    private static final String MEMORY_ASSESSMENT_SCHEMA_PATH =
+            "schemas/memory-assessment-schema.json";
 
     private volatile String conversationAnalysisSchema;
     private volatile String conversationSeparationSchema;
     private volatile String phraseCardReviewSchema;
-    private volatile String weaknessMemoryConsolidationSchema;
+    private volatile String memoryAssessmentSchema;
 
     public String getConversationAnalysisSchema() {
         if (conversationAnalysisSchema == null) {
@@ -46,11 +46,11 @@ public class SchemaLoader {
         return phraseCardReviewSchema;
     }
 
-    public String getWeaknessMemoryConsolidationSchema() {
-        if (weaknessMemoryConsolidationSchema == null) {
-            weaknessMemoryConsolidationSchema = load(WEAKNESS_MEMORY_CONSOLIDATION_SCHEMA_PATH);
+    public String getMemoryAssessmentSchema() {
+        if (memoryAssessmentSchema == null) {
+            memoryAssessmentSchema = load(MEMORY_ASSESSMENT_SCHEMA_PATH);
         }
-        return weaknessMemoryConsolidationSchema;
+        return memoryAssessmentSchema;
     }
 
     private static String load(String path) {

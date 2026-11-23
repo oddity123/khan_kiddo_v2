@@ -27,8 +27,8 @@ import com.khankiddo.learning.growth.GrowthCardMintRequestedEvent;
 import com.khankiddo.learning.growth.GrowthCardReviewService;
 import com.khankiddo.learning.rag.grammar.GrammarErrorDeletedEvent;
 import com.khankiddo.learning.rag.grammar.GrammarErrorIndexedEvent;
-import com.khankiddo.learning.weaknessmemory.WeaknessMemoryCleanupRequestedEvent;
-import com.khankiddo.learning.weaknessmemory.WeaknessMemoryConsolidationRequestedEvent;
+import com.khankiddo.learning.memory.event.MemoryAnalysisCompletedEvent;
+import com.khankiddo.learning.memory.event.MemoryAnalysisDeletedEvent;
 import com.khankiddo.learning.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -100,7 +100,8 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         try {
             ConversationAnalysisResultDto result = pipeline.run(request, analysisId, onProgress);
             return new TransactionTemplate(transactionManager).execute(status ->
-                    persistAnalysis(request.getConversationContent().trim(), result));
+                    persistAnalysis(request.getConversationContent().trim(),
+                            request.getSourceConversationId(), result));
         } finally {
             if (ownedMdc) {
                 ConversationAnalysisCallLog.clear();
@@ -164,9 +165,16 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
 
     private ConversationAnalysisResultDto persistAnalysis(String conversationContent,
                                                           ConversationAnalysisResultDto result) {
+        return persistAnalysis(conversationContent, null, result);
+    }
+
+    private ConversationAnalysisResultDto persistAnalysis(String conversationContent,
+                                                          String sourceConversationId,
+                                                          ConversationAnalysisResultDto result) {
         long persistStartedAt = System.currentTimeMillis();
         try {
-            ConversationAnalysisResultDto persisted = doPersistAnalysis(conversationContent, result);
+            ConversationAnalysisResultDto persisted =
+                    doPersistAnalysis(conversationContent, sourceConversationId, result);
             ConversationAnalysisCallLog.record(
                     ConversationAnalysisCallLog.STAGE_PERSIST,
                     result.getLlmModelId(),
@@ -186,6 +194,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
     }
 
     private ConversationAnalysisResultDto doPersistAnalysis(String conversationContent,
+                                                            String sourceConversationId,
                                                             ConversationAnalysisResultDto result) {
         Long userId = SecurityUtils.requireUserId();
         String analysisId = ConversationAnalysisPersistSupport.truncate(
@@ -223,7 +232,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         }
 
         eventPublisher.publishEvent(new GrowthCardMintRequestedEvent(userId, analysisId));
-        eventPublisher.publishEvent(new WeaknessMemoryConsolidationRequestedEvent(userId, analysisId));
+        eventPublisher.publishEvent(new MemoryAnalysisCompletedEvent(userId, analysisId, sourceConversationId));
 
         return ConversationAnalysisResultDto.builder()
                 .analysisId(analysisId)
@@ -589,7 +598,7 @@ public class ConversationAnalysisServiceImpl implements ConversationAnalysisServ
         if (!CollectionUtils.isEmpty(sentenceIds)) {
             eventPublisher.publishEvent(new GrammarErrorDeletedEvent(userId, analysisId, sentenceIds));
         }
-        eventPublisher.publishEvent(new WeaknessMemoryCleanupRequestedEvent(userId, analysisId));
+        eventPublisher.publishEvent(new MemoryAnalysisDeletedEvent(userId, analysisId));
     }
 
     private String buildPreview(String content) {

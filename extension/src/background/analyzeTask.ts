@@ -1,5 +1,6 @@
 import {loadCredential} from '../shared/credentialStore'
 import type {AnalysisTaskStatusResponse, SubmitAnalysisResult} from '../shared/protocol'
+import {bindPendingPracticeSession} from './dailyPractice'
 
 const PENDING_TASK_KEY = 'kk.extension.analysisTask.pending'
 
@@ -142,6 +143,7 @@ export async function submitAnalysis(
     conversationContent: string
     sourceType: string
     sourceConversationId?: string | null
+    tabId?: number
   },
 ): Promise<SubmitAnalysisResult> {
   try {
@@ -157,6 +159,9 @@ export async function submitAnalysis(
     const content = payload.conversationContent.trim()
     if (!content) {
       return {type: 'SUBMIT_ANALYSIS_RESULT', ok: false, error: '没有可分析的对话内容'}
+    }
+    if (typeof payload.tabId === 'number' && payload.sourceConversationId?.trim()) {
+      await bindPendingPracticeSession(webOrigin, payload.tabId, payload.sourceConversationId)
     }
     const created = await apiFetch<{
       taskId: string

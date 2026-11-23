@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.memory.mapper.MemoryEvidenceMapper">
+
+    <resultMap id="MemoryEvidenceMap" type="com.khankiddo.learning.memory.domain.MemoryEvidence">
+        <id column="id" property="id"/>
+        <result column="memory_id" property="memoryId"/>
+        <result column="user_id" property="userId"/>
+        <result column="analysis_id" property="analysisId"/>
+        <result column="sentence_id" property="sentenceId"/>
+        <result column="evidence_type" property="evidenceType"/>
+        <result column="dedup_key" property="dedupKey"/>
+        <result column="original_text" property="originalText"/>
+        <result column="corrected_text" property="correctedText"/>
+        <result column="confidence" property="confidence"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, memory_id, user_id, analysis_id, sentence_id, evidence_type,
+        dedup_key, original_text, corrected_text, confidence, created_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO memory_evidence
+            (memory_id, user_id, analysis_id, sentence_id, evidence_type,
+             dedup_key, original_text, corrected_text, confidence, created_at)
+        VALUES
+            (#{memoryId}, #{userId}, #{analysisId}, #{sentenceId}, #{evidenceType},
+             #{dedupKey}, #{originalText}, #{correctedText}, #{confidence}, #{createdAt})
+    </insert>
+
+    <select id="existsByMemoryIdAndDedupKey" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) > 0 THEN TRUE ELSE FALSE END
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId} AND dedup_key = #{dedupKey}
+    </select>
+
+    <select id="findByMemoryId" resultMap="MemoryEvidenceMap">
+        SELECT <include refid="Columns"/>
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId}
+        ORDER BY created_at DESC, id DESC
+        <if test="limit != null and limit > 0">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="findByMemoryIdAndTypes" resultMap="MemoryEvidenceMap">
+        SELECT <include refid="Columns"/>
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId}
+        <if test="types != null and !types.isEmpty()">
+            AND evidence_type IN
+            <foreach collection="types" item="type" open="(" separator="," close=")">
+                #{type}
+            </foreach>
+        </if>
+        ORDER BY created_at ASC, id ASC
+    </select>
+
+    <select id="findLatestByMemoryIdAndType" resultMap="MemoryEvidenceMap">
+        SELECT <include refid="Columns"/>
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId} AND evidence_type = #{evidenceType}
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="countByMemoryIdAndType" resultType="int">
+        SELECT COUNT(*)
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId} AND evidence_type = #{evidenceType}
+    </select>
+
+    <select id="countByMemoryIdAndTypeSince" resultType="int">
+        SELECT COUNT(*)
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId}
+          AND evidence_type = #{evidenceType}
+          AND created_at &gt;= #{since}
+    </select>
+
+    <select id="findLatestCreatedAtByMemoryIdAndType" resultType="java.time.LocalDateTime">
+        SELECT MAX(created_at)
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId} AND evidence_type = #{evidenceType}
+    </select>
+
+    <select id="countByMemoryId" resultType="long">
+        SELECT COUNT(*)
+        FROM memory_evidence
+        WHERE memory_id = #{memoryId}
+    </select>
+
+    <select id="findDistinctMemoryIdsByUserIdAndAnalysisId" resultType="long">
+        SELECT DISTINCT memory_id
+        FROM memory_evidence
+        WHERE user_id = #{userId} AND analysis_id = #{analysisId}
+    </select>
+
+    <delete id="deleteByUserIdAndAnalysisId">
+        DELETE FROM memory_evidence
+        WHERE user_id = #{userId} AND analysis_id = #{analysisId}
+    </delete>
+
+    <delete id="deleteByMemoryId">
+        DELETE FROM memory_evidence
+        WHERE memory_id = #{memoryId}
+    </delete>
+</mapper>

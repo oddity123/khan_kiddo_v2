@@ -9,6 +9,7 @@ import {
   type StoredCredential,
 } from '../shared/credentialStore'
 import type {ConnectionStatusResponse} from '../shared/protocol'
+import {clearPendingPracticeSessions} from './dailyPractice'
 
 interface ConnectConfig {
   enabled: boolean
@@ -128,6 +129,7 @@ function ensurePollRunning(webOrigin: string): void {
         config,
       )
       await saveCredential(credential)
+      await clearPendingPracticeSessions()
       await clearPendingConnect()
     } catch {
       await clearPendingConnect()
@@ -159,6 +161,7 @@ export async function getConnectionStatus(webOrigin: string): Promise<Connection
     }>(webOrigin, '/api/extension/connect/me', {}, cred.token)
     if (!me.connected) {
       await clearCredential()
+      await clearPendingPracticeSessions()
       return {type: 'CONNECTION_STATUS', connected: false}
     }
     return {
@@ -171,6 +174,7 @@ export async function getConnectionStatus(webOrigin: string): Promise<Connection
     const message = error instanceof Error ? error.message : '连接已失效'
     if (message.includes('未登录') || message.includes('登录已失效')) {
       await clearCredential()
+      await clearPendingPracticeSessions()
       return {type: 'CONNECTION_STATUS', connected: false, error: '登录已失效，请重新连接'}
     }
     return {
@@ -245,5 +249,6 @@ export async function revokeConnection(webOrigin: string): Promise<ConnectionSta
   }
   await clearCredential()
   await clearPendingConnect()
+  await clearPendingPracticeSessions()
   return {type: 'CONNECTION_STATUS', connected: false}
 }

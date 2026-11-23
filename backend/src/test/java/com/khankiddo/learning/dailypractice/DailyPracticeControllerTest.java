@@ -2,9 +2,14 @@ package com.khankiddo.learning.dailypractice;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.khankiddo.learning.mapper.UserWeaknessMemoryMapper;
-import com.khankiddo.learning.model.UserWeaknessMemory;
-import com.khankiddo.learning.weaknessmemory.WeaknessMemoryConsolidator;
+import com.khankiddo.learning.memory.assessment.MemoryAssessmentLlmClient;
+import com.khankiddo.learning.memory.domain.PracticeSession;
+import com.khankiddo.learning.memory.domain.WeaknessMemory;
+import com.khankiddo.learning.memory.enums.MemoryStatus;
+import com.khankiddo.learning.memory.enums.MemoryType;
+import com.khankiddo.learning.memory.enums.PracticeSessionStatus;
+import com.khankiddo.learning.memory.mapper.PracticeSessionMapper;
+import com.khankiddo.learning.memory.mapper.WeaknessMemoryMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +22,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,14 +43,19 @@ class DailyPracticeControllerTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
     @Autowired
-    private UserWeaknessMemoryMapper memoryMapper;
+    private WeaknessMemoryMapper memoryMapper;
+    @Autowired
+    private PracticeSessionMapper sessionMapper;
 
     @MockBean
-    private WeaknessMemoryConsolidator consolidator;
+    private MemoryAssessmentLlmClient assessmentLlmClient;
 
     @BeforeEach
     void clean() {
-        jdbcTemplate.update("DELETE FROM user_weakness_memory");
+        jdbcTemplate.update("DELETE FROM practice_attempt");
+        jdbcTemplate.update("DELETE FROM practice_session");
+        jdbcTemplate.update("DELETE FROM memory_evidence");
+        jdbcTemplate.update("DELETE FROM weakness_memory");
         jdbcTemplate.update("DELETE FROM growth_card_evidence");
         jdbcTemplate.update("DELETE FROM growth_card");
         jdbcTemplate.update("DELETE FROM conversation_analysis_item");
@@ -60,32 +72,42 @@ class DailyPracticeControllerTest {
     }
 
     @Test
-    void recommendRotatesWithExcludeAndMarkPracticed() throws Exception {
+    void recommendRotatesWithExcludeAndMarkPracticedCreatesSession() throws Exception {
         String token = registerAndLogin("dailyuser");
         Long userId = jdbcTemplate.queryForObject(
                 "SELECT id FROM users WHERE username = ?", Long.class, "dailyuser");
 
         LocalDateTime seen = LocalDateTime.now().minusDays(1);
-        memoryMapper.insert(UserWeaknessMemory.builder()
+        memoryMapper.insert(WeaknessMemory.builder()
                 .userId(userId)
                 .title("高复发")
-                .anchorHabitKey("FAM_NONFINITE")
-                .anchorPointId("NF_GERUND_OBJECT")
-                .sourceAnalysisId("a-1")
+                .memoryType(MemoryType.GRAMMAR.name())
+                .familyId("FAM_TENSE")
+                .pointId("PAST_SIMPLE_DONE")
+                .status(MemoryStatus.ACTIVE.name())
                 .hitCount(8)
+                .recentHitCount(6)
                 .practicedCount(0)
-                .status(UserWeaknessMemory.STATUS_ACTIVE)
+                .correctCount(0)
+                .masteryLevel(BigDecimal.ZERO)
+                .consecutiveCorrect(0)
+                .firstSeenAt(seen.minusDays(5))
                 .lastSeenAt(seen)
                 .build());
-        memoryMapper.insert(UserWeaknessMemory.builder()
+        memoryMapper.insert(WeaknessMemory.builder()
                 .userId(userId)
                 .title("次复发")
-                .anchorHabitKey("FAM_ARTICLE")
-                .anchorPointId("ART_DEFINITE")
-                .sourceAnalysisId("a-2")
-                .hitCount(3)
+                .memoryType(MemoryType.GRAMMAR.name())
+                .familyId("FAM_ARTICLE")
+                .pointId("ARTICLE_A_AN")
+                .status(MemoryStatus.ACTIVE.name())
+                .hitCount(2)
+                .recentHitCount(2)
                 .practicedCount(0)
-                .status(UserWeaknessMemory.STATUS_ACTIVE)
+                .correctCount(0)
+                .masteryLevel(BigDecimal.ZERO)
+                .consecutiveCorrect(0)
+                .firstSeenAt(seen.minusDays(3))
                 .lastSeenAt(seen)
                 .build());
 
@@ -112,12 +134,19 @@ class DailyPracticeControllerTest {
         mockMvc.perform(post("/api/practice/daily/mark-practiced")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"memoryIds\":[" + firstId + "]}"))
-                .andExpect(status().isOk());
+                        .content("{\"memoryIds\":[" + firstId + "],\"sourceConversationId\":\"conv-123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sessionIds[0]").isNumber());
 
-        UserWeaknessMemory marked = memoryMapper.findByIdAndUserId(firstId, userId).orElseThrow();
+        WeaknessMemory marked = memoryMapper.findByIdAndUserId(firstId, userId).orElseThrow();
+        assertThat(marked.getStatus()).isEqualTo(MemoryStatus.PRACTICING.name());
         assertThat(marked.getPracticedCount()).isEqualTo(1);
         assertThat(marked.getLastPracticedAt()).isNotNull();
+
+        List<PracticeSession> sessions = sessionMapper.findByMemoryId(firstId);
+        assertThat(sessions).hasSize(1);
+        assertThat(sessions.get(0).getStatus()).isEqualTo(PracticeSessionStatus.IN_PROGRESS.name());
+        assertThat(sessions.get(0).getSourceConversationId()).isEqualTo("conv-123");
     }
 
     @Test

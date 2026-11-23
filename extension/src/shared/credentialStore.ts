@@ -1,4 +1,4 @@
-import {CONNECT_PENDING_STORAGE_KEY, CREDENTIAL_STORAGE_KEY} from './constants'
+import {CONNECT_PENDING_STORAGE_KEY, CREDENTIAL_STORAGE_KEY} from './constants.ts'
 
 export interface StoredCredential {
   token: string

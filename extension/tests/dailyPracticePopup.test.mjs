@@ -109,12 +109,12 @@ test('inject marks practiced after successful fill', async () => {
           }
         }
         if (msg?.type === 'MARK_DAILY_PRACTICED') {
-          return {type: 'MARK_DAILY_PRACTICED_RESULT', ok: true}
+          return {type: 'MARK_DAILY_PRACTICED_RESULT', ok: true, sessionIds: [99]}
         }
         return {ok: true}
       },
     },
-    tabs: {query: async () => [{id: 3, url: 'https://chatgpt.com/'}]},
+    tabs: {query: async () => [{id: 3, url: 'https://chatgpt.com/c/conv-abc-1'}]},
     scripting: {
       executeScript: async () => [{result: {ok: true}}],
     },
@@ -126,6 +126,11 @@ test('inject marks practiced after successful fill', async () => {
   await new Promise((r) => setImmediate(r))
   await ui.injectBtn.click()
   await new Promise((r) => setImmediate(r))
-  assert.ok(messages.some((m) => m?.type === 'MARK_DAILY_PRACTICED' && m.memoryIds?.[0] === 7))
+  const markMsg = messages.find((m) => m?.type === 'MARK_DAILY_PRACTICED')
+  assert.ok(markMsg)
+  assert.deepEqual(markMsg.memoryIds, [7])
+  assert.equal(markMsg.sourceConversationId, 'conv-abc-1')
+  assert.equal(markMsg.tabId, 3)
+  assert.equal(markMsg.practiceType, 'SCENARIO')
   assert.match(ui.status.textContent, /已填入/)
 })

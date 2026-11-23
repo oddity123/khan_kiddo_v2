@@ -48,6 +48,16 @@ export function injectComposerText(text: string): {ok: boolean; error?: string} 
       return {ok: false, error: '当前编辑器未接受注入，请手动粘贴示例'}
     }
   }
+  const normalize = (value: string) =>
+    value
+      .replace(/\r\n?/g, '\n')
+      .replace(/\u00A0/g, ' ')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/ *\n */g, '\n')
+      .replace(/\n+/g, '\n')
+      .trim()
   const actual = textarea ? editor.value : editor.innerText
-  return actual.trim() === text.trim() ? {ok: true} : {ok: false, error: '未能确认写入成功，请检查输入框'}
+  return normalize(actual) === normalize(text)
+    ? {ok: true}
+    : {ok: false, error: '未能确认写入成功，请检查输入框'}
 }

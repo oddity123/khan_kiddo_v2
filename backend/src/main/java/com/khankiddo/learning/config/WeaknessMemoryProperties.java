@@ -4,46 +4,78 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+/**
+ * 口语薄弱点长期记忆、练习闭环、掌握度及优先级排程参数（配置单源）。
+ */
 @Data
 @Component
 @ConfigurationProperties(prefix = "app.weakness-memory")
 public class WeaknessMemoryProperties {
 
-    /** 关闭后不触发分析完成后的薄弱点沉淀。 */
+    /** 关闭后不触发分析完成后的记忆命中记录与评估。 */
     private boolean enabled = true;
 
-    /** 每人 ACTIVE 记忆上限；超限淘汰 hit_count 最低且 last_seen_at 最早的项。 */
-    private int activePoolLimit = 12;
+    /** 是否在分析完成后触发单次 LLM 回检评估（Practice Assessment / Transfer）。 */
+    private boolean assessmentEnabled = true;
 
-    /** 跨场预查历史天数。 */
-    private int prefetchHistoryDays = 30;
+    /** NEW → ACTIVE 所需近期窗口内独立命中次数。 */
+    private int confirmMinHits = 2;
 
-    /** 每张 Top 卡预查同点历史错句上限。 */
-    private int prefetchExampleLimit = 3;
+    /** 近期命中与迁移率统计窗口（天）。 */
+    private int recentWindowDays = 30;
 
-    /** 每张 Top 卡向量相似错句上限（未启用 Qdrant 时跳过）。 */
-    private int prefetchSimilarLimit = 3;
+    /** 达到 MASTERED 的最低有效练习次数。 */
+    private int masteryMinPractices = 5;
 
-    /** 写入时每张行动卡带入 LLM 的代表错句上限。 */
-    private int actionCardExampleLimit = 3;
+    /** 达到 MASTERED 的最低独立练习 Session 数。 */
+    private int masteryMinSessions = 2;
 
-    /** Step2 选点用：复发时间衰减半衰期（天）。 */
-    private int decayHalfLifeDays = 21;
+    /** 达到 MASTERED 的最低连续正确次数。 */
+    private int masteryMinConsecutiveCorrect = 3;
 
-    /** Step2 选点用：带练后冷却所需新分析场次数。 */
-    private int cooldownAnalyses = 2;
+    /** 达到 MASTERED 的最低练习正确率（0~1）。 */
+    private double masteryMinAccuracy = 0.85;
 
-    /** Step2 选点用：带练冷却最短小时数。 */
-    private int cooldownHours = 24;
+    /** 掌握度公式权重 M = wP * P + wI * I + wT * T。 */
+    private double masteryWeightPractice = 0.4;
+    private double masteryWeightIndependent = 0.3;
+    private double masteryWeightTransfer = 0.3;
 
-    /**
-     * Step2：FLUENCY_* 锚点在优先分上的乘数（&lt;1 压低流利度霸榜；不改 hit_count）。
-     */
+    /** 优先级公式权重 Priority = wR * R + wS * S + wM * (100 - M) + wF * F。 */
+    private double priorityWeightRecentFreq = 0.35;
+    private double priorityWeightSeverity = 0.25;
+    private double priorityWeightMasteryGap = 0.25;
+    private double priorityWeightForgetting = 0.15;
+
+    /** 流利度（HABIT / FLUENCY_*）锚点在优先分上的乘数（<1 压低流利度霸榜）。 */
     private double fluencyRecurrenceScale = 0.55;
 
-    /** Step2：每次推荐薄弱点上限。 */
+    /** 冷却中显著减分系数（仅当候选池 > 1 时生效）。 */
+    private double cooldownPenalty = 0.05;
+
+    /** 带练后冷却所需新分析场次数。 */
+    private int cooldownAnalyses = 2;
+
+    /** 带练冷却最短小时数。 */
+    private int cooldownHours = 24;
+
+    /** 每次推荐薄弱点上限（受产品上限 3 约束）。 */
     private int recommendGoalLimit = 2;
 
-    /** Step2：每次推荐到期表达卡上限。 */
+    /** 每次推荐到期表达卡上限。 */
     private int recommendVocabLimit = 2;
+
+    /** 各生命周期默认下次复习间隔（天）。 */
+    private int reviewIntervalActiveDays = 1;
+    private int reviewIntervalPracticingDays = 2;
+    private int reviewIntervalMasteredDays = 14;
+
+    /** 单次分析后回检评估最多覆盖的目标薄弱点数。 */
+    private int assessmentMaxTargets = 3;
+
+    /** 未显式绑定对话 ID 时，回溯匹配近期未完成练习会话的时间窗口（小时）。 */
+    private int assessmentSessionWindowHours = 24;
+
+    /** 送入回检 LLM 的对话最大字符数。 */
+    private int assessmentMaxTranscriptChars = 8000;
 }

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.memory.mapper.WeaknessMemoryMapper">
+
+    <resultMap id="WeaknessMemoryMap" type="com.khankiddo.learning.memory.domain.WeaknessMemory">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="title" property="title"/>
+        <result column="memory_type" property="memoryType"/>
+        <result column="family_id" property="familyId"/>
+        <result column="point_id" property="pointId"/>
+        <result column="status" property="status"/>
+        <result column="hit_count" property="hitCount"/>
+        <result column="recent_hit_count" property="recentHitCount"/>
+        <result column="practiced_count" property="practicedCount"/>
+        <result column="correct_count" property="correctCount"/>
+        <result column="mastery_level" property="masteryLevel"/>
+        <result column="consecutive_correct" property="consecutiveCorrect"/>
+        <result column="first_seen_at" property="firstSeenAt"/>
+        <result column="last_seen_at" property="lastSeenAt"/>
+        <result column="last_practiced_at" property="lastPracticedAt"/>
+        <result column="next_review_at" property="nextReviewAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, user_id, title, memory_type, family_id, point_id, status,
+        hit_count, recent_hit_count, practiced_count, correct_count,
+        mastery_level, consecutive_correct, first_seen_at, last_seen_at,
+        last_practiced_at, next_review_at, created_at, updated_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO weakness_memory
+            (user_id, title, memory_type, family_id, point_id, status,
+             hit_count, recent_hit_count, practiced_count, correct_count,
+             mastery_level, consecutive_correct, first_seen_at, last_seen_at,
+             last_practiced_at, next_review_at)
+        VALUES
+            (#{userId}, #{title}, #{memoryType}, #{familyId}, #{pointId}, #{status},
+             #{hitCount}, #{recentHitCount}, #{practicedCount}, #{correctCount},
+             #{masteryLevel}, #{consecutiveCorrect}, #{firstSeenAt}, #{lastSeenAt},
+             #{lastPracticedAt}, #{nextReviewAt})
+    </insert>
+
+    <select id="findByIdAndUserId" resultMap="WeaknessMemoryMap">
+        SELECT <include refid="Columns"/>
+        FROM weakness_memory
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <select id="findByUserIdAndPointId" resultMap="WeaknessMemoryMap">
+        SELECT <include refid="Columns"/>
+        FROM weakness_memory
+        WHERE user_id = #{userId} AND point_id = #{pointId}
+    </select>
+
+    <select id="findByUserIdAndIds" resultMap="WeaknessMemoryMap">
+        SELECT <include refid="Columns"/>
+        FROM weakness_memory
+        WHERE user_id = #{userId}
+          AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY id ASC
+    </select>
+
+    <select id="findByUserId" resultMap="WeaknessMemoryMap">
+        SELECT <include refid="Columns"/>
+        FROM weakness_memory
+        WHERE user_id = #{userId}
+        <if test="statuses != null and !statuses.isEmpty()">
+            AND status IN
+            <foreach collection="statuses" item="status" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+        ORDER BY last_seen_at DESC, id ASC
+    </select>
+
+    <select id="countAllByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM weakness_memory
+        WHERE user_id = #{userId}
+    </select>
+
+    <update id="updateMetricsAndStatus">
+        UPDATE weakness_memory
+        SET title = #{title},
+            memory_type = #{memoryType},
+            family_id = #{familyId},
+            status = #{status},
+            hit_count = #{hitCount},
+            recent_hit_count = #{recentHitCount},
+            practiced_count = #{practicedCount},
+            correct_count = #{correctCount},
+            mastery_level = #{masteryLevel},
+            consecutive_correct = #{consecutiveCorrect},
+            last_seen_at = #{lastSeenAt},
+            last_practiced_at = #{lastPracticedAt},
+            next_review_at = #{nextReviewAt},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteByIdAndUserId">
+        DELETE FROM weakness_memory
+        WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+</mapper>

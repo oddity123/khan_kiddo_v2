@@ -214,25 +214,88 @@ CREATE TABLE IF NOT EXISTS `conversation_analysis_task`
 -- 已有库：ALTER TABLE conversation_analysis_task MODIFY COLUMN conversation_content MEDIUMTEXT NULL COMMENT '排队/执行中的对话原文；SUCCEEDED 后清空，正本在 conversation_analysis';
 -- 已有库（可选回收）：UPDATE conversation_analysis_task SET conversation_content = NULL WHERE status = 'SUCCEEDED' AND conversation_content IS NOT NULL;
 
--- 用户口语薄弱点长期记忆（左脑 / semantic）：只存宏观模式与轨迹，不存句子或教学文案。
--- 具体错句证据读时从 conversation_analysis_item（及可选 Qdrant）按 anchor 取。
-CREATE TABLE IF NOT EXISTS `user_weakness_memory`
+-- 口语薄弱点长期记忆（Analysis → Memory → Practice → Assessment → Review → Memory Update 闭环）
+-- 已有库可清理旧表：DROP TABLE IF EXISTS `user_weakness_memory`;
+
+CREATE TABLE IF NOT EXISTS `weakness_memory`
 (
-    `id`                 BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `user_id`            BIGINT       NOT NULL COMMENT '所属用户 ID',
-    `title`              VARCHAR(120) NOT NULL COMMENT '微习惯模式短名（表现描述，非开口前教条）',
-    `anchor_habit_key`   VARCHAR(64)           DEFAULT NULL COMMENT '关联字典 habitKey（如 FAM_TENSE 或叶子 pointId）',
-    `anchor_point_id`    VARCHAR(64)           DEFAULT NULL COMMENT '代表知识点叶子 pointId',
-    `source_analysis_id` VARCHAR(64)  NOT NULL COMMENT '最新一次更新该记忆的分析 ID',
-    `hit_count`          INT          NOT NULL DEFAULT 1 COMMENT '累计归并/复发次数',
-    `practiced_count`    INT          NOT NULL DEFAULT 0 COMMENT '被选入今日练习注入的次数',
-    `status`             VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE | ARCHIVED',
-    `last_seen_at`       DATETIME     NOT NULL COMMENT '最近一次在分析中出现的时间',
-    `last_practiced_at`  DATETIME              DEFAULT NULL COMMENT '最近一次注入练习的时间（用于冷却轮换）',
-    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX `idx_weakness_mem_user_status` (`user_id`, `status`, `last_seen_at`),
-    INDEX `idx_weakness_mem_source_analysis` (`user_id`, `source_analysis_id`)
-) ENGINE = InnoDB COMMENT ='用户口语薄弱点长期记忆（semantic，无句子正文）';
--- 已有库（从含 diagnosis/coaching/例句 的旧表升级）：
--- ALTER TABLE user_weakness_memory DROP COLUMN diagnosis, DROP COLUMN coaching, DROP COLUMN bad_example, DROP COLUMN target_rewrite;
+    `id`                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`             BIGINT        NOT NULL COMMENT '所属用户 ID',
+    `title`               VARCHAR(255)  NOT NULL COMMENT '薄弱点描述（源自知识点字典或人工调整）',
+    `memory_type`         VARCHAR(32)   NOT NULL COMMENT 'GRAMMAR | HABIT | LEXICAL',
+    `family_id`           VARCHAR(100)  NOT NULL COMMENT '错误家族 ID',
+    `point_id`            VARCHAR(100)  NOT NULL COMMENT '具体知识点 ID',
+    `status`              VARCHAR(32)   NOT NULL DEFAULT 'NEW' COMMENT 'NEW | ACTIVE | PRACTICING | MASTERED | ARCHIVED',
+    `hit_count`           INT           NOT NULL DEFAULT 0 COMMENT '真实分析累计命中次数',
+    `recent_hit_count`    INT           NOT NULL DEFAULT 0 COMMENT '近期窗口内命中次数',
+    `practiced_count`     INT           NOT NULL DEFAULT 0 COMMENT '累计练习次数',
+    `correct_count`       INT           NOT NULL DEFAULT 0 COMMENT '累计正确次数（练习正确 + 自由迁移）',
+    `mastery_level`       DECIMAL(5, 2) NOT NULL DEFAULT 0.00 COMMENT '掌握置信度 0~100',
+    `consecutive_correct` INT           NOT NULL DEFAULT 0 COMMENT '连续正确次数',
+    `first_seen_at`       DATETIME      NOT NULL COMMENT '首次发现时间',
+    `last_seen_at`        DATETIME      NOT NULL COMMENT '最近真实命中时间',
+    `last_practiced_at`   DATETIME               DEFAULT NULL COMMENT '最近练习时间',
+    `next_review_at`      DATETIME               DEFAULT NULL COMMENT '下次建议复习时间',
+    `created_at`          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_weakness_memory_user_point` (`user_id`, `point_id`),
+    INDEX `idx_weakness_memory_user_status` (`user_id`, `status`, `last_seen_at`),
+    INDEX `idx_weakness_memory_user_review` (`user_id`, `status`, `next_review_at`)
+) ENGINE = InnoDB COMMENT ='用户口语薄弱点长期记忆主表';
+
+CREATE TABLE IF NOT EXISTS `memory_evidence`
+(
+    `id`             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `memory_id`      BIGINT       NOT NULL COMMENT '所属薄弱点记忆 ID',
+    `user_id`        BIGINT       NOT NULL COMMENT '所属用户 ID',
+    `analysis_id`    VARCHAR(64)           DEFAULT NULL COMMENT '来源分析 ID',
+    `sentence_id`    VARCHAR(64)           DEFAULT NULL COMMENT '来源句子 ID',
+    `evidence_type`  VARCHAR(32)  NOT NULL COMMENT 'HIT | PRACTICE_ERROR | TRANSFER_SUCCESS | PROMPTED_CORRECT',
+    `dedup_key`      VARCHAR(160) NOT NULL COMMENT '幂等去重键',
+    `original_text`  TEXT                  DEFAULT NULL COMMENT '用户原始表达',
+    `corrected_text` TEXT                  DEFAULT NULL COMMENT '建议/目标表达',
+    `confidence`     DECIMAL(5, 4)         DEFAULT NULL COMMENT '置信度',
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_memory_evidence_dedup` (`memory_id`, `dedup_key`),
+    INDEX `idx_memory_evidence_memory_time` (`memory_id`, `created_at`),
+    INDEX `idx_memory_evidence_user_analysis` (`user_id`, `analysis_id`)
+) ENGINE = InnoDB COMMENT ='薄弱点记忆证据追加表';
+
+CREATE TABLE IF NOT EXISTS `practice_session`
+(
+    `id`                     BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id`                BIGINT       NOT NULL COMMENT '所属用户 ID',
+    `memory_id`              BIGINT       NOT NULL COMMENT '目标薄弱点记忆 ID',
+    `practice_type`          VARCHAR(32)  NOT NULL COMMENT 'RECALL | TRANSFORMATION | SCENARIO | FREE_SPEAKING | REVIEW',
+    `target_point_id`        VARCHAR(100) NOT NULL COMMENT '冻结目标 pointId',
+    `status`                 VARCHAR(32)  NOT NULL DEFAULT 'IN_PROGRESS' COMMENT 'IN_PROGRESS | COMPLETED | ABANDONED',
+    `source_conversation_id` VARCHAR(64)           DEFAULT NULL COMMENT '绑定的外部对话标识（如 ChatGPT 会话 ID）',
+    `analysis_id`            VARCHAR(64)           DEFAULT NULL COMMENT '完成评估所对应的分析 ID',
+    `total_attempts`         INT          NOT NULL DEFAULT 0 COMMENT '总评估次数',
+    `correct_attempts`       INT          NOT NULL DEFAULT 0 COMMENT '正确评估次数',
+    `started_at`             DATETIME     NOT NULL COMMENT '开始时间',
+    `completed_at`           DATETIME              DEFAULT NULL COMMENT '完成时间',
+    `created_at`             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX `idx_practice_session_user_memory` (`user_id`, `memory_id`),
+    INDEX `idx_practice_session_user_status` (`user_id`, `status`),
+    INDEX `idx_practice_session_user_conv` (`user_id`, `source_conversation_id`),
+    INDEX `idx_practice_session_analysis` (`user_id`, `analysis_id`)
+) ENGINE = InnoDB COMMENT ='专项练习会话记录';
+
+CREATE TABLE IF NOT EXISTS `practice_attempt`
+(
+    `id`                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `session_id`        BIGINT        NOT NULL COMMENT '所属练习会话 ID',
+    `attempt_no`        INT           NOT NULL COMMENT '会话内序号（从 1 开始）',
+    `user_response`     TEXT                   DEFAULT NULL COMMENT '用户实际输出句',
+    `expected_response` TEXT                   DEFAULT NULL COMMENT '建议/目标表达',
+    `is_correct`        TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '是否正确使用',
+    `independent`       TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '是否无提示独立输出',
+    `hint_used`         TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '是否借助教练提示/重塑',
+    `score`             DECIMAL(5, 2) NOT NULL DEFAULT 0.00 COMMENT '单次表现分 0~100',
+    `feedback`          TEXT                   DEFAULT NULL COMMENT '简短评估说明',
+    `evaluation_json`   JSON                   DEFAULT NULL COMMENT '结构化评估明细',
+    `created_at`        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_practice_attempt_session_no` (`session_id`, `attempt_no`),
+    INDEX `idx_practice_attempt_session` (`session_id`)
+) ENGINE = InnoDB COMMENT ='专项练习单次评估记录';

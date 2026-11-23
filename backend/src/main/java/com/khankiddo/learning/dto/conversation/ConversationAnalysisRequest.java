@@ -13,4 +13,9 @@ public class ConversationAnalysisRequest {
      * 分析模型配置 ID（Stage2/Stage3），空则使用 app.llm.default-model-id
      */
     private String modelId;
+
+    /**
+     * 可选来源会话标识（由异步分析任务透传，用于关联待评估练习会话）。
+     */
+    private String sourceConversationId;
 }

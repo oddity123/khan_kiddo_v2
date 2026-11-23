@@ -1,0 +1,71 @@
+{
+  "type": "object",
+  "properties": {
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "targetPointId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "必须原样回传输入目标列表中的 pointId"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "TRANSFER_SUCCESS",
+              "PROMPTED_CORRECT",
+              "PRACTICE_ERROR",
+              "NO_OPPORTUNITY"
+            ],
+            "description": "TRANSFER_SUCCESS=独立自然正确；PROMPTED_CORRECT=经提示或重塑后正确；PRACTICE_ERROR=仍出现该错；NO_OPPORTUNITY=本场无足够证据"
+          },
+          "isCorrect": {
+            "type": "boolean",
+            "description": "TRANSFER_SUCCESS 或 PROMPTED_CORRECT 时为 true，其余为 false"
+          },
+          "independent": {
+            "type": "boolean",
+            "description": "仅 TRANSFER_SUCCESS 为 true"
+          },
+          "hintUsed": {
+            "type": "boolean",
+            "description": "仅 PROMPTED_CORRECT 为 true"
+          },
+          "score": {
+            "type": "number",
+            "description": "0~100 表现分；NO_OPPORTUNITY 填 0"
+          },
+          "evidenceQuote": {
+            "type": "string",
+            "description": "逐字摘录学习者 User 的原句作为证据；NO_OPPORTUNITY 填空字符串"
+          },
+          "expectedResponse": {
+            "type": "string",
+            "description": "建议/自然表达（已正确时可填原句或更地道改写；NO_OPPORTUNITY 填空字符串）"
+          },
+          "feedback": {
+            "type": "string",
+            "description": "一句话中文评估说明"
+          }
+        },
+        "required": [
+          "targetPointId",
+          "outcome",
+          "isCorrect",
+          "independent",
+          "hintUsed",
+          "score",
+          "evidenceQuote",
+          "expectedResponse",
+          "feedback"
+        ],
+        "additionalProperties": false
+      },
+      "description": "针对输入中每个目标薄弱点的评估结果"
+    }
+  },
+  "required": ["evaluations"],
+  "additionalProperties": false
+}

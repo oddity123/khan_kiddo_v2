@@ -99,3 +99,25 @@ test('no visible editor or a hidden ancestor is rejected', () => {
   assert.match(injectComposerText('Example').error, /未找到输入框/)
   assert.deepEqual(ui.events, [])
 })
+
+test('tolerates ProseMirror newline and nbsp normalization on multi-line prompts, but rejects truncated text', () => {
+  const ui = setup()
+  document.execCommand = (command, _ui, _text) => {
+    assert.equal(command, 'insertText')
+    ui.editor.innerText = '# Title\n\n\nLine\u00A0one\n\nLine two'
+    ui.events.push('native-input')
+    return true
+  }
+  assert.deepEqual(injectComposerText('# Title\n\nLine one\nLine two\n'), {ok: true})
+
+  const uiTruncated = setup()
+  document.execCommand = (command, _ui, _text) => {
+    assert.equal(command, 'insertText')
+    uiTruncated.editor.innerText = '# Title'
+    return true
+  }
+  assert.deepEqual(
+    injectComposerText('# Title\n\nLine one\nLine two'),
+    {ok: false, error: '未能确认写入成功，请检查输入框'},
+  )
+})

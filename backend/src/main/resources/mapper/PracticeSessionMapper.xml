@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.memory.mapper.PracticeSessionMapper">
+
+    <resultMap id="PracticeSessionMap" type="com.khankiddo.learning.memory.domain.PracticeSession">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="memory_id" property="memoryId"/>
+        <result column="practice_type" property="practiceType"/>
+        <result column="target_point_id" property="targetPointId"/>
+        <result column="status" property="status"/>
+        <result column="source_conversation_id" property="sourceConversationId"/>
+        <result column="analysis_id" property="analysisId"/>
+        <result column="total_attempts" property="totalAttempts"/>
+        <result column="correct_attempts" property="correctAttempts"/>
+        <result column="started_at" property="startedAt"/>
+        <result column="completed_at" property="completedAt"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, user_id, memory_id, practice_type, target_point_id, status,
+        source_conversation_id, analysis_id, total_attempts, correct_attempts,
+        started_at, completed_at, created_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO practice_session
+            (user_id, memory_id, practice_type, target_point_id, status,
+             source_conversation_id, analysis_id, total_attempts, correct_attempts,
+             started_at, completed_at)
+        VALUES
+            (#{userId}, #{memoryId}, #{practiceType}, #{targetPointId}, #{status},
+             #{sourceConversationId}, #{analysisId}, #{totalAttempts}, #{correctAttempts},
+             #{startedAt}, #{completedAt})
+    </insert>
+
+    <select id="findByIdAndUserId" resultMap="PracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM practice_session
+        WHERE id = #{id} AND user_id = #{userId}
+    </select>
+
+    <select id="findByUserId" resultMap="PracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM practice_session
+        WHERE user_id = #{userId}
+        <if test="memoryId != null">
+            AND memory_id = #{memoryId}
+        </if>
+        <if test="status != null and status != ''">
+            AND status = #{status}
+        </if>
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="findByMemoryId" resultMap="PracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM practice_session
+        WHERE memory_id = #{memoryId}
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <select id="countByMemoryId" resultType="long">
+        SELECT COUNT(*)
+        FROM practice_session
+        WHERE memory_id = #{memoryId}
+    </select>
+
+    <select id="findInProgressByUserIdAndSourceConversation" resultMap="PracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM practice_session
+        WHERE user_id = #{userId}
+          AND status = 'IN_PROGRESS'
+          AND source_conversation_id = #{sourceConversationId}
+        ORDER BY started_at DESC, id DESC
+    </select>
+
+    <select id="findRecentUnboundInProgress" resultMap="PracticeSessionMap">
+        SELECT <include refid="Columns"/>
+        FROM practice_session
+        WHERE user_id = #{userId}
+          AND status = 'IN_PROGRESS'
+          AND source_conversation_id IS NULL
+          AND analysis_id IS NULL
+          AND started_at &gt;= #{since}
+        ORDER BY started_at DESC, id DESC
+    </select>
+
+    <update id="bindSourceConversation">
+        UPDATE practice_session
+        SET source_conversation_id = #{sourceConversationId}
+        WHERE user_id = #{userId}
+          AND status = 'IN_PROGRESS'
+          AND source_conversation_id IS NULL
+          AND id IN
+        <foreach collection="sessionIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="updateCompletion">
+        UPDATE practice_session
+        SET status = #{status},
+            analysis_id = #{analysisId},
+            source_conversation_id = #{sourceConversationId},
+            total_attempts = #{totalAttempts},
+            correct_attempts = #{correctAttempts},
+            completed_at = #{completedAt}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <select id="findDistinctMemoryIdsByUserIdAndAnalysisId" resultType="long">
+        SELECT DISTINCT memory_id
+        FROM practice_session
+        WHERE user_id = #{userId} AND analysis_id = #{analysisId}
+    </select>
+
+    <select id="findIdsByUserIdAndAnalysisId" resultType="long">
+        SELECT id
+        FROM practice_session
+        WHERE user_id = #{userId} AND analysis_id = #{analysisId}
+    </select>
+
+    <delete id="deleteByUserIdAndAnalysisId">
+        DELETE FROM practice_session
+        WHERE user_id = #{userId} AND analysis_id = #{analysisId}
+    </delete>
+
+    <delete id="deleteByMemoryId">
+        DELETE FROM practice_session
+        WHERE memory_id = #{memoryId}
+    </delete>
+</mapper>

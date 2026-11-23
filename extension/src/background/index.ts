@@ -209,6 +209,7 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendRe
           conversationContent: message.conversationContent,
           sourceType: message.sourceType,
           sourceConversationId: message.sourceConversationId,
+          tabId: message.tabId,
         }),
       )
       return
@@ -232,7 +233,14 @@ chrome.runtime.onMessage.addListener((message: ExtensionRequest, _sender, sendRe
       return
     }
     if (message.type === 'MARK_DAILY_PRACTICED') {
-      sendResponse(await markDailyPracticed(webOrigin, message.memoryIds))
+      sendResponse(
+        await markDailyPracticed(webOrigin, {
+          memoryIds: message.memoryIds,
+          sourceConversationId: message.sourceConversationId,
+          tabId: message.tabId,
+          practiceType: message.practiceType,
+        }),
+      )
     }
   }
 

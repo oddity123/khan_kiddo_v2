@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.khankiddo.learning.memory.mapper.PracticeAttemptMapper">
+
+    <resultMap id="PracticeAttemptMap" type="com.khankiddo.learning.memory.domain.PracticeAttempt">
+        <id column="id" property="id"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="attempt_no" property="attemptNo"/>
+        <result column="user_response" property="userResponse"/>
+        <result column="expected_response" property="expectedResponse"/>
+        <result column="is_correct" property="isCorrect"/>
+        <result column="independent" property="independent"/>
+        <result column="hint_used" property="hintUsed"/>
+        <result column="score" property="score"/>
+        <result column="feedback" property="feedback"/>
+        <result column="evaluation_json" property="evaluationJson"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <sql id="Columns">
+        id, session_id, attempt_no, user_response, expected_response,
+        is_correct, independent, hint_used, score, feedback,
+        evaluation_json, created_at
+    </sql>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO practice_attempt
+            (session_id, attempt_no, user_response, expected_response,
+             is_correct, independent, hint_used, score, feedback, evaluation_json)
+        VALUES
+            (#{sessionId}, #{attemptNo}, #{userResponse}, #{expectedResponse},
+             #{isCorrect}, #{independent}, #{hintUsed}, #{score}, #{feedback}, #{evaluationJson})
+    </insert>
+
+    <select id="findBySessionId" resultMap="PracticeAttemptMap">
+        SELECT <include refid="Columns"/>
+        FROM practice_attempt
+        WHERE session_id = #{sessionId}
+        ORDER BY attempt_no ASC, id ASC
+    </select>
+
+    <select id="findByMemoryId" resultMap="PracticeAttemptMap">
+        SELECT pa.id, pa.session_id, pa.attempt_no, pa.user_response, pa.expected_response,
+               pa.is_correct, pa.independent, pa.hint_used, pa.score, pa.feedback,
+               pa.evaluation_json, pa.created_at
+        FROM practice_attempt pa
+        INNER JOIN practice_session ps ON pa.session_id = ps.id
+        WHERE ps.memory_id = #{memoryId}
+        ORDER BY pa.created_at ASC, pa.id ASC
+    </select>
+
+    <select id="maxAttemptNo" resultType="int">
+        SELECT COALESCE(MAX(attempt_no), 0)
+        FROM practice_attempt
+        WHERE session_id = #{sessionId}
+    </select>
+
+    <delete id="deleteBySessionIds">
+        DELETE FROM practice_attempt
+        WHERE session_id IN
+        <foreach collection="sessionIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByMemoryId">
+        DELETE FROM practice_attempt
+        WHERE session_id IN (
+            SELECT id FROM practice_session WHERE memory_id = #{memoryId}
+        )
+    </delete>
+</mapper>

@@ -1,0 +1,7 @@
+请根据本场对话实录评估学习者对目标薄弱点的实际掌握表现。遵守 system 契约。
+
+示例：
+- 若目标为 `PAST_SIMPLE_DONE`，学习者独立说出 `"Yesterday I went to the park with my friend."` → `outcome="TRANSFER_SUCCESS"`, `isCorrect=true`, `independent=true`, `hintUsed=false`, `score=92`, `evidenceQuote="Yesterday I went to the park with my friend."`
+- 若目标为 `NOUN_CLAUSE_ORDER`，本场对话仅围绕天气闲聊且未出现任何名词性从句 → `outcome="NO_OPPORTUNITY"`, `isCorrect=false`, `independent=false`, `hintUsed=false`, `score=0`, `evidenceQuote=""`
+
+{context}
