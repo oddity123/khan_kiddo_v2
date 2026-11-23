@@ -142,13 +142,17 @@ public class PracticePromptService {
         }
         StringBuilder block = new StringBuilder();
         block.append("## Extra vocabulary\n");
+        block.append("Count: ").append(vocabulary.size());
+        int index = 1;
         for (PracticePromptRequest.Vocabulary item : vocabulary) {
-            block.append("\n- **")
+            block.append("\n\n### ")
+                    .append(index++)
+                    .append(". **")
                     .append(item.getFront())
                     .append("** → ")
                     .append(item.getBack());
             if (StringUtils.hasText(item.getOriginalSentence())) {
-                block.append("\n  - Last said: `")
+                block.append("\n- Last said: `")
                         .append(item.getOriginalSentence())
                         .append('`');
             }

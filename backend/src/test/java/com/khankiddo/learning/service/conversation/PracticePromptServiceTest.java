@@ -91,10 +91,12 @@ class PracticePromptServiceTest {
         String prompt = service.assemble(request).getPrompt();
 
         assertThat(prompt).contains("## Extra vocabulary");
-        assertThat(prompt).contains("**售后服务** → after-sales service");
+        assertThat(prompt).contains("Count: 1");
+        assertThat(prompt).contains("### 1. **售后服务** → after-sales service");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("## Weak points");
         assertThat(prompt).contains("Phase 0");
+        assertThat(prompt.indexOf("# Review Material")).isLessThan(prompt.indexOf("## Phase 0"));
         assertThat(prompt).doesNotContain("Add-ons only");
     }
 
@@ -122,8 +124,9 @@ class PracticePromptServiceTest {
         String prompt = service.assemble(request).getPrompt();
 
         assertThat(prompt).contains("### 1. 过去时");
-        assertThat(prompt).contains("**售后服务** → after-sales service");
-        assertThat(prompt).contains("**宣传** → promote");
+        assertThat(prompt).contains("Count: 2");
+        assertThat(prompt).contains("### 1. **售后服务** → after-sales service");
+        assertThat(prompt).contains("### 2. **宣传** → promote");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("ignored duplicate");
         assertThat(countOccurrences(prompt, "**售后服务** → after-sales service")).isEqualTo(1);
@@ -199,13 +202,15 @@ class PracticePromptServiceTest {
                 .goals(List.of(goal(1, "过去时")))
                 .build());
 
-        assertThat(response.getPrompt())
-                .contains("pre-conversation recap")
+        String prompt = response.getPrompt();
+        assertThat(prompt)
+                .containsIgnoringCase("pre-conversation recap")
                 .contains("Phase 0")
                 .contains("Phase 1")
                 .contains("at most one")
-                .contains("开启语音练习");
-
+                .contains("开启语音练习")
+                .contains("every** vocabulary item");
+        assertThat(prompt.indexOf("# Review Material")).isLessThan(prompt.indexOf("## Mission"));
     }
 
     @Test
