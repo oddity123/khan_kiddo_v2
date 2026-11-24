@@ -87,7 +87,7 @@ public class MemoryMasteryService {
         BigDecimal masteryLevel = BigDecimal.valueOf(clampedMastery).setScale(2, RoundingMode.HALF_UP);
 
         int consecutiveCorrect = computeConsecutiveCorrect(attempts, hits, freeChatPositives);
-        int practicedCount = Math.max(attempts.size(), sessions.size());
+        int practicedCount = sessions.size();
         int attemptCorrectCount = (int) attempts.stream()
                 .filter(a -> Boolean.TRUE.equals(a.getIsCorrect()))
                 .count();

@@ -72,6 +72,10 @@ public class MemoryAssessmentService {
             return;
         }
         String normalizedAnalysisId = analysisId.trim();
+        if (!CollectionUtils.isEmpty(sessionMapper.findIdsByUserIdAndAnalysisId(userId, normalizedAnalysisId))) {
+            log.debug("assessment already applied for analysisId={} userId={}, skipping", normalizedAnalysisId, userId);
+            return;
+        }
         Optional<ConversationAnalysis> analysisOpt =
                 analysisMapper.findByAnalysisIdAndUserId(normalizedAnalysisId, userId);
         if (analysisOpt.isEmpty() || !StringUtils.hasText(analysisOpt.get().getConversationContent())) {
@@ -88,11 +92,11 @@ public class MemoryAssessmentService {
 
         LocalDateTime now = LocalDateTime.now(clock);
         String cleanConvId = TextSupport.trimToNull(sourceConversationId);
-        SessionMatch sessionMatch = resolveSessions(userId, cleanConvId, now);
+        Map<Long, PracticeSession> sessionByMemoryId = resolveBoundSessions(userId, cleanConvId);
 
         int maxTargets = Math.max(1, properties.getAssessmentMaxTargets());
         Map<String, TargetSpec> targetsByPointId = buildTargets(
-                userId, normalizedAnalysisId, sessionMatch.sessionByMemoryId(), maxTargets, now);
+                userId, normalizedAnalysisId, sessionByMemoryId, maxTargets, now);
         if (targetsByPointId.isEmpty()) {
             return;
         }
@@ -113,7 +117,6 @@ public class MemoryAssessmentService {
                 userId,
                 normalizedAnalysisId,
                 cleanConvId,
-                sessionMatch.explicitlyBound(),
                 targetsByPointId,
                 rawEvaluations,
                 cleanUserUtterances,
@@ -125,28 +128,26 @@ public class MemoryAssessmentService {
         }
     }
 
-    private SessionMatch resolveSessions(Long userId, String sourceConversationId, LocalDateTime now) {
-        Map<Long, PracticeSession> byMemory = new LinkedHashMap<>();
-        boolean explicitlyBound = false;
-        List<PracticeSession> matched = List.of();
-        if (StringUtils.hasText(sourceConversationId)) {
-            matched = sessionMapper.findInProgressByUserIdAndSourceConversation(userId, sourceConversationId);
-            if (!CollectionUtils.isEmpty(matched)) {
-                explicitlyBound = true;
-            }
+    /**
+     * 仅匹配显式绑定当前 sourceConversationId 的 IN_PROGRESS 练习会话；
+     * 关联缺失时不做时间窗口猜测，避免将无关自由对话误判为练习完成。
+     */
+    private Map<Long, PracticeSession> resolveBoundSessions(Long userId, String sourceConversationId) {
+        if (!StringUtils.hasText(sourceConversationId)) {
+            return Map.of();
         }
+        List<PracticeSession> matched =
+                sessionMapper.findInProgressByUserIdAndSourceConversation(userId, sourceConversationId);
         if (CollectionUtils.isEmpty(matched)) {
-            LocalDateTime cutoff = now.minusHours(Math.max(1, properties.getAssessmentSessionWindowHours()));
-            matched = sessionMapper.findRecentUnboundInProgress(userId, cutoff);
+            return Map.of();
         }
-        if (!CollectionUtils.isEmpty(matched)) {
-            for (PracticeSession session : matched) {
-                if (session.getMemoryId() != null) {
-                    byMemory.putIfAbsent(session.getMemoryId(), session);
-                }
+        Map<Long, PracticeSession> byMemory = new LinkedHashMap<>();
+        for (PracticeSession session : matched) {
+            if (session.getMemoryId() != null) {
+                byMemory.putIfAbsent(session.getMemoryId(), session);
             }
         }
-        return new SessionMatch(byMemory, explicitlyBound);
+        return byMemory;
     }
 
     private Map<String, TargetSpec> buildTargets(
@@ -207,7 +208,6 @@ public class MemoryAssessmentService {
             Long userId,
             String analysisId,
             String sourceConversationId,
-            boolean explicitlyBound,
             Map<String, TargetSpec> targetsByPointId,
             List<MemoryAssessmentResult.EvaluationDto> rawEvaluations,
             List<String> cleanUserUtterances,
@@ -243,12 +243,10 @@ public class MemoryAssessmentService {
 
             if (session != null) {
                 if (outcome == MemoryAssessmentOutcome.NO_OPPORTUNITY) {
-                    if (explicitlyBound) {
-                        session.setStatus(PracticeSessionStatus.COMPLETED.name());
-                        session.setAnalysisId(analysisId);
-                        session.setCompletedAt(now);
-                        sessionMapper.updateCompletion(session);
-                    }
+                    session.setStatus(PracticeSessionStatus.COMPLETED.name());
+                    session.setAnalysisId(analysisId);
+                    session.setCompletedAt(now);
+                    sessionMapper.completeIfInProgress(session);
                     continue;
                 }
                 boolean mutated = applySessionOutcome(
@@ -304,6 +302,22 @@ public class MemoryAssessmentService {
         boolean hintUsed = outcome == MemoryAssessmentOutcome.PROMPTED_CORRECT;
         BigDecimal score = clampScore(eval.getScore(), outcome);
 
+        int total = (session.getTotalAttempts() == null ? 0 : session.getTotalAttempts()) + 1;
+        int correct = (session.getCorrectAttempts() == null ? 0 : session.getCorrectAttempts()) + (isCorrect ? 1 : 0);
+        session.setStatus(PracticeSessionStatus.COMPLETED.name());
+        session.setAnalysisId(analysisId);
+        if (!StringUtils.hasText(session.getSourceConversationId()) && StringUtils.hasText(sourceConversationId)) {
+            session.setSourceConversationId(sourceConversationId);
+        }
+        session.setTotalAttempts(total);
+        session.setCorrectAttempts(correct);
+        session.setCompletedAt(now);
+        // 原子抢占 IN_PROGRESS → COMPLETED，并发/重放时仅首次写入 Attempt 与 Evidence
+        if (sessionMapper.completeIfInProgress(session) != 1) {
+            log.debug("assessment skipped already-completed sessionId={} analysisId={}", session.getId(), analysisId);
+            return false;
+        }
+
         int nextNo = attemptMapper.maxAttemptNo(session.getId()) + 1;
         PracticeAttempt attempt = PracticeAttempt.builder()
                 .sessionId(session.getId())
@@ -319,18 +333,6 @@ public class MemoryAssessmentService {
                 .createdAt(now)
                 .build();
         attemptMapper.insert(attempt);
-
-        int total = (session.getTotalAttempts() == null ? 0 : session.getTotalAttempts()) + 1;
-        int correct = (session.getCorrectAttempts() == null ? 0 : session.getCorrectAttempts()) + (isCorrect ? 1 : 0);
-        session.setStatus(PracticeSessionStatus.COMPLETED.name());
-        session.setAnalysisId(analysisId);
-        if (!StringUtils.hasText(session.getSourceConversationId()) && StringUtils.hasText(sourceConversationId)) {
-            session.setSourceConversationId(sourceConversationId);
-        }
-        session.setTotalAttempts(total);
-        session.setCorrectAttempts(correct);
-        session.setCompletedAt(now);
-        sessionMapper.updateCompletion(session);
 
         EvidenceType evidenceType = switch (outcome) {
             case TRANSFER_SUCCESS -> EvidenceType.TRANSFER_SUCCESS;
@@ -380,9 +382,6 @@ public class MemoryAssessmentService {
         } catch (JsonProcessingException ex) {
             return null;
         }
-    }
-
-    private record SessionMatch(Map<Long, PracticeSession> sessionByMemoryId, boolean explicitlyBound) {
     }
 
     private record TargetSpec(

@@ -26,6 +26,15 @@
         created_at, started_at, finished_at, updated_at
     </sql>
 
+    <sql id="AnalysisExistsOrNotSucceeded">
+        (status &lt;&gt; 'SUCCEEDED'
+         OR EXISTS (
+             SELECT 1 FROM conversation_analysis ca
+             WHERE ca.analysis_id = conversation_analysis_task.analysis_id
+               AND ca.user_id = conversation_analysis_task.user_id
+         ))
+    </sql>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO conversation_analysis_task
             (task_id, user_id, status, conversation_content, content_fingerprint,
@@ -49,6 +58,7 @@
           AND source_conversation_id = #{sourceConversationId}
           AND content_fingerprint = #{contentFingerprint}
           AND status IN ('QUEUED', 'RUNNING', 'SUCCEEDED')
+          AND <include refid="AnalysisExistsOrNotSucceeded"/>
         ORDER BY created_at DESC
         LIMIT 1
     </select>
@@ -60,6 +70,7 @@
           AND content_fingerprint = #{contentFingerprint}
           AND (source_conversation_id IS NULL OR source_conversation_id = '')
           AND status IN ('QUEUED', 'RUNNING', 'SUCCEEDED')
+          AND <include refid="AnalysisExistsOrNotSucceeded"/>
         ORDER BY created_at DESC
         LIMIT 1
     </select>
@@ -70,6 +81,7 @@
         WHERE user_id = #{userId}
           AND source_type = #{sourceType}
           AND source_conversation_id = #{sourceConversationId}
+          AND <include refid="AnalysisExistsOrNotSucceeded"/>
         ORDER BY created_at DESC
         LIMIT 1
     </select>
@@ -103,4 +115,10 @@
         WHERE task_id = #{taskId}
           AND status = #{expectedStatus}
     </update>
+
+    <delete id="deleteByAnalysisIdAndUserId">
+        DELETE FROM conversation_analysis_task
+        WHERE analysis_id = #{analysisId}
+          AND user_id = #{userId}
+    </delete>
 </mapper>

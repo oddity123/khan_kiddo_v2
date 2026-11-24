@@ -83,8 +83,8 @@ public class MemoryPracticeService {
             created.add(session);
 
             lifecycleService.onPracticeStarted(memory, now);
-            int currentPracticed = memory.getPracticedCount() == null ? 0 : memory.getPracticedCount();
-            memory.setPracticedCount(currentPracticed + 1);
+            int practicedCount = (int) sessionMapper.countByMemoryId(memory.getId());
+            memory.setPracticedCount(practicedCount);
             memoryMapper.updateMetricsAndStatus(memory);
         }
         return created;

@@ -26,6 +26,7 @@ public class WeaknessMemory {
     private String status;
     private Integer hitCount;
     private Integer recentHitCount;
+    /** 累计发起的专项练习会话数（以 practice_session 行数为唯一真源）。 */
     private Integer practicedCount;
     private Integer correctCount;
     private BigDecimal masteryLevel;

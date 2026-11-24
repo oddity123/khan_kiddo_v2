@@ -4,7 +4,6 @@ import com.khankiddo.learning.memory.domain.PracticeSession;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,14 +26,16 @@ public interface PracticeSessionMapper {
             @Param("userId") Long userId,
             @Param("sourceConversationId") String sourceConversationId);
 
-    List<PracticeSession> findRecentUnboundInProgress(@Param("userId") Long userId,
-                                                      @Param("since") LocalDateTime since);
-
     int bindSourceConversation(@Param("userId") Long userId,
                                @Param("sessionIds") List<Long> sessionIds,
                                @Param("sourceConversationId") String sourceConversationId);
 
     int updateCompletion(PracticeSession session);
+
+    /**
+     * 仅当会话仍为 IN_PROGRESS 时原子置为终态（用于异步评估幂等防重）。
+     */
+    int completeIfInProgress(PracticeSession session);
 
     List<Long> findDistinctMemoryIdsByUserIdAndAnalysisId(@Param("userId") Long userId,
                                                           @Param("analysisId") String analysisId);

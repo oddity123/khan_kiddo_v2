@@ -162,7 +162,7 @@ public class DailyPracticeService {
             HabitCardScorer.HabitScoreResult score = analysisSupport.score(
                     CollectionUtils.isEmpty(rows) ? List.of() : rows);
             if (!CollectionUtils.isEmpty(score.actionCards())) {
-                goals = actionCardsToGoals(score.actionCards());
+                goals = actionCardsToGoals(userId, score.actionCards());
             }
         }
 
@@ -304,7 +304,8 @@ public class DailyPracticeService {
         return assembled.getPrompt();
     }
 
-    private static List<DailyPracticeRecommendResponse.GoalSummary> actionCardsToGoals(
+    private List<DailyPracticeRecommendResponse.GoalSummary> actionCardsToGoals(
+            Long userId,
             List<ActionCardDto> actionCards) {
         int limit = Math.min(2, actionCards.size());
         List<DailyPracticeRecommendResponse.GoalSummary> goals = new ArrayList<>();
@@ -317,10 +318,15 @@ public class DailyPracticeService {
                 evidenceOriginal = ex.getOriginalSentence();
                 evidenceRewrite = ex.getSuggestion();
             }
+            Optional<WeaknessMemory> ensured = memoryService.ensureMemoryForPoint(userId, card.getPointId());
             goals.add(DailyPracticeRecommendResponse.GoalSummary.builder()
-                    .memoryId(null)
+                    .memoryId(ensured.map(WeaknessMemory::getId).orElse(null))
                     .title(StringUtils.hasText(card.getTitleZh()) ? card.getTitleZh() : card.getHeadlineZh())
                     .pointId(card.getPointId())
+                    .familyId(ensured.map(WeaknessMemory::getFamilyId).orElse(null))
+                    .memoryType(ensured.map(WeaknessMemory::getMemoryType).orElse(null))
+                    .status(ensured.map(WeaknessMemory::getStatus).orElse(null))
+                    .masteryLevel(ensured.map(WeaknessMemory::getMasteryLevel).orElse(null))
                     .evidenceOriginal(evidenceOriginal)
                     .evidenceRewrite(evidenceRewrite)
                     .build());

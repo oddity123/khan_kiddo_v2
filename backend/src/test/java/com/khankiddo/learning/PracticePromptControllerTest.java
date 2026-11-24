@@ -29,7 +29,7 @@ class PracticePromptControllerTest {
                                 {"goals":[{"rank":1,"title":"过去时","diagnosis":"用了现在时","coaching":"先定时间","originalSentence":"Yesterday I go.","targetSentence":"Yesterday I went."}]}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.prompt").value(containsString("Spoken English Warm-up Coach")))
+                .andExpect(jsonPath("$.prompt").value(containsString("Spoken English Practice Partner")))
                 .andExpect(jsonPath("$.prompt").value(containsString("### 1. 过去时")));
     }
 

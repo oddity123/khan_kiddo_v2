@@ -62,8 +62,8 @@ public class WeaknessMemoryProperties {
     /** 带练冷却最短小时数。 */
     private int cooldownHours = 24;
 
-    /** 每次推荐薄弱点上限（受产品上限 3 约束）。 */
-    private int recommendGoalLimit = 2;
+    /** 每次推荐薄弱点上限（受产品上限 3 约束；实时语音减负默认聚焦 1 项）。 */
+    private int recommendGoalLimit = 1;
 
     /** 每次推荐到期表达卡上限。 */
     private int recommendVocabLimit = 2;
@@ -75,9 +75,6 @@ public class WeaknessMemoryProperties {
 
     /** 单次分析后回检评估最多覆盖的目标薄弱点数。 */
     private int assessmentMaxTargets = 3;
-
-    /** 未显式绑定对话 ID 时，回溯匹配近期未完成练习会话的时间窗口（小时）。 */
-    private int assessmentSessionWindowHours = 24;
 
     /** 送入回检 LLM 的对话最大字符数。 */
     private int assessmentMaxTranscriptChars = 8000;

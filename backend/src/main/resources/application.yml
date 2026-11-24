@@ -93,13 +93,12 @@ app:
     cooldown-penalty: 0.05
     cooldown-analyses: 2
     cooldown-hours: 24
-    recommend-goal-limit: 2
+    recommend-goal-limit: 1
     recommend-vocab-limit: 2
     review-interval-active-days: 1
     review-interval-practicing-days: 2
     review-interval-mastered-days: 14
     assessment-max-targets: 3
-    assessment-session-window-hours: 24
     assessment-max-transcript-chars: 8000
     exclude-recommend-point-ids:
       - LEXICAL_GAP

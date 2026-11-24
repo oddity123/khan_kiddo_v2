@@ -90,7 +90,7 @@ class MemoryMasteryAndLifecycleTest {
 
         assertEquals(MemoryStatus.MASTERED.name(), updated.getStatus());
         assertEquals(5, updated.getConsecutiveCorrect());
-        assertEquals(5, updated.getPracticedCount());
+        assertEquals(2, updated.getPracticedCount());
         assertEquals(5, updated.getCorrectCount());
         assertNotNull(updated.getNextReviewAt());
         assertEquals(now.plusDays(properties.getReviewIntervalMasteredDays()), updated.getNextReviewAt());

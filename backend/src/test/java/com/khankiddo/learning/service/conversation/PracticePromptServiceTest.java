@@ -32,7 +32,7 @@ class PracticePromptServiceTest {
 
         String prompt = service.assemble(request).getPrompt();
 
-        assertThat(prompt).contains("Spoken English Warm-up Coach");
+        assertThat(prompt).contains("Spoken English Practice Partner");
         assertThat(prompt.indexOf("### 1. 过去时")).isLessThan(prompt.indexOf("### 2. 冠词"));
         assertThat(prompt.indexOf("### 2. 冠词")).isLessThan(prompt.indexOf("### 3. 第三人称单数"));
         assertThat(prompt).contains("- Last time: 用了现在时");
@@ -97,8 +97,8 @@ class PracticePromptServiceTest {
         assertThat(prompt).contains("- Target (SECRET — do NOT say before they try): after-sales service");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("## Weak points");
-        assertThat(prompt).contains("Phase 0");
-        assertThat(prompt.indexOf("# Review Material")).isLessThan(prompt.indexOf("## Phase 0"));
+        assertThat(prompt).contains("## How to run this chat");
+        assertThat(prompt.indexOf("# Material")).isLessThan(prompt.indexOf("## How to run this chat"));
         assertThat(prompt).doesNotContain("Add-ons only");
     }
 
@@ -209,13 +209,13 @@ class PracticePromptServiceTest {
         String prompt = response.getPrompt();
         assertThat(prompt)
                 .contains("zero grammar terms")
-                .contains("Phase 0 — Start voice")
-                .contains("Phase 1 — Warm-up")
-                .contains("Phase 2 — Real conversation")
                 .contains("开启语音练习")
-                .contains("reveal any `Target`")
-                .contains("first time only");
-        assertThat(prompt.indexOf("# Review Material")).isLessThan(prompt.indexOf("## Language & Tone"));
+                .contains("without saying any word from `Target`")
+                .contains("never as a quiz or checklist")
+                .doesNotContain("Phase 1")
+                .doesNotContain("Phase 2")
+                .doesNotContain("e.g.");
+        assertThat(prompt.indexOf("# Material")).isLessThan(prompt.indexOf("## How to run this chat"));
     }
 
     @Test

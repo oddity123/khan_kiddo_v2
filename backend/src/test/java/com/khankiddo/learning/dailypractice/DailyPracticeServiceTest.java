@@ -1,11 +1,14 @@
 package com.khankiddo.learning.dailypractice;
 
 import com.khankiddo.learning.config.WeaknessMemoryProperties;
+import com.khankiddo.learning.dto.conversation.ActionCardDto;
 import com.khankiddo.learning.dto.conversation.PracticePromptResponse;
+import com.khankiddo.learning.dto.dailypractice.DailyPracticeMarkPracticedRequest;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeRecommendRequest;
 import com.khankiddo.learning.dto.dailypractice.DailyPracticeRecommendResponse;
 import com.khankiddo.learning.growth.GrowthCardAnalysisSupport;
 import com.khankiddo.learning.growth.GrowthCardStore;
+import com.khankiddo.learning.knowledge.HabitCardScorer;
 import com.khankiddo.learning.knowledge.PointDictionary;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
@@ -18,6 +21,8 @@ import com.khankiddo.learning.memory.service.MemoryEvidenceService;
 import com.khankiddo.learning.memory.service.MemoryPracticeService;
 import com.khankiddo.learning.memory.service.MemoryPriorityService;
 import com.khankiddo.learning.memory.service.MemoryService;
+import com.khankiddo.learning.model.ConversationAnalysis;
+import com.khankiddo.learning.model.ConversationAnalysisItem;
 import com.khankiddo.learning.model.GrowthCard;
 import com.khankiddo.learning.service.conversation.PracticePromptService;
 import org.junit.jupiter.api.BeforeEach;
@@ -296,5 +301,55 @@ class DailyPracticeServiceTest {
         assertEquals(2, response.getGoals().size());
         assertEquals("Shared Error Sentence.", response.getGoals().get(0).getEvidenceOriginal());
         assertEquals("Distinct Older Sentence.", response.getGoals().get(1).getEvidenceOriginal());
+    }
+
+    @Test
+    void fallbackFromRecentAnalysisEnsuresMemoryIdWhenPointRecognized() {
+        when(memoryMapper.countAllByUserId(7L)).thenReturn(1L);
+        when(memoryMapper.findByUserId(eq(7L), any())).thenReturn(List.of());
+        when(growthCardStore.listDue(eq(7L), any(LocalDate.class))).thenReturn(List.of());
+        when(analysisMapper.findByUserId(7L, 1, 0)).thenReturn(List.of(
+                ConversationAnalysis.builder().analysisId("ana-fb").build()));
+        List<ConversationAnalysisItem> rows = List.of(
+                ConversationAnalysisItem.builder()
+                        .analysisId("ana-fb")
+                        .pointId("PAST_SIMPLE_DONE")
+                        .originalSentence("Yesterday I go home.")
+                        .suggestion("Yesterday I went home.")
+                        .build());
+        when(itemMapper.findByAnalysisId("ana-fb")).thenReturn(rows);
+        ActionCardDto card = ActionCardDto.builder()
+                .pointId("PAST_SIMPLE_DONE")
+                .titleZh("一般过去时")
+                .examples(List.of(ActionCardDto.ExampleDto.builder()
+                        .originalSentence("Yesterday I go home.")
+                        .suggestion("Yesterday I went home.")
+                        .build()))
+                .build();
+        when(analysisSupport.score(rows)).thenReturn(
+                new HabitCardScorer.HabitScoreResult(card, List.of(card), List.of()));
+        when(memoryService.ensureMemoryForPoint(7L, "PAST_SIMPLE_DONE")).thenReturn(Optional.of(
+                WeaknessMemory.builder()
+                        .id(42L)
+                        .userId(7L)
+                        .familyId("FAM_TENSE")
+                        .pointId("PAST_SIMPLE_DONE")
+                        .memoryType(MemoryType.GRAMMAR.name())
+                        .status(MemoryStatus.NEW.name())
+                        .masteryLevel(BigDecimal.ZERO)
+                        .build()));
+        when(practicePromptService.assemble(any())).thenReturn(
+                PracticePromptResponse.builder().prompt("FALLBACK PROMPT").build());
+
+        DailyPracticeRecommendResponse response = service.recommend(7L, null);
+
+        assertFalse(response.isEmpty());
+        assertEquals(1, response.getGoals().size());
+        DailyPracticeRecommendResponse.GoalSummary goal = response.getGoals().get(0);
+        assertEquals(42L, goal.getMemoryId());
+        assertEquals("FAM_TENSE", goal.getFamilyId());
+        assertEquals(MemoryType.GRAMMAR.name(), goal.getMemoryType());
+        assertEquals(MemoryStatus.NEW.name(), goal.getStatus());
+        assertEquals("Yesterday I go home.", goal.getEvidenceOriginal());
     }
 }

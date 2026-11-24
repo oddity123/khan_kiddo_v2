@@ -46,4 +46,7 @@ public interface ConversationAnalysisTaskMapper {
                    @Param("errorMessage") String errorMessage,
                    @Param("finishedAt") LocalDateTime finishedAt,
                    @Param("expectedStatus") String expectedStatus);
+
+    int deleteByAnalysisIdAndUserId(@Param("analysisId") String analysisId,
+                                    @Param("userId") long userId);
 }

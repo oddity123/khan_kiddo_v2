@@ -114,6 +114,7 @@ class MemoryAssessmentServiceTest {
                 .correctAttempts(0)
                 .build();
 
+        when(sessionMapper.findIdsByUserIdAndAnalysisId(1L, "ana-1")).thenReturn(List.of());
         when(analysisMapper.findByAnalysisIdAndUserId("ana-1", 1L)).thenReturn(Optional.of(
                 ConversationAnalysis.builder()
                         .analysisId("ana-1")
@@ -121,6 +122,7 @@ class MemoryAssessmentServiceTest {
                         .build()));
         when(sessionMapper.findInProgressByUserIdAndSourceConversation(1L, "conv-abc"))
                 .thenReturn(List.of(session));
+        when(sessionMapper.completeIfInProgress(session)).thenReturn(1);
         when(itemMapper.findByAnalysisId("ana-1")).thenReturn(List.of());
         when(memoryMapper.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(memory));
         when(priorityService.selectDailyTargets(eq(1L), any(), anyInt(), any())).thenReturn(List.of());
@@ -145,7 +147,7 @@ class MemoryAssessmentServiceTest {
         assertFalse(attemptCaptor.getValue().getIsCorrect());
         assertEquals("Yesterday I go to work by bus.", attemptCaptor.getValue().getUserResponse());
 
-        verify(sessionMapper).updateCompletion(session);
+        verify(sessionMapper).completeIfInProgress(session);
         assertEquals(PracticeSessionStatus.COMPLETED.name(), session.getStatus());
         assertEquals("ana-1", session.getAnalysisId());
 
@@ -167,12 +169,12 @@ class MemoryAssessmentServiceTest {
                 .pointId("PAST_SIMPLE_DONE")
                 .status(MemoryStatus.ACTIVE.name())
                 .build();
+        when(sessionMapper.findIdsByUserIdAndAnalysisId(1L, "ana-2")).thenReturn(List.of());
         when(analysisMapper.findByAnalysisIdAndUserId("ana-2", 1L)).thenReturn(Optional.of(
                 ConversationAnalysis.builder()
                         .analysisId("ana-2")
                         .conversationContent("User: Today is sunny and warm.")
                         .build()));
-        when(sessionMapper.findRecentUnboundInProgress(eq(1L), any())).thenReturn(List.of());
         when(itemMapper.findByAnalysisId("ana-2")).thenReturn(List.of());
         when(priorityService.selectDailyTargets(eq(1L), any(), anyInt(), any())).thenReturn(List.of(memory));
 
@@ -196,7 +198,36 @@ class MemoryAssessmentServiceTest {
     }
 
     @Test
-    void unboundNoOpportunityDoesNotPrematurelyCloseSession() {
+    void missingSourceConversationIdDoesNotGuessUnboundSessions() {
+        when(sessionMapper.findIdsByUserIdAndAnalysisId(1L, "ana-3")).thenReturn(List.of());
+        when(analysisMapper.findByAnalysisIdAndUserId("ana-3", 1L)).thenReturn(Optional.of(
+                ConversationAnalysis.builder()
+                        .analysisId("ana-3")
+                        .conversationContent("User: I love coffee.")
+                        .build()));
+        when(itemMapper.findByAnalysisId("ana-3")).thenReturn(List.of());
+        when(priorityService.selectDailyTargets(eq(1L), any(), anyInt(), any())).thenReturn(List.of());
+
+        assessmentService.assessAfterAnalysis(1L, "ana-3", null);
+
+        verify(sessionMapper, never()).findInProgressByUserIdAndSourceConversation(any(), any());
+        verify(sessionMapper, never()).completeIfInProgress(any());
+        verify(attemptMapper, never()).insert(any());
+    }
+
+    @Test
+    void alreadyAssessedAnalysisIdIsSkippedIdempotently() {
+        when(sessionMapper.findIdsByUserIdAndAnalysisId(1L, "ana-done")).thenReturn(List.of(55L));
+
+        assessmentService.assessAfterAnalysis(1L, "ana-done", "conv-abc");
+
+        verify(analysisMapper, never()).findByAnalysisIdAndUserId(any(), any());
+        verify(llmClient, never()).evaluate(any());
+        verify(attemptMapper, never()).insert(any());
+    }
+
+    @Test
+    void concurrentDuplicateCompletionSkipsAttemptAndEvidence() {
         WeaknessMemory memory = WeaknessMemory.builder()
                 .id(10L)
                 .userId(1L)
@@ -204,32 +235,42 @@ class MemoryAssessmentServiceTest {
                 .pointId("PAST_SIMPLE_DONE")
                 .status(MemoryStatus.PRACTICING.name())
                 .build();
-        PracticeSession unboundSession = PracticeSession.builder()
-                .id(77L)
+        PracticeSession session = PracticeSession.builder()
+                .id(88L)
                 .userId(1L)
                 .memoryId(10L)
                 .targetPointId("PAST_SIMPLE_DONE")
                 .status(PracticeSessionStatus.IN_PROGRESS.name())
+                .sourceConversationId("conv-race")
+                .totalAttempts(0)
+                .correctAttempts(0)
                 .build();
 
-        when(analysisMapper.findByAnalysisIdAndUserId("ana-3", 1L)).thenReturn(Optional.of(
+        when(sessionMapper.findIdsByUserIdAndAnalysisId(1L, "ana-race")).thenReturn(List.of());
+        when(analysisMapper.findByAnalysisIdAndUserId("ana-race", 1L)).thenReturn(Optional.of(
                 ConversationAnalysis.builder()
-                        .analysisId("ana-3")
-                        .conversationContent("User: I love coffee.")
+                        .analysisId("ana-race")
+                        .conversationContent("User: Yesterday I went home early.")
                         .build()));
-        when(sessionMapper.findRecentUnboundInProgress(eq(1L), any())).thenReturn(List.of(unboundSession));
-        when(itemMapper.findByAnalysisId("ana-3")).thenReturn(List.of());
+        when(sessionMapper.findInProgressByUserIdAndSourceConversation(1L, "conv-race"))
+                .thenReturn(List.of(session));
+        when(sessionMapper.completeIfInProgress(session)).thenReturn(0);
+        when(itemMapper.findByAnalysisId("ana-race")).thenReturn(List.of());
         when(memoryMapper.findByIdAndUserId(10L, 1L)).thenReturn(Optional.of(memory));
         when(priorityService.selectDailyTargets(eq(1L), any(), anyInt(), any())).thenReturn(List.of());
 
-        MemoryAssessmentResult.EvaluationDto noOpp = new MemoryAssessmentResult.EvaluationDto();
-        noOpp.setTargetPointId("PAST_SIMPLE_DONE");
-        noOpp.setOutcome("NO_OPPORTUNITY");
-        when(llmClient.evaluate(any())).thenReturn(List.of(noOpp));
+        MemoryAssessmentResult.EvaluationDto eval = new MemoryAssessmentResult.EvaluationDto();
+        eval.setTargetPointId("PAST_SIMPLE_DONE");
+        eval.setOutcome(MemoryAssessmentOutcome.TRANSFER_SUCCESS.name());
+        eval.setScore(95.0);
+        eval.setEvidenceQuote("Yesterday I went home early.");
+        when(llmClient.evaluate(any())).thenReturn(List.of(eval));
 
-        assessmentService.assessAfterAnalysis(1L, "ana-3", null);
+        assessmentService.assessAfterAnalysis(1L, "ana-race", "conv-race");
 
-        verify(sessionMapper, never()).updateCompletion(any());
         verify(attemptMapper, never()).insert(any());
+        verify(evidenceService, never()).recordEvidence(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(masteryService, never()).recalculateAndSave(any(), any());
     }
 }

@@ -127,6 +127,21 @@ public class MemoryService {
         return new ArrayList<>(affectedIds);
     }
 
+    /**
+     * 为兜底推荐路径按 (userId, pointId) 幂等创建或获取薄弱点记忆（跳过中文通道及未收录点）。
+     */
+    @Transactional
+    public Optional<WeaknessMemory> ensureMemoryForPoint(Long userId, String pointId) {
+        if (!properties.isEnabled() || userId == null || !StringUtils.hasText(pointId)) {
+            return Optional.empty();
+        }
+        PointDefinition point = pointDictionary.pointsById().get(pointId.trim());
+        if (point == null || point.channel() == PointChannel.CHINESE) {
+            return Optional.empty();
+        }
+        return Optional.of(findOrCreateMemory(userId, point, LocalDateTime.now(clock)));
+    }
+
     @Transactional
     public void handleAnalysisDeleted(Long userId, String analysisId) {
         if (userId == null || !StringUtils.hasText(analysisId)) {

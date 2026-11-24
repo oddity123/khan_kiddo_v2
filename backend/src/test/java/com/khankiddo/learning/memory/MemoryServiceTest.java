@@ -3,11 +3,15 @@ package com.khankiddo.learning.memory;
 import com.khankiddo.learning.mapper.ConversationAnalysisItemMapper;
 import com.khankiddo.learning.mapper.ConversationAnalysisMapper;
 import com.khankiddo.learning.memory.domain.MemoryEvidence;
+import com.khankiddo.learning.memory.domain.PracticeSession;
 import com.khankiddo.learning.memory.domain.WeaknessMemory;
 import com.khankiddo.learning.memory.enums.MemoryStatus;
 import com.khankiddo.learning.memory.enums.MemoryType;
+import com.khankiddo.learning.memory.enums.PracticeType;
 import com.khankiddo.learning.memory.mapper.MemoryEvidenceMapper;
+import com.khankiddo.learning.memory.mapper.PracticeSessionMapper;
 import com.khankiddo.learning.memory.mapper.WeaknessMemoryMapper;
+import com.khankiddo.learning.memory.service.MemoryPracticeService;
 import com.khankiddo.learning.memory.service.MemoryService;
 import com.khankiddo.learning.model.ConversationAnalysis;
 import com.khankiddo.learning.model.ConversationAnalysisItem;
@@ -31,9 +35,13 @@ class MemoryServiceTest {
     @Autowired
     private MemoryService memoryService;
     @Autowired
+    private MemoryPracticeService practiceService;
+    @Autowired
     private WeaknessMemoryMapper memoryMapper;
     @Autowired
     private MemoryEvidenceMapper evidenceMapper;
+    @Autowired
+    private PracticeSessionMapper sessionMapper;
     @Autowired
     private ConversationAnalysisMapper analysisMapper;
     @Autowired
@@ -102,6 +110,39 @@ class MemoryServiceTest {
         List<Long> affected = memoryService.recordAnalysisHits(2L, "ana-zh");
         assertTrue(affected.isEmpty());
         assertEquals(0L, memoryMapper.countAllByUserId(2L));
+    }
+
+    @Test
+    void ensureMemoryForPointCreatesIdempotentlyAndSkipsChineseOrUnknown() {
+        WeaknessMemory created = memoryService.ensureMemoryForPoint(3L, "PAST_SIMPLE_DONE").orElseThrow();
+        assertEquals(MemoryStatus.NEW.name(), created.getStatus());
+        assertEquals(MemoryType.GRAMMAR.name(), created.getMemoryType());
+        assertEquals("FAM_TENSE", created.getFamilyId());
+
+        WeaknessMemory second = memoryService.ensureMemoryForPoint(3L, "PAST_SIMPLE_DONE").orElseThrow();
+        assertEquals(created.getId(), second.getId());
+
+        assertTrue(memoryService.ensureMemoryForPoint(3L, "CHINESE_EXPRESSION").isEmpty());
+        assertTrue(memoryService.ensureMemoryForPoint(3L, "UNKNOWN_POINT_XYZ").isEmpty());
+    }
+
+    @Test
+    void startSessionsDerivesPracticedCountFromSessionTable() {
+        WeaknessMemory created = memoryService.ensureMemoryForPoint(4L, "PAST_SIMPLE_DONE").orElseThrow();
+        created.setPracticedCount(99);
+        memoryMapper.updateMetricsAndStatus(created);
+
+        List<PracticeSession> firstBatch = practiceService.startSessions(
+                4L, List.of(created.getId()), PracticeType.SCENARIO, "conv-1");
+        assertEquals(1, firstBatch.size());
+        WeaknessMemory afterFirst = memoryMapper.findByIdAndUserId(created.getId(), 4L).orElseThrow();
+        assertEquals(1L, sessionMapper.countByMemoryId(created.getId()));
+        assertEquals(1, afterFirst.getPracticedCount());
+
+        practiceService.startSessions(4L, List.of(created.getId()), PracticeType.SCENARIO, "conv-2");
+        WeaknessMemory afterSecond = memoryMapper.findByIdAndUserId(created.getId(), 4L).orElseThrow();
+        assertEquals(2L, sessionMapper.countByMemoryId(created.getId()));
+        assertEquals(2, afterSecond.getPracticedCount());
     }
 
     private void insertAnalysis(
