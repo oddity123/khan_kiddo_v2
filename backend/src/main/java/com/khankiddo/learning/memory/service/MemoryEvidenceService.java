@@ -16,7 +16,9 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 记忆证据管理：幂等追加 HIT / PRACTICE_ERROR / TRANSFER_SUCCESS / PROMPTED_CORRECT。
@@ -96,6 +98,38 @@ public class MemoryEvidenceService {
         }
         List<MemoryEvidence> recent = evidenceMapper.findByMemoryId(memoryId, 1);
         return CollectionUtils.isEmpty(recent) ? Optional.empty() : Optional.of(recent.get(0));
+    }
+
+    public Optional<MemoryEvidence> findDistinctHitOrEvidence(Long memoryId, Set<String> usedNormalizedOriginals) {
+        if (memoryId == null) {
+            return Optional.empty();
+        }
+        if (CollectionUtils.isEmpty(usedNormalizedOriginals)) {
+            return findLatestHitOrEvidence(memoryId);
+        }
+        List<MemoryEvidence> candidates = evidenceMapper.findByMemoryId(memoryId, 10);
+        if (CollectionUtils.isEmpty(candidates)) {
+            return Optional.empty();
+        }
+        for (MemoryEvidence candidate : candidates) {
+            if (EvidenceType.HIT.name().equals(candidate.getEvidenceType())
+                    && isDistinctOriginal(candidate.getOriginalText(), usedNormalizedOriginals)) {
+                return Optional.of(candidate);
+            }
+        }
+        for (MemoryEvidence candidate : candidates) {
+            if (isDistinctOriginal(candidate.getOriginalText(), usedNormalizedOriginals)) {
+                return Optional.of(candidate);
+            }
+        }
+        return findLatestHitOrEvidence(memoryId);
+    }
+
+    private static boolean isDistinctOriginal(String originalText, Set<String> usedNormalizedOriginals) {
+        if (!StringUtils.hasText(originalText)) {
+            return false;
+        }
+        return !usedNormalizedOriginals.contains(originalText.trim().toLowerCase(Locale.ROOT));
     }
 
     public List<Long> deleteByAnalysis(Long userId, String analysisId) {

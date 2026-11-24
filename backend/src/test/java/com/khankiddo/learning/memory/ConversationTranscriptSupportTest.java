@@ -39,5 +39,20 @@ class ConversationTranscriptSupportTest {
                 "Yesterday I went to the store.", utterances));
         assertTrue(ConversationTranscriptSupport.isQuoteGroundedInUserSpeech(
                 "Last weekend I went to a bookstore", utterances));
+
+        // 校验优化后新版 Warm-up 模板也能被正确识别并剔除
+        String warmupRaw = """
+                User: # Spoken English Warm-up Coach
+                # Review Material
+                ## Phase 1 — Warm-up
+                Target (SECRET — do NOT say before they try): be true to yourself
+
+                Assistant: 请先开启语音练习，开麦后我们开始。
+
+                User: I always try to be true to myself.
+                """;
+        List<String> warmupUtterances = ConversationTranscriptSupport.extractCleanUserUtterances(warmupRaw);
+        assertEquals(1, warmupUtterances.size());
+        assertEquals("I always try to be true to myself.", warmupUtterances.get(0));
     }
 }

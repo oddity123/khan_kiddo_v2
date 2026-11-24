@@ -82,6 +82,20 @@ class MemoryPriorityServiceTest {
         assertTrue(grammarScore > habitScore);
     }
 
+    @Test
+    void excludesConfiguredPointIdsSuchAsLexicalGapFromDailyTargets() {
+        LocalDateTime now = LocalDateTime.of(2026, 11, 24, 12, 0);
+        WeaknessMemory lexicalGap = memory(1L, "LEXICAL_GAP", MemoryType.LEXICAL, MemoryStatus.ACTIVE, 20, 0, null);
+        WeaknessMemory grammar = memory(2L, "SVA_THIRD_PERSON", MemoryType.GRAMMAR, MemoryStatus.ACTIVE, 3, 0, null);
+
+        when(memoryMapper.findByUserId(eq(1L), any())).thenReturn(List.of(lexicalGap, grammar));
+
+        List<WeaknessMemory> selected = priorityService.selectDailyTargets(1L, Set.of(), 2, now);
+
+        assertEquals(1, selected.size());
+        assertEquals("SVA_THIRD_PERSON", selected.get(0).getPointId());
+    }
+
     private static WeaknessMemory memory(
             long id,
             String pointId,

@@ -132,7 +132,7 @@ class DailyPracticeServiceTest {
         when(memoryMapper.countAllByUserId(9L)).thenReturn(2L);
         when(memoryMapper.findByUserId(eq(9L), any())).thenReturn(List.of(cooling, ready));
         when(growthCardStore.listDue(eq(9L), any(LocalDate.class))).thenReturn(List.of());
-        when(evidenceService.findLatestHitOrEvidence(anyLong())).thenReturn(Optional.empty());
+        when(evidenceService.findDistinctHitOrEvidence(anyLong(), any())).thenReturn(Optional.empty());
         when(itemMapper.findErrorExamplesByUserId(eq(9L), any(), any(), anyInt(), any()))
                 .thenReturn(List.of());
         when(practicePromptService.assemble(any())).thenReturn(
@@ -162,7 +162,7 @@ class DailyPracticeServiceTest {
         when(memoryMapper.countAllByUserId(1L)).thenReturn(2L);
         when(memoryMapper.findByUserId(eq(1L), any())).thenReturn(List.of(first, second));
         when(growthCardStore.listDue(eq(1L), any(LocalDate.class))).thenReturn(List.of());
-        when(evidenceService.findLatestHitOrEvidence(2L)).thenReturn(Optional.of(
+        when(evidenceService.findDistinctHitOrEvidence(eq(2L), any())).thenReturn(Optional.of(
                 MemoryEvidence.builder().originalText("orig").correctedText("corr").build()));
         when(practicePromptService.assemble(any())).thenReturn(
                 PracticePromptResponse.builder().prompt("PROMPT").build());
@@ -212,7 +212,7 @@ class DailyPracticeServiceTest {
         when(memoryMapper.countAllByUserId(9L)).thenReturn(3L);
         when(memoryMapper.findByUserId(eq(9L), any())).thenReturn(List.of(fluencyHigh, fluencyLow, grammar));
         when(growthCardStore.listDue(eq(9L), any(LocalDate.class))).thenReturn(List.of());
-        when(evidenceService.findLatestHitOrEvidence(anyLong())).thenReturn(Optional.empty());
+        when(evidenceService.findDistinctHitOrEvidence(anyLong(), any())).thenReturn(Optional.empty());
         when(itemMapper.findErrorExamplesByUserId(eq(9L), any(), any(), anyInt(), any()))
                 .thenReturn(List.of());
         when(practicePromptService.assemble(any())).thenReturn(
@@ -238,7 +238,7 @@ class DailyPracticeServiceTest {
                         .familyId("FAM_TENSE").pointId("PAST_SIMPLE_DONE")
                         .hitCount(2).recentHitCount(2).masteryLevel(BigDecimal.ZERO)
                         .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build()));
-        when(evidenceService.findLatestHitOrEvidence(1L)).thenReturn(Optional.empty());
+        when(evidenceService.findDistinctHitOrEvidence(eq(1L), any())).thenReturn(Optional.empty());
         when(itemMapper.findErrorExamplesByUserId(eq(1L), any(), any(), anyInt(), any()))
                 .thenReturn(List.of());
         when(growthCardStore.listDue(eq(1L), any(LocalDate.class))).thenReturn(List.of(
@@ -253,5 +253,48 @@ class DailyPracticeServiceTest {
         assertEquals(2, response.getVocabulary().size());
         assertEquals("v1", response.getVocabulary().get(0).getCardId());
         assertEquals("e1", response.getVocabulary().get(1).getCardId());
+    }
+
+    @Test
+    void deduplicatesEvidenceSentenceAcrossGoalsInSameBatch() {
+        LocalDateTime seen = LocalDateTime.now(fixedClock).minusDays(1);
+        WeaknessMemory g1 = WeaknessMemory.builder()
+                .id(1L).userId(5L).title("三单").memoryType("GRAMMAR")
+                .familyId("FAM_AGREEMENT").pointId("SVA_THIRD_PERSON")
+                .hitCount(5).recentHitCount(5).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+        WeaknessMemory g2 = WeaknessMemory.builder()
+                .id(2L).userId(5L).title("词性").memoryType("GRAMMAR")
+                .familyId("FAM_WORD_FORM").pointId("WORD_FORM_POS")
+                .hitCount(4).recentHitCount(4).masteryLevel(BigDecimal.ZERO)
+                .lastSeenAt(seen).status(MemoryStatus.ACTIVE.name()).build();
+
+        when(memoryMapper.countAllByUserId(5L)).thenReturn(2L);
+        when(memoryMapper.findByUserId(eq(5L), any())).thenReturn(List.of(g1, g2));
+        when(growthCardStore.listDue(eq(5L), any(LocalDate.class))).thenReturn(List.of());
+        when(evidenceService.findDistinctHitOrEvidence(eq(1L), any())).thenReturn(Optional.of(
+                MemoryEvidence.builder().originalText("Shared Error Sentence.").correctedText("Fix 1").build()));
+        when(evidenceService.findDistinctHitOrEvidence(eq(2L), any())).thenAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            java.util.Set<String> used = inv.getArgument(1, java.util.Set.class);
+            if (used.contains("shared error sentence.")) {
+                return Optional.of(MemoryEvidence.builder()
+                        .originalText("Distinct Older Sentence.")
+                        .correctedText("Fix 2")
+                        .build());
+            }
+            return Optional.of(MemoryEvidence.builder()
+                    .originalText("Shared Error Sentence.")
+                    .correctedText("Fix 1")
+                    .build());
+        });
+        when(practicePromptService.assemble(any())).thenReturn(
+                PracticePromptResponse.builder().prompt("PROMPT").build());
+
+        DailyPracticeRecommendResponse response = service.recommend(5L, null);
+
+        assertEquals(2, response.getGoals().size());
+        assertEquals("Shared Error Sentence.", response.getGoals().get(0).getEvidenceOriginal());
+        assertEquals("Distinct Older Sentence.", response.getGoals().get(1).getEvidenceOriginal());
     }
 }

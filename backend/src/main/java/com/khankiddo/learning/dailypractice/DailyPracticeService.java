@@ -186,18 +186,29 @@ public class DailyPracticeService {
             return List.of();
         }
         List<DailyPracticeRecommendResponse.GoalSummary> goals = new ArrayList<>(memories.size());
+        Set<String> usedNormalizedOriginals = new HashSet<>();
         int poolSize = memories.size();
         for (WeaknessMemory memory : memories) {
-            Optional<MemoryEvidence> evidenceOpt = evidenceService.findLatestHitOrEvidence(memory.getId());
+            Optional<MemoryEvidence> evidenceOpt =
+                    evidenceService.findDistinctHitOrEvidence(memory.getId(), usedNormalizedOriginals);
             String original = evidenceOpt.map(MemoryEvidence::getOriginalText).orElse(null);
             String rewrite = evidenceOpt.map(MemoryEvidence::getCorrectedText).orElse(null);
             if (!StringUtils.hasText(original) && StringUtils.hasText(memory.getPointId())) {
                 List<ConversationAnalysisItem> rows = itemMapper.findErrorExamplesByUserId(
-                        userId, List.of(memory.getPointId().trim()), null, 1, null);
+                        userId, List.of(memory.getPointId().trim()), null, 5, null);
                 if (!CollectionUtils.isEmpty(rows)) {
-                    original = rows.get(0).getOriginalSentence();
-                    rewrite = rows.get(0).getSuggestion();
+                    ConversationAnalysisItem picked = rows.stream()
+                            .filter(r -> StringUtils.hasText(r.getOriginalSentence())
+                                    && !usedNormalizedOriginals.contains(
+                                            r.getOriginalSentence().trim().toLowerCase(Locale.ROOT)))
+                            .findFirst()
+                            .orElse(rows.get(0));
+                    original = picked.getOriginalSentence();
+                    rewrite = picked.getSuggestion();
                 }
+            }
+            if (StringUtils.hasText(original)) {
+                usedNormalizedOriginals.add(original.trim().toLowerCase(Locale.ROOT));
             }
             boolean cooling = priorityService.isCoolingDown(memory, now);
             double score = priorityService.computePriorityScore(memory, now, cooling, poolSize);

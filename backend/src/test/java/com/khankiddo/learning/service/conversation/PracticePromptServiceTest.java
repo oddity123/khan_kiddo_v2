@@ -92,7 +92,9 @@ class PracticePromptServiceTest {
 
         assertThat(prompt).contains("## Extra vocabulary");
         assertThat(prompt).contains("Count: 1");
-        assertThat(prompt).contains("### 1. **售后服务** → after-sales service");
+        assertThat(prompt).contains("### 1.");
+        assertThat(prompt).contains("- Clue / learner's old phrasing: 售后服务");
+        assertThat(prompt).contains("- Target (SECRET — do NOT say before they try): after-sales service");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("## Weak points");
         assertThat(prompt).contains("Phase 0");
@@ -125,11 +127,13 @@ class PracticePromptServiceTest {
 
         assertThat(prompt).contains("### 1. 过去时");
         assertThat(prompt).contains("Count: 2");
-        assertThat(prompt).contains("### 1. **售后服务** → after-sales service");
-        assertThat(prompt).contains("### 2. **宣传** → promote");
+        assertThat(prompt).contains("- Clue / learner's old phrasing: 售后服务");
+        assertThat(prompt).contains("- Target (SECRET — do NOT say before they try): after-sales service");
+        assertThat(prompt).contains("- Clue / learner's old phrasing: 宣传");
+        assertThat(prompt).contains("- Target (SECRET — do NOT say before they try): promote");
         assertThat(prompt).contains("- Last said: `How can I say 售后服务?`");
         assertThat(prompt).doesNotContain("ignored duplicate");
-        assertThat(countOccurrences(prompt, "**售后服务** → after-sales service")).isEqualTo(1);
+        assertThat(countOccurrences(prompt, "after-sales service")).isEqualTo(1);
     }
 
     @Test
@@ -204,13 +208,14 @@ class PracticePromptServiceTest {
 
         String prompt = response.getPrompt();
         assertThat(prompt)
-                .containsIgnoringCase("pre-conversation recap")
-                .contains("Phase 0")
-                .contains("Phase 1")
-                .contains("at most one")
+                .contains("zero grammar terms")
+                .contains("Phase 0 — Start voice")
+                .contains("Phase 1 — Warm-up")
+                .contains("Phase 2 — Real conversation")
                 .contains("开启语音练习")
-                .contains("every** vocabulary item");
-        assertThat(prompt.indexOf("# Review Material")).isLessThan(prompt.indexOf("## Mission"));
+                .contains("reveal any `Target`")
+                .contains("first time only");
+        assertThat(prompt.indexOf("# Review Material")).isLessThan(prompt.indexOf("## Language & Tone"));
     }
 
     @Test

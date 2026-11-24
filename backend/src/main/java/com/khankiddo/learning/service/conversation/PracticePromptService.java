@@ -147,9 +147,10 @@ public class PracticePromptService {
         for (PracticePromptRequest.Vocabulary item : vocabulary) {
             block.append("\n\n### ")
                     .append(index++)
-                    .append(". **")
+                    .append('.')
+                    .append("\n- Clue / learner's old phrasing: ")
                     .append(item.getFront())
-                    .append("** → ")
+                    .append("\n- Target (SECRET — do NOT say before they try): ")
                     .append(item.getBack());
             if (StringUtils.hasText(item.getOriginalSentence())) {
                 block.append("\n- Last said: `")

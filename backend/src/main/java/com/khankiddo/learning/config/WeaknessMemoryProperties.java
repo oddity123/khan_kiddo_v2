@@ -4,6 +4,9 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 口语薄弱点长期记忆、练习闭环、掌握度及优先级排程参数（配置单源）。
  */
@@ -78,4 +81,7 @@ public class WeaknessMemoryProperties {
 
     /** 送入回检 LLM 的对话最大字符数。 */
     private int assessmentMaxTranscriptChars = 8000;
+
+    /** 每日练习「薄弱点（Weak points）」推荐中排除的 pointId（如一次性词汇缺口走 Extra vocabulary 成长卡）。 */
+    private List<String> excludeRecommendPointIds = new ArrayList<>(List.of("LEXICAL_GAP"));
 }

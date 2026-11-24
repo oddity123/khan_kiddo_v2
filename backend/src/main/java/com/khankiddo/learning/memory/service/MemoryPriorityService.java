@@ -17,7 +17,9 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -55,9 +57,14 @@ public class MemoryPriorityService {
             return List.of();
         }
 
+        Set<String> excludedPointIds = toUpperTrimmedSet(properties.getExcludeRecommendPointIds());
         List<WeaknessMemory> eligible = new ArrayList<>();
         for (WeaknessMemory memory : candidates) {
             if (isMasteredAndNotDue(memory, now)) {
+                continue;
+            }
+            if (StringUtils.hasText(memory.getPointId())
+                    && excludedPointIds.contains(memory.getPointId().trim().toUpperCase(Locale.ROOT))) {
                 continue;
             }
             if (memory.getId() != null && excludeMemoryIds != null && excludeMemoryIds.contains(memory.getId())) {
@@ -215,6 +222,19 @@ public class MemoryPriorityService {
         }
         long daysSincePractice = Math.max(0L, Duration.between(memory.getLastPracticedAt(), now).toDays());
         return Math.min(100.0, daysSincePractice * 5.0);
+    }
+
+    private static Set<String> toUpperTrimmedSet(List<String> values) {
+        if (CollectionUtils.isEmpty(values)) {
+            return Set.of();
+        }
+        Set<String> set = new HashSet<>();
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                set.add(value.trim().toUpperCase(Locale.ROOT));
+            }
+        }
+        return set;
     }
 
     private record ScoredTarget(WeaknessMemory memory, double score) {
