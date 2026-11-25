@@ -73,16 +73,19 @@ export async function analyzeConversationStream(
 
   if (!response.ok) {
     let message = `分析请求失败（${response.status}）`
+    let backendMessage: string | undefined
     try {
       const body = (await response.json()) as { message?: string }
       if (body?.message) {
+        backendMessage = body.message
         message = body.message
       }
     } catch {
       // ignore
     }
-    const err = new Error(message) as Error & { status?: number }
+    const err = new Error(message) as Error & { status?: number; backendMessage?: string }
     err.status = response.status
+    err.backendMessage = backendMessage
     throw err
   }
 

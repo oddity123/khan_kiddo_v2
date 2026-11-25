@@ -6,12 +6,14 @@ import 'element-plus/dist/index.css'
 
 import App from './App.vue'
 import router from './router'
+import {setupAuthSession} from '@/utils/authSession'
 import '@/styles/index.css'
 
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+setupAuthSession(router)
 app.use(ElementPlus, { locale: zhCn })
 
 app.mount('#app')

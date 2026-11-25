@@ -6,11 +6,14 @@ import {useRouter} from 'vue-router'
 
 import ErrorTypePieChart from '@/components/conversation/ErrorTypePieChart.vue'
 import {fetchHomePage} from '@/api/home'
+import {useAuthStore} from '@/stores/auth'
 import type {ErrorTypeDistribution} from '@/types/conversation'
 import type {HomePageResponse} from '@/types/home'
+import {notifySessionExpired} from '@/utils/authSession'
 import {getErrorMessage} from '@/utils/error'
 
 const router = useRouter()
+const auth = useAuthStore()
 const loading = ref(true)
 const home = ref<HomePageResponse | null>(null)
 
@@ -174,6 +177,10 @@ async function loadHome() {
   loading.value = true
   try {
     const {data} = await fetchHomePage()
+    if (!data.authenticated && auth.isAuthenticated) {
+      notifySessionExpired()
+      return
+    }
     home.value = data
   } catch (error) {
     home.value = null

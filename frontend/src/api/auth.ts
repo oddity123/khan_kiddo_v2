@@ -1,3 +1,5 @@
+import type {AxiosRequestConfig} from 'axios'
+
 import http from './http'
 import type {LoginResponse, RegisterPayload, RegisterResponse, UserProfile} from '@/types/auth'
 
@@ -14,8 +16,8 @@ export function register(payload: RegisterPayload) {
   return http.post<RegisterResponse>('/api/auth/register', payload)
 }
 
-export function fetchCurrentUser() {
-  return http.get<UserProfile>('/api/auth/me')
+export function fetchCurrentUser(config?: AxiosRequestConfig) {
+  return http.get<UserProfile>('/api/auth/me', config)
 }
 
 export function logout() {

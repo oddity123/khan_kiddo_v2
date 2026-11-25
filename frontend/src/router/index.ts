@@ -1,6 +1,8 @@
+import {ElMessage} from 'element-plus'
 import {createRouter, createWebHistory} from 'vue-router'
 
 import {ADMIN_BASE_PATH} from '@/constants/admin'
+import {SESSION_EXPIRED_MESSAGE} from '@/constants/auth'
 import {useAuthStore} from '@/stores/auth'
 import {applySeo} from '@/utils/seo'
 import {rememberSignupFrom} from '@/utils/signupFrom'
@@ -211,12 +213,16 @@ router.beforeEach(async (to) => {
     if (!auth.initialized) {
         await auth.initialize()
     }
+    const expired = auth.expireIfNeeded()
     const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
     const requiresAdmin = to.matched.some((record) => record.meta.requiresAdmin)
     if (to.meta.guestOnly && auth.isAuthenticated) {
         return {path: '/'}
     }
     if (requiresAuth && !auth.isAuthenticated) {
+        if (expired) {
+            ElMessage.warning(SESSION_EXPIRED_MESSAGE)
+        }
         return {path: '/login', query: {redirect: to.fullPath}}
     }
     if (requiresAdmin && !auth.isAdmin) {

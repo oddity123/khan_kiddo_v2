@@ -1,6 +1,7 @@
 import { AUTH_TOKEN_KEY } from '@/constants/auth'
 import type { RagStreamEvent } from '@/types/grammarRag'
 import { RAG_STREAM_STATUS } from '@/types/grammarRag'
+import { notifySessionExpired } from '@/utils/authSession'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -58,13 +59,18 @@ export async function chatGrammarRagStream(
 
   if (!response.ok) {
     let errorMessage = `问答请求失败（${response.status}）`
+    let backendMessage: string | undefined
     try {
       const body = (await response.json()) as { message?: string }
       if (body?.message) {
+        backendMessage = body.message
         errorMessage = body.message
       }
     } catch {
       // ignore
+    }
+    if (response.status === 401 && notifySessionExpired({ message: backendMessage })) {
+      return
     }
     throw new Error(errorMessage)
   }

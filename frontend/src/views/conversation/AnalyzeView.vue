@@ -22,6 +22,7 @@ import {useAuthStore} from '@/stores/auth'
 import {useEphemeralAnalysisStore} from '@/stores/ephemeralAnalysis'
 import type {ConversationAnalysisProgress, LlmModelOption} from '@/types/conversation'
 import {PROGRESS_STATUS} from '@/types/conversation'
+import {notifySessionExpired} from '@/utils/authSession'
 import {resultToEphemeralDetail} from '@/utils/ephemeralDetail'
 import {getErrorMessage} from '@/utils/error'
 
@@ -308,11 +309,9 @@ async function onAnalyze() {
       return
     }
     trackFunnelEvent({name: 'analyze_error'})
-    const failed = error as Error & { analysisId?: string; status?: number }
+    const failed = error as Error & { analysisId?: string; status?: number; backendMessage?: string }
     if (failed.status === 401) {
-      ElMessage.warning(getErrorMessage(error, '登录已失效，请重新登录'))
-      auth.clearSession()
-      await router.push({path: '/login', query: {redirect: '/conversation/analyze'}})
+      notifySessionExpired({message: failed.backendMessage})
       return
     }
     if (failed.status === 403) {
