@@ -153,32 +153,6 @@ async function openPracticePrompt() {
   practiceDialogOpen.value = true
 }
 
-async function onHabitCardGenerated() {
-  asideTab.value = 'cards'
-  const beforeIds = new Set(growthCards.value.map((card) => card.cardId))
-  await refreshDetailSilent()
-  await nextTick()
-  const added = (detail.value?.growthCards ?? []).filter((card) => !beforeIds.has(card.cardId))
-  if (!added.length) {
-    return
-  }
-  // 新卡置顶：watch 可能已 prepend；再保证顺序为「新增（新→旧）+ 原序」
-  const addedIds = new Set(added.map((card) => card.cardId))
-  const rest = fanOrderIds.value.filter(
-      (id) =>
-          !addedIds.has(id) &&
-          (detail.value?.growthCards ?? []).some((card) => card.cardId === id),
-  )
-  fanOrderIds.value = [
-    ...sortGrowthCardsNewestFirst(added).map((card) => card.cardId),
-    ...rest,
-  ]
-  await nextTick()
-  await nextTick()
-  // 牌组按 cursorId 锚定旧卡；须 reset 到第 0 张后再播插入动画
-  await growthFanRef.value?.playInsertRestore()
-}
-
 async function onDeleteGrowthCard(cardId: string) {
   await deleteGrowthCard(cardId)
   if (!detail.value) {
@@ -351,10 +325,6 @@ const growthFanItems = computed((): ChineseExpressionItem[] => {
         evidenceCount: card.evidence?.length ?? 0,
       }))
 })
-
-const growthFanRef = ref<{
-  playInsertRestore: () => Promise<void>
-} | null>(null)
 
 const englishPracticeCount = computed(() => {
   const total = overallStats.value?.totalSentences ?? sortedItems.value.length + chineseExpressionCount.value
@@ -531,11 +501,7 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
 
             <ActionCardsPanel
                 :cards="actionCards"
-                :analysis-id="analysisId"
-                :growth-cards="growthCards"
                 :analysis-items="sortedItems"
-                @generated="onHabitCardGenerated"
-                @open-cards="asideTab = 'cards'"
             />
           </section>
 
@@ -768,7 +734,6 @@ watch([analysisId, isEphemeral, isAdminView], loadDetail)
             />
             <template v-else>
               <ChineseExpressionFan
-                  ref="growthFanRef"
                   layout="aside"
                   variant="growth"
                   heading="成长卡"

@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import {ArrowRight, CircleCheck, MagicStick} from '@element-plus/icons-vue'
-import {ElMessage} from 'element-plus'
+import {ArrowRight} from '@element-plus/icons-vue'
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 
-import {mintHabitGrowthCard} from '@/api/growthCard'
 import HabitEvidencePreview from '@/components/conversation/HabitEvidencePreview.vue'
 import SentenceAnalysisCard from '@/components/conversation/SentenceAnalysisCard.vue'
 import type {
@@ -12,27 +10,17 @@ import type {
   AnalysisItem,
   PointChannel,
 } from '@/types/conversation'
-import type {GrowthCard} from '@/types/growthCard'
-import {getErrorMessage} from '@/utils/error'
 
 const PREVIEW_LIMIT = 2
 
 const props = withDefaults(
     defineProps<{
       cards: ActionCard[]
-      analysisId?: string
-      /** 本场已生成成长卡，用于置灰「已生成」 */
-      growthCards?: GrowthCard[]
       /** 句子级检查完整列表，用于证据卡展示该句全部优化点 */
       analysisItems?: AnalysisItem[]
     }>(),
-    {cards: () => [], growthCards: () => [], analysisItems: () => []},
+    {cards: () => [], analysisItems: () => []},
 )
-
-const emit = defineEmits<{
-  generated: [card: ActionCard]
-  openCards: []
-}>()
 
 const CHANNEL_LABEL: Record<PointChannel, string> = {
   rule: '语法规则',
@@ -41,7 +29,6 @@ const CHANNEL_LABEL: Record<PointChannel, string> = {
   chinese: '中式思维',
 }
 
-const mintingKey = ref<string | null>(null)
 const evidenceOpen = ref(false)
 const evidenceTitle = ref('')
 const evidenceItems = ref<AnalysisItem[]>([])
@@ -64,16 +51,6 @@ const evidenceFullscreen = computed(() => viewportWidth.value <= 640)
 const evidenceDialogWidth = computed(() =>
     evidenceFullscreen.value ? '100%' : 'min(880px, 96vw)',
 )
-
-const generatedHabitRefs = computed(() => {
-  const refs = new Set<string>()
-  for (const card of props.growthCards) {
-    if (card.type === 'habit' && card.sourceRef) {
-      refs.add(card.sourceRef)
-    }
-  }
-  return refs
-})
 
 function channelLabel(channel: PointChannel): string {
   return CHANNEL_LABEL[channel] ?? '其它'
@@ -173,67 +150,12 @@ function openEvidence(card: ActionCard, event?: Event) {
   evidenceOpen.value = true
 }
 
-function habitSourceRef(card: ActionCard): string | null {
-  const key = cardKey(card)
-  return key ? `habit:${key}` : null
-}
-
-function isGenerated(card: ActionCard): boolean {
-  const ref = habitSourceRef(card)
-  return Boolean(ref && generatedHabitRefs.value.has(ref))
-}
-
-function isMintDone(card: ActionCard): boolean {
-  return isGenerated(card)
-}
-
-function isMintPending(card: ActionCard): boolean {
-  return mintingKey.value === cardKey(card)
-}
-
 function displayTitle(card: ActionCard): string {
   return (card.headlineZh || card.titleZh || '').replace(/^本次最该改：/, '').trim()
 }
 
 function displayDiagnosis(card: ActionCard): string {
   return (card.diagnosisZh || card.whyZh || '').trim()
-}
-
-function onMintClick(card: ActionCard, event?: Event) {
-  if (isMintDone(card)) {
-    onOpenCards(event)
-    return
-  }
-  void onGenerate(card, event)
-}
-
-async function onGenerate(card: ActionCard, event?: Event) {
-  event?.stopPropagation()
-  event?.preventDefault()
-  if (!props.analysisId || mintingKey.value || isMintDone(card)) {
-    return
-  }
-  const key = cardKey(card)
-  if (!key) {
-    ElMessage.warning('暂无可生成的卡片内容')
-    return
-  }
-  mintingKey.value = key
-  try {
-    await mintHabitGrowthCard(props.analysisId, key)
-    ElMessage.success('已生成成长卡')
-    emit('generated', card)
-  } catch (error) {
-    ElMessage.error(getErrorMessage(error, '生成卡片失败'))
-  } finally {
-    mintingKey.value = null
-  }
-}
-
-function onOpenCards(event?: Event) {
-  event?.stopPropagation()
-  event?.preventDefault()
-  emit('openCards')
 }
 </script>
 
@@ -263,22 +185,6 @@ function onOpenCards(event?: Event) {
                 @click="openEvidence(card, $event)"
             >
               查看证据: {{ evidenceCount(card) }}句
-            </button>
-            <button
-                type="button"
-                class="kk-btn-blue ac-cta"
-                :class="{
-                  'ac-cta--done': isMintDone(card),
-                  'ac-cta--pending': isMintPending(card),
-                }"
-                :disabled="!isMintDone(card) && (!analysisId || isMintPending(card))"
-                @click="onMintClick(card, $event)"
-            >
-              <el-icon v-if="isMintDone(card)"><CircleCheck/></el-icon>
-              <el-icon v-else-if="!isMintPending(card)"><MagicStick/></el-icon>
-              <template v-if="isMintDone(card)">已生成</template>
-              <template v-else-if="isMintPending(card)">制卡中…</template>
-              <template v-else>制卡</template>
             </button>
           </div>
         </div>
@@ -449,10 +355,6 @@ function onOpenCards(event?: Event) {
   gap: 0.4rem;
 }
 
-.ac-meta-row .ac-cta {
-  margin-left: auto;
-}
-
 .ac-channel-tag {
   flex-shrink: 0;
   padding: 0.15rem 0.55rem;
@@ -495,36 +397,6 @@ function onOpenCards(event?: Event) {
   gap: 0.55rem;
   /* 抵消卡片左右内边距，让例句占满可读宽度 */
   margin-inline: -0.35rem;
-}
-
-.ac-cta {
-  white-space: nowrap;
-}
-
-.ac-cta--done,
-.ac-cta--done:disabled {
-  opacity: 1;
-  color: var(--kk-color-success);
-  background: var(--kk-color-success-bg);
-  border: 1px solid color-mix(in srgb, var(--kk-color-success) 22%, transparent);
-  box-shadow: none;
-  cursor: pointer;
-}
-
-.ac-cta--done:hover:not(:disabled),
-.ac-cta--pending:hover:not(:disabled) {
-  transform: none;
-  box-shadow: none;
-}
-
-.ac-cta--pending,
-.ac-cta--pending:disabled {
-  opacity: 1;
-  color: var(--kk-color-text-muted);
-  background: var(--kk-glass-inner-bg);
-  border: 1px solid var(--kk-glass-inner-border);
-  box-shadow: none;
-  cursor: wait;
 }
 
 @media (max-width: 640px) {

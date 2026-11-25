@@ -25,11 +25,6 @@ export function retryMintGrowthCards(analysisId: string) {
   return http.post<void>(`/api/growth-cards/mint/${analysisId}`)
 }
 
-/** 对本场指定习惯（Top2/3 等）走 LLM 生成并落库 */
-export function mintHabitGrowthCard(analysisId: string, habitKey: string) {
-  return http.post<GrowthCard>(`/api/growth-cards/mint/${analysisId}/habit`, {habitKey})
-}
-
 /** 按句追踪：某场分析某句关联到的成长卡 */
 export function fetchGrowthCardsBySentence(analysisId: string, sentenceId: string) {
   return http.get<GrowthCard[]>('/api/growth-cards/by-sentence', {
